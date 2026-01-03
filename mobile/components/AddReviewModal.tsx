@@ -1,7 +1,7 @@
 // React Native AddReviewModal Component
 // Modal for submitting reviews (toast validation must be visible INSIDE the modal)
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,13 @@ interface AddReviewModalProps {
   onSubmit: (review: { userName: string; rating: number; comment: string }) => void;
 }
 
+// --- Frontend validation rules (match backend if possible) ---
+const MIN_REVIEW_LEN = 10;
+const MAX_REVIEW_LEN = 500;
+
+const MIN_NAME_LEN = 2; // applied only if name is provided
+const MAX_NAME_LEN = 50;
+
 const AddReviewModalContent: React.FC<Omit<AddReviewModalProps, 'visible'>> = ({
   onClose,
   productName,
@@ -41,6 +48,12 @@ const AddReviewModalContent: React.FC<Omit<AddReviewModalProps, 'visible'>> = ({
   const [userName, setUserName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const trimmedComment = useMemo(() => comment.trim(), [comment]);
+  const trimmedName = useMemo(() => userName.trim(), [userName]);
+
+  const commentLen = trimmedComment.length;
+  const nameLen = trimmedName.length;
+
   const handleSubmit = async () => {
     // ❗ validation: show toast INSIDE modal layer
     if (rating === 0) {
@@ -52,11 +65,40 @@ const AddReviewModalContent: React.FC<Omit<AddReviewModalProps, 'visible'>> = ({
       return;
     }
 
-    if (comment.trim().length < 10) {
+    // --- comment validation (required) ---
+    if (commentLen < MIN_REVIEW_LEN) {
       showToast({
         type: 'error',
         title: 'Review too short',
-        message: 'Your review must be at least 10 characters long.',
+        message: `Your review must be at least ${MIN_REVIEW_LEN} characters long.`,
+      });
+      return;
+    }
+
+    if (commentLen > MAX_REVIEW_LEN) {
+      showToast({
+        type: 'error',
+        title: 'Review too long',
+        message: `Your review cannot exceed ${MAX_REVIEW_LEN} characters.`,
+      });
+      return;
+    }
+
+    // --- name validation (optional; validate only if provided) ---
+    if (nameLen > 0 && nameLen < MIN_NAME_LEN) {
+      showToast({
+        type: 'error',
+        title: 'Name too short',
+        message: `Your name must be at least ${MIN_NAME_LEN} characters long (or leave it empty).`,
+      });
+      return;
+    }
+
+    if (nameLen > MAX_NAME_LEN) {
+      showToast({
+        type: 'error',
+        title: 'Name too long',
+        message: `Your name cannot exceed ${MAX_NAME_LEN} characters.`,
       });
       return;
     }
@@ -67,7 +109,11 @@ const AddReviewModalContent: React.FC<Omit<AddReviewModalProps, 'visible'>> = ({
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     // Success toast is handled by the parent screen (after modal closes)
-    onSubmit({ userName: userName || 'Anonymous', rating, comment });
+    onSubmit({
+      userName: nameLen > 0 ? trimmedName : 'Anonymous',
+      rating,
+      comment: trimmedComment, // send trimmed comment to avoid leading/trailing spaces
+    });
 
     // Reset form
     setRating(0);
@@ -122,7 +168,11 @@ const AddReviewModalContent: React.FC<Omit<AddReviewModalProps, 'visible'>> = ({
               onChangeText={setUserName}
               placeholder="Enter your name"
               placeholderTextColor={colors.mutedForeground}
+              maxLength={MAX_NAME_LEN}
             />
+            <Text style={[styles.charCount, { color: colors.mutedForeground }]}>
+              {nameLen}/{MAX_NAME_LEN}
+            </Text>
           </View>
 
           {/* Comment */}
@@ -137,9 +187,10 @@ const AddReviewModalContent: React.FC<Omit<AddReviewModalProps, 'visible'>> = ({
               multiline
               numberOfLines={4}
               textAlignVertical="top"
+              maxLength={MAX_REVIEW_LEN + 50} // allow typing, but we validate trimmed length
             />
             <Text style={[styles.charCount, { color: colors.mutedForeground }]}>
-              Minimum 10 characters ({comment.trim().length}/10)
+              Minimum {MIN_REVIEW_LEN} characters ({commentLen}/{MAX_REVIEW_LEN})
             </Text>
           </View>
 
