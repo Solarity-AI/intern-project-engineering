@@ -34,6 +34,8 @@ public class Product {
     @PositiveOrZero(message = "Price must be positive or zero")
     private Double price;
 
+    private String imageUrl; // New field for product image
+
     private Double averageRating = 0.0;
     private Integer reviewCount = 0;
 
