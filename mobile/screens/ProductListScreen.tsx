@@ -1,4 +1,4 @@
-// React Native ProductListScreen with SafeArea fix and Notifications header button
+// React Native ProductListScreen with Server-side Filtering
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getProducts, ApiProduct } from '../services/api';
 
@@ -35,7 +35,6 @@ export const ProductListScreen: React.FC = () => {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
 
-  // ✅ Web’de responsive grid (tek kalan item full genişlemesin diye % width kullanacağız)
   const numColumns =
     width >= 1200 ? 4 :
     width >= 900 ? 3 :
@@ -48,39 +47,40 @@ export const ProductListScreen: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // ✅ Fetch fonksiyonu: hem ilk load hem de geri dönünce refresh için tek yerden yönetiyoruz
+  // Fetch products from backend with category filter
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const page = await getProducts({ page: 0, size: 50, sort: 'name,asc' });
+      // Pass selectedCategory to backend
+      const page = await getProducts({ 
+        page: 0, 
+        size: 50, 
+        sort: 'name,asc',
+        category: selectedCategory 
+      });
       setApiProducts(page?.content ?? []);
     } catch (e: any) {
       setError(e?.message ?? 'API error');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedCategory]); // Re-fetch when category changes
 
-  // İlk açılış
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // ✅ KRİTİK FIX: Ekran geri focus olunca yeniden fetch → reviewCount/avgRating/stats güncellenir
   useFocusEffect(
     useCallback(() => {
       fetchProducts();
     }, [fetchProducts])
   );
 
+  // Client-side filtering only for search query
   const filteredProducts = useMemo(() => {
     let filtered = apiProducts;
-
-    if (selectedCategory !== 'All') {
-      filtered = filtered.filter((p) => (p as any)?.category === selectedCategory);
-    }
 
     if (searchQuery.trim()) {
       const query = searchQuery.trim().toLowerCase();
@@ -97,7 +97,7 @@ export const ProductListScreen: React.FC = () => {
     }
 
     return filtered;
-  }, [apiProducts, selectedCategory, searchQuery]);
+  }, [apiProducts, searchQuery]);
 
   const stats = useMemo(() => {
     const totalReviews = apiProducts.reduce((acc, p) => acc + ((p as any)?.reviewCount ?? 0), 0);
@@ -111,9 +111,6 @@ export const ProductListScreen: React.FC = () => {
     };
   }, [apiProducts]);
 
-  /**
-   * ✅ Header memoized (Search typing sırasında re-render patlamasın)
-   */
   const header = useMemo(() => (
     <View>
       <View style={styles.topBar}>
@@ -190,7 +187,6 @@ export const ProductListScreen: React.FC = () => {
     <ScreenWrapper backgroundColor={colors.background}>
       <FlatList
         data={filteredProducts}
-        // ✅ numColumns değişince layout resetlensin
         key={numColumns}
         numColumns={numColumns}
         keyExtractor={(item) => String((item as any)?.id)}
@@ -204,7 +200,6 @@ export const ProductListScreen: React.FC = () => {
           <View
             style={[
               numColumns > 1 && styles.gridItem,
-              // ✅ Tek kalan item "full width" olmasın → her item kendi % genişliğinde kalsın
               numColumns > 1 && { width: `${100 / numColumns}%` },
             ]}
           >
