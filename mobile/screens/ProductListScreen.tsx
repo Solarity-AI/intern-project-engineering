@@ -37,46 +37,80 @@ export const ProductListScreen: React.FC = () => {
 
   const numColumns =
     width >= 1200 ? 4 :
-    width >= 900 ? 3 :
-    width >= 600 ? 2 : 1;
+      width >= 900 ? 3 :
+        width >= 600 ? 2 : 1;
 
   const [apiProducts, setApiProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalPages, setTotalPages] = useState(0);
+
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch products from backend with category filter
-  const fetchProducts = useCallback(async () => {
+  // Fetch products from backend with category filter and pagination
+  const fetchProducts = useCallback(async (pageNum: number = 0, append: boolean = false) => {
+    console.log('🚀 Fetching page:', pageNum, 'Append:', append); // ← EKLE
     try {
-      setLoading(true);
+      if (!append) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
       setError(null);
 
       // Pass selectedCategory to backend
-      const page = await getProducts({ 
-        page: 0, 
-        size: 50, 
+      const page = await getProducts({
+        page: pageNum,
+        size: 20, // Reduced from 50 for better pagination
         sort: 'name,asc',
-        category: selectedCategory 
+        category: selectedCategory
       });
-      setApiProducts(page?.content ?? []);
+      console.log('📦 Received products:', page.content.length); // ← EKLE
+      console.log('📄 Total pages:', page.totalPages); // ← EKLE
+      console.log('🔚 Is last page?', page.last); // ← EKLE
+
+      const newProducts = page?.content ?? [];
+
+      if (append) {
+        setApiProducts(prev => [...prev, ...newProducts]);
+      } else {
+        setApiProducts(newProducts);
+      }
+
+      setCurrentPage(pageNum);
+      setTotalPages(page?.totalPages ?? 0);
+      setHasMore(!page?.last);
+
     } catch (e: any) {
       setError(e?.message ?? 'API error');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [selectedCategory]); // Re-fetch when category changes
+  }, [selectedCategory]);
 
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    fetchProducts(0, false);
+  }, [selectedCategory]); // Reset to page 0 when category changes
 
   useFocusEffect(
     useCallback(() => {
-      fetchProducts();
-    }, [fetchProducts])
+      fetchProducts(0, false);
+    }, [selectedCategory])
   );
+
+  // Load more products (infinite scroll)
+  const loadMoreProducts = useCallback(() => {
+    if (!loadingMore && hasMore && !loading) {
+      fetchProducts(currentPage + 1, true);
+    }
+  }, [loadingMore, hasMore, loading, currentPage, fetchProducts]);
 
   // Client-side filtering only for search query
   const filteredProducts = useMemo(() => {
@@ -213,6 +247,19 @@ export const ProductListScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="none"
+
+        onEndReached={loadMoreProducts}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={{ paddingVertical: Spacing.xl, alignItems: 'center' }}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={{ color: colors.mutedForeground, marginTop: Spacing.sm, fontSize: 12 }}>
+                Loading more products...
+              </Text>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           !loading ? (
             <View style={{ padding: Spacing.xl }}>
