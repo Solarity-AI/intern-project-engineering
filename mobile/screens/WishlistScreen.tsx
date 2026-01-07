@@ -1,5 +1,5 @@
 // WishlistScreen - Display user's favorite products
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
   Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,9 +37,50 @@ export const WishlistScreen: React.FC = () => {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
 
-  const numColumns =
-    width >= 1200 ? 3 :
-    width >= 900 ? 2 : 1;
+  // FIX: Grid mode toggle (same as ProductListScreen)
+  const [gridMode, setGridMode] = useState<1 | 2 | 4>(2);
+  
+  const numColumns = gridMode;
+
+  // Load saved grid mode on mount
+  useEffect(() => {
+    loadGridMode();
+  }, []);
+
+  const loadGridMode = async () => {
+    try {
+      const saved = await AsyncStorage.getItem('wishlist_grid_mode');
+      if (saved === '1' || saved === '2' || saved === '4') {
+        setGridMode(parseInt(saved) as 1 | 2 | 4);
+      }
+    } catch (error) {
+      console.error('Error loading grid mode:', error);
+    }
+  };
+
+  const saveGridMode = async (mode: 1 | 2 | 4) => {
+    try {
+      await AsyncStorage.setItem('wishlist_grid_mode', String(mode));
+    } catch (error) {
+      console.error('Error saving grid mode:', error);
+    }
+  };
+
+  // Toggle grid: 1 → 2 → 4 → 1
+  const toggleGridMode = () => {
+    setGridMode(prev => {
+      const next = prev === 1 ? 2 : prev === 2 ? 4 : 1;
+      saveGridMode(next);
+      return next;
+    });
+  };
+
+  // Get icon for current grid mode
+  const getGridIcon = (): keyof typeof Ionicons.glyphMap => {
+    if (gridMode === 1) return 'list';
+    if (gridMode === 2) return 'grid';
+    return 'apps'; // 4 columns
+  };
 
   const stats = useMemo(() => {
     const totalPrice = wishlist.reduce((sum, item) => sum + (item.price || 0), 0);
@@ -190,7 +232,7 @@ export const WishlistScreen: React.FC = () => {
     </View>
   );
 
-  // Combined header (web maxWidth için)
+  // FIX: Combined header with grid toggle
   const renderListHeader = () => (
     <View>
       {/* Header */}
@@ -209,17 +251,31 @@ export const WishlistScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* FIX: Clear all button - styled */}
-        {wishlist.length > 0 && (
-          <TouchableOpacity 
-            onPress={clearWishlist} 
-            activeOpacity={0.8}
-            style={[styles.clearAllButton, { backgroundColor: colors.destructive }]}
-          >
-            <Ionicons name="trash-outline" size={16} color="#fff" />
-            <Text style={styles.clearAllText}>Clear all</Text>
-          </TouchableOpacity>
-        )}
+        {/* FIX: Header actions (grid toggle + clear all) */}
+        <View style={styles.headerActions}>
+          {/* Grid Toggle Button */}
+          {wishlist.length > 0 && (
+            <TouchableOpacity
+              onPress={toggleGridMode}
+              style={[styles.gridToggleButton, { backgroundColor: colors.secondary }]}
+              activeOpacity={0.8}
+            >
+              <Ionicons name={getGridIcon()} size={20} color={colors.foreground} />
+            </TouchableOpacity>
+          )}
+
+          {/* Clear all button */}
+          {wishlist.length > 0 && (
+            <TouchableOpacity 
+              onPress={clearWishlist} 
+              activeOpacity={0.8}
+              style={[styles.clearAllButton, { backgroundColor: colors.destructive }]}
+            >
+              <Ionicons name="trash-outline" size={16} color="#fff" />
+              <Text style={styles.clearAllText}>Clear all</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {renderStatsHeader()}
@@ -273,7 +329,23 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   
-  // FIX: Clear all button - yuvarlak kırmızı buton
+  // FIX: Header actions container
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+
+  // FIX: Grid toggle button
+  gridToggleButton: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  // Clear all button
   clearAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -339,7 +411,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 180,
+    aspectRatio: 1, // Square images
     overflow: 'hidden',
   },
   image: {
@@ -365,20 +437,20 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    padding: Spacing.md,
+    padding: Spacing.sm, // Reduced from md for better fit
     gap: Spacing.xs,
   },
   name: {
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs, // Smaller for 4-column
     fontWeight: FontWeight.semibold,
-    marginBottom: Spacing.xs,
+    marginBottom: 4,
   },
   price: {
-    fontSize: FontSize.base,
+    fontSize: FontSize.sm, // Smaller for 4-column
     fontWeight: FontWeight.bold,
   },
   category: {
-    fontSize: FontSize.xs,
+    fontSize: 10, // Even smaller
   },
 
   emptyContainer: {

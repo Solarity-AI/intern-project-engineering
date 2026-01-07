@@ -13,6 +13,7 @@ import { useTheme } from '../context/ThemeContext';
 
 interface ProductCardProps {
   product: ApiProduct;
+  numColumns?: number; // FIX: For responsive sizing
 }
 
 function imageForCategory(category?: string) {
@@ -25,7 +26,7 @@ function imageForCategory(category?: string) {
   return 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=800&q=80';
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, numColumns = 2 }) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors, colorScheme } = useTheme();
   const { isInWishlist, toggleWishlist } = useWishlist();
@@ -73,14 +74,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const wishlistButtonBg = inWishlist 
     ? colors.primary 
     : colorScheme === 'dark' 
-      ? 'rgba(28, 25, 23, 0.9)' // Dark mode: dark background
-      : 'rgba(255, 255, 255, 0.9)'; // Light mode: white background
+      ? 'rgba(28, 25, 23, 0.9)' 
+      : 'rgba(255, 255, 255, 0.9)';
   
   const wishlistIconColor = inWishlist 
     ? '#fff' 
-    : colorScheme === 'dark'
-      ? colors.foreground // Dark mode: white icon
-      : colors.foreground; // Light mode: dark icon
+    : colors.foreground;
+
+  // FIX: Hide wishlist button in 4-column view
+  const showWishlistButton = numColumns < 4;
 
   return (
     <TouchableOpacity
@@ -88,44 +90,68 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       style={[styles.container, { backgroundColor: colors.card }]}
       onPress={handlePress}
     >
-      <View style={styles.imageContainer}>
+      <View style={[
+        styles.imageContainer,
+        numColumns === 4 && styles.imageContainerCompact
+      ]}>
         <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
 
-        {/* Wishlist button - improved contrast */}
-        <TouchableOpacity
-          style={[styles.wishlistButton, { backgroundColor: wishlistButtonBg }]}
-          onPress={handleWishlistToggle}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name={inWishlist ? 'heart' : 'heart-outline'}
-            size={20}
-            color={wishlistIconColor}
-          />
-        </TouchableOpacity>
+        {/* FIX: Wishlist button - hidden in 4-column */}
+        {showWishlistButton && (
+          <TouchableOpacity
+            style={[styles.wishlistButton, { backgroundColor: wishlistButtonBg }]}
+            onPress={handleWishlistToggle}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={inWishlist ? 'heart' : 'heart-outline'}
+              size={20}
+              color={wishlistIconColor}
+            />
+          </TouchableOpacity>
+        )}
 
         {!!(product as any)?.category && (
           <View style={[styles.categoryBadge, { backgroundColor: colors.secondary }]}>
-            <Text style={[styles.categoryText, { color: colors.foreground }]}>
+            <Text style={[
+              styles.categoryText, 
+              { color: colors.foreground },
+              numColumns === 4 && styles.categoryTextCompact
+            ]}>
               {(product as any)?.category}
             </Text>
           </View>
         )}
       </View>
 
-      <View style={styles.content}>
-        <Text numberOfLines={1} style={[styles.name, { color: colors.foreground }]}>
+      <View style={[
+        styles.content,
+        numColumns === 4 && styles.contentCompact
+      ]}>
+        <Text numberOfLines={1} style={[
+          styles.name, 
+          { color: colors.foreground },
+          numColumns === 4 && styles.nameCompact
+        ]}>
           {(product as any)?.name ?? 'Product'}
         </Text>
 
         <View style={styles.ratingRow}>
           <StarRating rating={avgRating} size="sm" />
-          <Text style={[styles.reviewCount, { color: colors.mutedForeground }]}>
+          <Text style={[
+            styles.reviewCount, 
+            { color: colors.mutedForeground },
+            numColumns === 4 && styles.reviewCountCompact
+          ]}>
             ({reviewCount})
           </Text>
         </View>
 
-        <Text style={[styles.price, { color: colors.foreground }]}>
+        <Text style={[
+          styles.price, 
+          { color: colors.foreground },
+          numColumns === 4 && styles.priceCompact
+        ]}>
           {typeof (product as any)?.price === 'number'
             ? `$${(product as any)?.price.toFixed(2)}`
             : (product as any)?.price ?? ''}
@@ -148,6 +174,11 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 16 / 9,
     maxHeight: 220,
+  },
+  // FIX: Compact image for 4-column
+  imageContainerCompact: {
+    aspectRatio: 1, // Square for 4-column
+    maxHeight: 150,
   },
 
   image: {
@@ -182,15 +213,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: FontWeight.medium,
   },
+  // FIX: Smaller category text for 4-column
+  categoryTextCompact: {
+    fontSize: 10,
+  },
 
   content: {
     padding: Spacing.md,
     gap: 6,
   },
+  // FIX: Less padding for 4-column
+  contentCompact: {
+    padding: Spacing.sm,
+    gap: 4,
+  },
 
   name: {
     fontSize: 14,
     fontWeight: FontWeight.semibold,
+  },
+  // FIX: Smaller name for 4-column
+  nameCompact: {
+    fontSize: 11,
   },
 
   ratingRow: {
@@ -202,9 +246,17 @@ const styles = StyleSheet.create({
   reviewCount: {
     fontSize: 12,
   },
+  // FIX: Smaller review count for 4-column
+  reviewCountCompact: {
+    fontSize: 10,
+  },
 
   price: {
     fontSize: 14,
     fontWeight: FontWeight.semibold,
+  },
+  // FIX: Smaller price for 4-column
+  priceCompact: {
+    fontSize: 12,
   },
 });

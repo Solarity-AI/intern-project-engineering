@@ -304,7 +304,7 @@ export const ProductListScreen: React.FC = () => {
               numColumns === 1 && { paddingHorizontal: Spacing.lg },
             ]}
           >
-            <ProductCard product={item} />
+            <ProductCard product={item} numColumns={numColumns} />
           </View>
         )}
         showsVerticalScrollIndicator={false}
