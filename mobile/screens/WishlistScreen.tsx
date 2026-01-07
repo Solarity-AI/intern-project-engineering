@@ -137,7 +137,7 @@ export const WishlistScreen: React.FC = () => {
     </View>
   );
 
-  const renderHeader = () => (
+  const renderStatsHeader = () => (
     <View>
       {/* Stats */}
       {wishlist.length > 0 && (
@@ -190,9 +190,10 @@ export const WishlistScreen: React.FC = () => {
     </View>
   );
 
-  return (
-    <ScreenWrapper backgroundColor={colors.background}>
-      {/* Header */}
+  // FIX: Combined header (web maxWidth için)
+  const renderListHeader = () => (
+    <View>
+      {/* Header - FlatList içine taşındı */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -215,13 +216,19 @@ export const WishlistScreen: React.FC = () => {
         )}
       </View>
 
+      {renderStatsHeader()}
+    </View>
+  );
+
+  return (
+    <ScreenWrapper backgroundColor={colors.background}>
       <FlatList
         data={wishlist}
         key={numColumns}
         numColumns={numColumns}
         keyExtractor={(item) => item.id}
         renderItem={renderWishlistItem}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={renderListHeader}
         ListEmptyComponent={renderEmpty}
         contentContainerStyle={[
           styles.listContent,
@@ -310,11 +317,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
     ...Shadow.soft,
   },
+  
   imageContainer: {
     position: 'relative',
     width: '100%',
-    aspectRatio: 16 / 9,
-    maxHeight: 180,
+    height: 180,
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
