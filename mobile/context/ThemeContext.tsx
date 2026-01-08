@@ -1,6 +1,7 @@
 // ThemeContext - Manages dark/light mode state
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useColorScheme } from 'react-native';
 import { Colors } from '../constants/theme';
 
 const THEME_STORAGE_KEY = 'app_theme_mode';
@@ -17,7 +18,9 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [colorScheme, setColorScheme] = useState<ColorScheme>('light');
+  // FIX: Use system color scheme as initial value to prevent white flash
+  const systemColorScheme = useColorScheme();
+  const [colorScheme, setColorScheme] = useState<ColorScheme>(systemColorScheme === 'dark' ? 'dark' : 'light');
 
   // Load saved theme on mount
   useEffect(() => {
