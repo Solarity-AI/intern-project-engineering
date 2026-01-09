@@ -53,9 +53,9 @@ public class AISummaryService {
      */
     @Cacheable(value = "aiSummaries", key = "#productId")
     public String generateReviewSummary(Long productId, String productName, List<Review> reviews) {
-        // Don't generate summary if less than 3 reviews
-        if (reviews == null || reviews.size() < 3) {
-            log.info("Not enough reviews for product {}: {} reviews", productId, reviews != null ? reviews.size() : 0);
+        // Generate summary if there is at least 1 review
+        if (reviews == null || reviews.isEmpty()) {
+            log.info("No reviews for product {}, skipping summary", productId);
             return null;
         }
 
