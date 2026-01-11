@@ -1,17 +1,17 @@
-# Product Review App — Mobile (React Native) + Backend (Spring Boot)
+# Product Review App — Mobile (React Native)
 
 > **Audience:** new interns joining the project  
 > **Goal:** explain *why each file exists*, *what it does*, and *how data flows* through the system.
 
-This repository contains:
-- **`mobile/`**: React Native application (TypeScript) built with React Navigation, context-based state management, and a small API client layer.
-- **`backend/`**: Spring Boot REST API (multi-module Maven project). The mobile app talks to it via HTTP (see `mobile/services/api.ts`).
+This repository contains the **React Native application** (TypeScript) built with React Navigation, context-based state management, and a small API client layer.
+
+For backend documentation, please refer to [../backend/README.md](../backend/README.md).
 
 ---
 
 ## 1) High-level architecture
 
-### 1.1 Runtime flow (mobile)
+### 1.1 Runtime flow
 1. **App boot** starts in `mobile/App.tsx`
 2. Global **providers** are mounted (Theme, Notifications, Wishlist, Toast)
 3. React Navigation creates the **Stack Navigator**
@@ -20,23 +20,14 @@ This repository contains:
    - API functions in `services/api.ts` to fetch/post data
 5. UI updates are triggered by React state changes (Context + component state)
 
-### 1.2 Backend contract (overview)
+### 1.2 Backend Integration
 Mobile communicates with the backend using REST endpoints under:
 - `BASE_URL` in `mobile/services/api.ts`  
   Currently points to a **Heroku** deployment.
 
-Backend responsibilities (expected from API usage in mobile):
-- **Products** listing + filtering + pagination
-- **Product details**
-- **Reviews** listing + pagination
-- **Create review**
-- **Mark review as helpful**
-
-> Note: In this chat you only shared mobile source files. For a fully accurate backend README (controllers/services/repositories/entities), share backend files later and we can generate a dedicated `README_BACKEND.md`.
-
 ---
 
-## 2) Folder structure (mobile)
+## 2) Folder structure
 
 From your VS Code structure, the key folders are:
 
@@ -232,8 +223,6 @@ Most apps implement:
 - parse JSON into `T`
 
 **Why it matters:** centralized error parsing + consistent headers.
-
-> ⚠️ If your local copy of `api.ts` contains truncated content, fix it in the repository. For onboarding, this file must be complete and readable.
 
 ---
 
@@ -451,27 +440,6 @@ Then:
 - press `a` for Android emulator
 - scan QR for Expo Go (if configured)
 - or build via EAS (if configured in `eas.json`)
-
----
-
-## 11) Backend (Spring Boot) — onboarding stub
-
-The backend is a Maven multi-module project (as seen in VS Code Java Projects / Maven view):
-- `product-review`
-- `product-review-parent`
-
-Typical structure you should expect:
-- controllers: `/api/products/**`
-- services: business logic (rating, validation)
-- repositories: JPA access
-- entities: `Product`, `Review`, etc.
-- pagination: Spring `Page<T>`
-
-**Next step:** share these backend files and we will generate a full `README_BACKEND.md`:
-- `backend/pom.xml` (and parent)
-- `application.properties` / `application.yml`
-- controller/service/repository/entity packages
-- deployment config (Heroku)
 
 ---
 
