@@ -4,8 +4,10 @@ import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.dto.ReviewDTO;
 import com.example.productreview.model.Product;
 import com.example.productreview.model.Review;
+import com.example.productreview.model.ReviewVote;
 import com.example.productreview.repository.ProductRepository;
 import com.example.productreview.repository.ReviewRepository;
+import com.example.productreview.repository.ReviewVoteRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -25,11 +27,16 @@ public class ProductServiceImpl implements ProductService {
     
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;
+    private final ReviewVoteRepository reviewVoteRepository;
     private final AISummaryService aiSummaryService;
 
-    public ProductServiceImpl(ProductRepository productRepository, ReviewRepository reviewRepository, AISummaryService aiSummaryService) {
+    public ProductServiceImpl(ProductRepository productRepository, 
+                              ReviewRepository reviewRepository, 
+                              ReviewVoteRepository reviewVoteRepository,
+                              AISummaryService aiSummaryService) {
         this.productRepository = productRepository;
         this.reviewRepository = reviewRepository;
+        this.reviewVoteRepository = reviewVoteRepository;
         this.aiSummaryService = aiSummaryService;
     }
 
@@ -48,9 +55,7 @@ public class ProductServiceImpl implements ProductService {
         Product product = getProductById(id);
         ProductDTO productDTO = convertToProductDTO(product);
         
-        // Calculate rating breakdown only for single product view
         Map<Integer, Long> ratingBreakdown = new HashMap<>();
-        // Initialize with 0 for all ratings 1-5
         for (int i = 1; i <= 5; i++) {
             ratingBreakdown.put(i, 0L);
         }
@@ -64,10 +69,8 @@ public class ProductServiceImpl implements ProductService {
         
         productDTO.setRatingBreakdown(ratingBreakdown);
         
-        // ✨ Generate AI summary for product details view
         try {
             List<Review> reviews = reviewRepository.findByProductId(id);
-            // Updated: Generate summary if there is at least 1 review
             if (!reviews.isEmpty()) {
                 String aiSummary = aiSummaryService.generateReviewSummary(
                         id, 
@@ -75,13 +78,9 @@ public class ProductServiceImpl implements ProductService {
                         reviews
                 );
                 productDTO.setAiSummary(aiSummary);
-                log.info("Added AI summary to product {}: {}", id, aiSummary != null);
-            } else {
-                log.info("Product {} has no reviews, skipping AI summary", id);
             }
         } catch (Exception e) {
             log.error("Error generating AI summary for product {}: {}", id, e.getMessage());
-            productDTO.setAiSummary(null);
         }
         
         return productDTO;
@@ -119,8 +118,6 @@ public class ProductServiceImpl implements ProductService {
         review.setProduct(product);
 
         Review savedReview = reviewRepository.save(review);
-
-        // Update product statistics
         updateProductStats(product);
 
         return convertToReviewDTO(savedReview);
@@ -128,9 +125,16 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
-    public ReviewDTO markReviewAsHelpful(Long reviewId) {
+    public ReviewDTO markReviewAsHelpful(Long reviewId, String userId) {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new RuntimeException("Review not found"));
+
+        // Check if user already voted
+        if (userId != null && reviewVoteRepository.findByUserIdAndReviewId(userId, reviewId).isPresent()) {
+            // User already voted, maybe toggle off? Or just return existing.
+            // For now, let's assume we can't vote twice.
+            return convertToReviewDTO(review);
+        }
 
         if (review.getHelpfulCount() == null) {
             review.setHelpfulCount(0);
@@ -138,8 +142,20 @@ public class ProductServiceImpl implements ProductService {
         
         review.setHelpfulCount(review.getHelpfulCount() + 1);
         Review savedReview = reviewRepository.save(review);
+        
+        // Record vote
+        if (userId != null) {
+            reviewVoteRepository.save(new ReviewVote(userId, reviewId));
+        }
 
         return convertToReviewDTO(savedReview);
+    }
+    
+    @Override
+    public List<Long> getUserVotedReviewIds(String userId) {
+        return reviewVoteRepository.findByUserId(userId).stream()
+                .map(ReviewVote::getReviewId)
+                .collect(Collectors.toList());
     }
     
     @Override
@@ -157,7 +173,7 @@ public class ProductServiceImpl implements ProductService {
                 .orElse(0.0);
 
         product.setReviewCount(count);
-        product.setAverageRating(Math.round(average * 10.0) / 10.0); // Round to 1 decimal place
+        product.setAverageRating(Math.round(average * 10.0) / 10.0);
         productRepository.save(product);
     }
 
@@ -183,8 +199,8 @@ public class ProductServiceImpl implements ProductService {
                 product.getImageUrl(),
                 product.getAverageRating(),
                 product.getReviewCount(),
-                null, // ratingBreakdown is null by default for list view
-                null  // aiSummary is null for list view
+                null,
+                null
         );
     }
 }

@@ -22,7 +22,7 @@ import { RatingBreakdown } from '../components/RatingBreakdown';
 import { ReviewCard } from '../components/ReviewCard';
 import { Button } from '../components/Button';
 import { AddReviewModal } from '../components/AddReviewModal';
-import { AISummaryCard } from '../components/AISummaryCard'; // ✨ Imported AISummaryCard
+import { AISummaryCard } from '../components/AISummaryCard';
 
 import { useWishlist } from '../context/WishlistContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -31,7 +31,7 @@ import { ToastProvider, useToast } from '../context/ToastContext';
 
 import { RootStackParamList, Review } from '../types';
 import { Spacing, FontSize, FontWeight, BorderRadius, Shadow } from '../constants/theme';
-import { getProduct, postReview, getReviews } from '../services/api';
+import { getProduct, postReview, getReviews, markReviewAsHelpful, getUserVotedReviews } from '../services/api';
 
 type RouteType = RouteProp<RootStackParamList, 'ProductDetails'>;
 
@@ -68,6 +68,7 @@ const ProductDetailsContent: React.FC = () => {
 
   useEffect(() => {
     fetchProduct();
+    fetchUserVotes();
   }, [productId]);
 
   const fetchProduct = async () => {
@@ -87,6 +88,17 @@ const ProductDetailsContent: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserVotes = async () => {
+    try {
+      console.log('Fetching user votes...');
+      const votedIds = await getUserVotedReviews();
+      console.log('Voted IDs from backend:', votedIds);
+      setHelpfulReviews(votedIds.map(String));
+    } catch (error) {
+      console.error('Error fetching user votes:', error);
     }
   };
 
@@ -127,13 +139,38 @@ const ProductDetailsContent: React.FC = () => {
     }
   };
 
-  const handleHelpfulPress = useCallback((reviewId: string) => {
-    setHelpfulReviews(prev =>
-      prev.includes(reviewId)
-        ? prev.filter(id => id !== reviewId)
-        : [...prev, reviewId]
-    );
-  }, []);
+  const handleHelpfulPress = useCallback(async (reviewId: string) => {
+    // Optimistic update
+    const isAlreadyHelpful = helpfulReviews.includes(reviewId);
+    
+    if (isAlreadyHelpful) {
+      // If already voted, we don't support un-voting in UI yet (backend doesn't support it either)
+      return;
+    }
+
+    setHelpfulReviews(prev => [...prev, reviewId]);
+    
+    // Update review count locally
+    setReviews(prev => prev.map(r => 
+      r.id === reviewId 
+        ? { ...r, helpfulCount: (r.helpfulCount || 0) + 1 } 
+        : r
+    ));
+
+    try {
+      await markReviewAsHelpful(reviewId);
+      console.log('Marked review as helpful:', reviewId);
+    } catch (error) {
+      console.error('Error marking review as helpful:', error);
+      // Revert on error
+      setHelpfulReviews(prev => prev.filter(id => id !== reviewId));
+      setReviews(prev => prev.map(r => 
+        r.id === reviewId 
+          ? { ...r, helpfulCount: (r.helpfulCount || 0) - 1 } 
+          : r
+      ));
+    }
+  }, [helpfulReviews]);
 
   const handleWishlistToggle = () => {
     toggleWishlist({

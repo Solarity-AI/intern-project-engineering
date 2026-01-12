@@ -1,5 +1,26 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import 'react-native-get-random-values';
+import { v4 as uuidv4 } from 'uuid';
+
 const BASE_URL = "https://product-review-app-solarityai-a391ad53d79a.herokuapp.com"; 
 // const BASE_URL = "http://192.168.1.6:8080";
+
+const USER_ID_KEY = 'device_user_id';
+
+// Get or create a persistent User ID
+export async function getUserId(): Promise<string> {
+  try {
+    let userId = await AsyncStorage.getItem(USER_ID_KEY);
+    if (!userId) {
+      userId = uuidv4();
+      await AsyncStorage.setItem(USER_ID_KEY, userId);
+    }
+    return userId;
+  } catch (e) {
+    console.error('Error getting user ID', e);
+    return 'anonymous-user';
+  }
+}
 
 export type Page<T> = {
   content: T[];
@@ -20,7 +41,7 @@ export type ApiProduct = {
   reviewCount?: number;
   ratingBreakdown?: Record<number, number>;
   imageUrl?: string;
-  aiSummary?: string; // ✨ Added aiSummary field
+  aiSummary?: string;
 };
 
 export type ApiReview = {
@@ -32,13 +53,32 @@ export type ApiReview = {
   createdAt?: string;
 };
 
+export type ApiNotification = {
+  id: number;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  productId?: number;
+};
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, options);
+  const userId = await getUserId();
+  
+  const headers = {
+    ...options?.headers,
+    'X-User-ID': userId,
+  };
+
+  const res = await fetch(url, { ...options, headers });
+  
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`${res.status} ${res.statusText} - ${text}`);
   }
-  return res.json() as Promise<T>;
+  
+  const text = await res.text();
+  return text ? JSON.parse(text) : {} as T;
 }
 
 export function getProducts(params?: { page?: number; size?: number; sort?: string; category?: string }) {
@@ -87,11 +127,46 @@ export function markReviewAsHelpful(reviewId: number | string) {
   });
 }
 
-// ✨ New Chat Function
+export function getUserVotedReviews() {
+  return request<number[]>(`${BASE_URL}/api/products/reviews/voted`);
+}
+
 export function chatWithAI(productId: number | string, question: string) {
   return request<{ answer: string }>(`${BASE_URL}/api/products/${productId}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question }),
+  });
+}
+
+// --- User Persistence (Wishlist & Notifications) ---
+
+export function getWishlist() {
+  return request<number[]>(`${BASE_URL}/api/user/wishlist`);
+}
+
+export function toggleWishlistApi(productId: number) {
+  return request<void>(`${BASE_URL}/api/user/wishlist/${productId}`, {
+    method: "POST",
+  });
+}
+
+export function getNotifications() {
+  return request<ApiNotification[]>(`${BASE_URL}/api/user/notifications`);
+}
+
+export function getUnreadCount() {
+  return request<{ count: number }>(`${BASE_URL}/api/user/notifications/unread-count`);
+}
+
+export function markNotificationAsRead(id: number) {
+  return request<void>(`${BASE_URL}/api/user/notifications/${id}/read`, {
+    method: "PUT",
+  });
+}
+
+export function markAllNotificationsAsRead() {
+  return request<void>(`${BASE_URL}/api/user/notifications/read-all`, {
+    method: "PUT",
   });
 }

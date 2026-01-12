@@ -1,6 +1,7 @@
 // Wishlist Context for managing favorite products
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getWishlist as getWishlistApi, toggleWishlistApi } from '../services/api';
 
 const WISHLIST_STORAGE_KEY = 'wishlist_products';
 
@@ -31,33 +32,58 @@ const WishlistContext = createContext<WishlistContextType | undefined>(undefined
 export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
 
-  // Load wishlist from AsyncStorage on mount
+  // Load wishlist from AsyncStorage AND Backend on mount
   useEffect(() => {
     loadWishlist();
   }, []);
 
   const loadWishlist = async () => {
     try {
+      // 1. Load local cache (for immediate UI)
       const stored = await AsyncStorage.getItem(WISHLIST_STORAGE_KEY);
+      let localItems: WishlistItem[] = [];
       if (stored) {
         const parsed = JSON.parse(stored);
-        // Convert date strings back to Date objects
-        const withDates = parsed.map((item: any) => ({
+        localItems = parsed.map((item: any) => ({
           ...item,
           addedAt: new Date(item.addedAt),
         }));
-        setWishlist(withDates);
+        setWishlist(localItems);
       }
+
+      // 2. Sync with Backend (Source of Truth)
+      const backendIds = await getWishlistApi();
+      
+      // Filter local items to match backend IDs (remove deleted ones)
+      // Note: If backend has IDs that local doesn't, we can't show them fully yet 
+      // because we lack product details. Ideally, we'd fetch details for missing IDs.
+      // For now, we assume local cache is mostly up to date or we keep local items if backend fails.
+      
+      if (backendIds && backendIds.length > 0) {
+        const backendIdSet = new Set(backendIds.map(String));
+        const syncedItems = localItems.filter(item => backendIdSet.has(item.id));
+        
+        // If backend has more items than local, we might be missing data.
+        // In a real app, we would fetch product details for (backendIds - localIds).
+        
+        setWishlist(syncedItems);
+        saveWishlistToStorage(syncedItems);
+      } else if (backendIds && backendIds.length === 0) {
+        // Backend says empty, so clear local
+        setWishlist([]);
+        saveWishlistToStorage([]);
+      }
+
     } catch (error) {
-      console.error('Error loading wishlist:', error);
+      console.error('Error syncing wishlist:', error);
     }
   };
 
-  const saveWishlist = async (items: WishlistItem[]) => {
+  const saveWishlistToStorage = async (items: WishlistItem[]) => {
     try {
       await AsyncStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(items));
     } catch (error) {
-      console.error('Error saving wishlist:', error);
+      console.error('Error saving wishlist locally:', error);
     }
   };
 
@@ -79,15 +105,16 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
       
       const updated = [newItem, ...wishlist];
       setWishlist(updated);
-      saveWishlist(updated);
+      saveWishlistToStorage(updated);
+      
+      // Sync with Backend
+      toggleWishlistApi(Number(product.id)).catch(e => console.error("Backend sync failed", e));
     },
     [wishlist]
   );
 
-  // Bulk add multiple items to wishlist (optimized)
   const addMultipleToWishlist = useCallback(
     (products: Array<Omit<WishlistItem, 'addedAt'>>) => {
-      // Filter out items already in wishlist (duplicate check)
       const existingIds = new Set(wishlist.map(item => item.id));
       const newItems = products
         .filter(p => !existingIds.has(p.id))
@@ -96,10 +123,14 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
           addedAt: new Date(),
         }));
       
-      // Add all new items at once
       const updated = [...newItems, ...wishlist];
       setWishlist(updated);
-      saveWishlist(updated);
+      saveWishlistToStorage(updated);
+      
+      // Sync each item (Parallel)
+      newItems.forEach(item => {
+        toggleWishlistApi(Number(item.id)).catch(e => console.error("Backend sync failed", e));
+      });
     },
     [wishlist]
   );
@@ -108,18 +139,25 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
     (productId: string) => {
       const updated = wishlist.filter((item) => item.id !== productId);
       setWishlist(updated);
-      saveWishlist(updated);
+      saveWishlistToStorage(updated);
+      
+      // Sync with Backend
+      toggleWishlistApi(Number(productId)).catch(e => console.error("Backend sync failed", e));
     },
     [wishlist]
   );
 
-  // Bulk remove multiple items from wishlist (optimized)
   const removeMultipleFromWishlist = useCallback(
     (productIds: string[]) => {
       const idsSet = new Set(productIds);
       const updated = wishlist.filter((item) => !idsSet.has(item.id));
       setWishlist(updated);
-      saveWishlist(updated);
+      saveWishlistToStorage(updated);
+      
+      // Sync each item
+      productIds.forEach(id => {
+        toggleWishlistApi(Number(id)).catch(e => console.error("Backend sync failed", e));
+      });
     },
     [wishlist]
   );
@@ -136,13 +174,17 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
   );
 
   const clearWishlist = useCallback(async () => {
+    // Get current IDs to remove them from backend
+    const currentIds = wishlist.map(item => item.id);
+    
     setWishlist([]);
-    try {
-      await AsyncStorage.removeItem(WISHLIST_STORAGE_KEY);
-    } catch (error) {
-      console.error('Error clearing wishlist:', error);
-    }
-  }, []);
+    saveWishlistToStorage([]);
+    
+    // Remove all from backend
+    currentIds.forEach(id => {
+      toggleWishlistApi(Number(id)).catch(e => console.error("Backend sync failed", e));
+    });
+  }, [wishlist]);
 
   return (
     <WishlistContext.Provider

@@ -16,7 +16,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/products")
-@CrossOrigin(origins = "*") // Allow all origins for mobile/web access
+@CrossOrigin(origins = "*")
 public class ProductController {
 
     private final ProductService productService;
@@ -73,11 +73,18 @@ public class ProductController {
     }
 
     @PutMapping("/reviews/{reviewId}/helpful")
-    public ResponseEntity<ReviewDTO> markReviewAsHelpful(@PathVariable Long reviewId) {
-        return ResponseEntity.ok(productService.markReviewAsHelpful(reviewId));
+    public ResponseEntity<ReviewDTO> markReviewAsHelpful(
+            @PathVariable Long reviewId,
+            @RequestHeader(value = "X-User-ID", required = false) String userId) {
+        return ResponseEntity.ok(productService.markReviewAsHelpful(reviewId, userId));
     }
     
-    // ✨ New Chat Endpoint
+    // ✨ New Endpoint to get user's voted reviews
+    @GetMapping("/reviews/voted")
+    public ResponseEntity<List<Long>> getUserVotedReviews(@RequestHeader("X-User-ID") String userId) {
+        return ResponseEntity.ok(productService.getUserVotedReviewIds(userId));
+    }
+
     @PostMapping("/{id}/chat")
     public ResponseEntity<Map<String, String>> chatAboutProduct(
             @PathVariable Long id, 
