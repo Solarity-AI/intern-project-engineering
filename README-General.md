@@ -26,30 +26,28 @@ The project emphasizes **clean architecture, REST API design, performance optimi
 
 ---
 
-## 🏗️ System Architecture
+## 📦 Deliverables
 
-> **[Link to Excalidraw Architecture Diagram]** *(To be added)*
+The final submission must include the following items:
+
+1.  **System Architecture:** An [Excalidraw link] explaining the overall system design.
+2.  **Frontend Code Walkthrough:** A 3–5 minute demo video [Google Drive Link] explaining the frontend codebase.
+3.  **Backend Code Walkthrough:** A 3–5 minute demo video [Google Drive Link] explaining the backend architecture.
+4.  **Application Demo:** A 3–5 minute video [Google Drive Link] showcasing all features on an emulator or real device.
+5.  **Build Artifacts:** A [Google Drive Link] to download the generated APK (Android) or IPA (iOS).
+6.  **Web Access:** A public web application link (e.g., Vercel) for testing in a browser.
+7.  **Future Improvements:** A section describing potential enhancements (see Roadmap below).
+8.  **Final Presentation:** A slide deck summarizing the project and learnings.
+
+---
+
+## 🏗️ System Architecture
 
 The system follows a layered architecture:
 1.  **Presentation Layer:** Mobile/Web App (React Native, Swift, or Kotlin)
 2.  **API Layer:** Spring Boot REST Controllers
 3.  **Business Layer:** Service Interfaces & Implementations
 4.  **Data Layer:** JPA Repositories & Database
-
----
-
-## 🚀 Deliverables & Demo
-
-### 🎥 Code Walkthroughs
-- **Frontend Code Walkthrough:** [Google Drive Link] *(To be added)*
-- **Backend Code Walkthrough:** [Google Drive Link] *(To be added)*
-
-### 📱 Application Demo
-- **Live App Demo:** [Google Drive Link] *(To be added)*
-
-### 📦 Build Artifacts
-- **Android APK:** [Google Drive Link] *(To be added)*
-- **Public Web App:** [Vercel Link Here] (e.g., `https://product-review-app.vercel.app`)
 
 ---
 
@@ -71,20 +69,23 @@ The system follows a layered architecture:
 
 ---
 
-## 🔮 Future Improvements & Roadmap
+## 🚀 Future Improvements & Technical Roadmap
 
-### 🔒 Security Enhancements (Planned)
-- **Spring Security Integration:** Implement JWT-based authentication.
-- **Role-Based Access Control:** Admin vs User roles.
-- **Secure Token Management:** Refresh tokens and secure storage.
+### 1. Security Enhancements (Planned)
+- **Spring Security Integration:** Integrate Spring Security 6.
+- **JWT Authentication:** Implement stateless authentication using JSON Web Tokens.
+- **Role-Based Access Control (RBAC):** Differentiate between Admin and User roles.
+- **Secure Endpoints:** Protect sensitive actions like `POST /reviews`.
 
-### 🛡️ Validation with AOP (Planned)
+### 2. Validation with AOP (Planned)
 - **Centralized Validation:** Use Aspect-Oriented Programming (AOP) to handle request validation globally.
-- **Consistent Error Handling:** Unified error response structure.
+- **Consistent Error Handling:** Unified error response structure across all endpoints.
+- **Reusable Aspects:** Create custom annotations for business rules.
 
-### 🧪 Integration Testing (Planned)
-- **Testcontainers:** Use Docker containers for reliable integration tests.
-- **End-to-End Testing:** Validate full user flows.
+### 3. Integration Testing (Planned)
+- **Testcontainers:** Use Docker containers to spin up real database instances for testing.
+- **Reproducible Tests:** Ensure tests run consistently across different environments (CI/CD, Local).
+- **End-to-End Testing:** Validate full user flows from API to Database.
 
 ---
 
