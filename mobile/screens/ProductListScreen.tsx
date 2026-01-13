@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   Platform,
+  ScrollView, // ✨ Added ScrollView
 } from 'react-native';
 
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -28,6 +29,7 @@ import { LoadMoreCard } from '../components/LoadMoreCard';
 import { useNotifications } from '../context/NotificationContext';
 import { useWishlist, WishlistItem } from '../context/WishlistContext';
 import { useTheme } from '../context/ThemeContext';
+import { useSearch } from '../context/SearchContext';
 
 import { RootStackParamList } from '../types';
 import { Spacing, FontSize, FontWeight, BorderRadius } from '../constants/theme';
@@ -37,6 +39,7 @@ export const ProductListScreen: React.FC = () => {
   const { colors, colorScheme, toggleTheme } = useTheme();
   const { unreadCount } = useNotifications();
   const { wishlistCount } = useWishlist();
+  const { addSearchTerm, searchHistory } = useSearch();
 
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
@@ -64,7 +67,21 @@ export const ProductListScreen: React.FC = () => {
 
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name,asc');
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log('Setting debounced search query:', searchQuery);
+      setDebouncedSearchQuery(searchQuery);
+      if (searchQuery.trim().length > 0) {
+        addSearchTerm(searchQuery);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Toggle grid: 1 → 2 → 4 → 1
   const toggleGridMode = () => {
@@ -149,6 +166,8 @@ export const ProductListScreen: React.FC = () => {
 
   const fetchProducts = useCallback(async (pageNum: number = 0, append: boolean = false) => {
     try {
+      console.log(`Fetching products: page=${pageNum}, search="${debouncedSearchQuery}", category=${selectedCategory}`);
+      
       if (!append) {
         setLoading(true);
       } else {
@@ -160,10 +179,12 @@ export const ProductListScreen: React.FC = () => {
         page: pageNum, 
         size: 20,
         sort: sortBy,
-        category: selectedCategory 
+        category: selectedCategory,
+        search: debouncedSearchQuery
       });
       
       const newProducts = page?.content ?? [];
+      console.log(`Fetched ${newProducts.length} products`);
       
       if (append) {
         setApiProducts(prev => [...prev, ...newProducts]);
@@ -176,21 +197,24 @@ export const ProductListScreen: React.FC = () => {
       setHasMore(!page?.last);
       
     } catch (e: any) {
+      console.error('Fetch error:', e);
       setError(e?.message ?? 'API error');
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [selectedCategory, sortBy]);
+  }, [selectedCategory, sortBy, debouncedSearchQuery]);
 
   useEffect(() => {
     fetchProducts(0, false);
-  }, [selectedCategory, sortBy]);
+  }, [selectedCategory, sortBy, debouncedSearchQuery]);
 
   useFocusEffect(
     useCallback(() => {
-      fetchProducts(0, false);
-    }, [selectedCategory, sortBy])
+      if (apiProducts.length === 0) {
+        fetchProducts(0, false);
+      }
+    }, [])
   );
 
   const loadMoreProducts = useCallback(() => {
@@ -199,25 +223,7 @@ export const ProductListScreen: React.FC = () => {
     }
   }, [loadingMore, hasMore, loading, currentPage, fetchProducts]);
 
-  const filteredProducts = useMemo(() => {
-    let filtered = apiProducts;
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.trim().toLowerCase();
-      filtered = filtered.filter((p) => {
-        const name = String((p as any)?.name ?? '').toLowerCase();
-        const description = String((p as any)?.description ?? '').toLowerCase();
-        const category = String((p as any)?.category ?? '').toLowerCase();
-        return (
-          name.includes(query) ||
-          description.includes(query) ||
-          category.includes(query)
-        );
-      });
-    }
-
-    return filtered;
-  }, [apiProducts, searchQuery]);
+  const filteredProducts = apiProducts;
 
   const stats = useMemo(() => {
     const totalReviews = apiProducts.reduce((acc, p) => acc + ((p as any)?.reviewCount ?? 0), 0);
@@ -231,7 +237,13 @@ export const ProductListScreen: React.FC = () => {
     };
   }, [apiProducts]);
 
-  const header = useMemo(() => (
+  const handleSearchSubmit = (term: string) => {
+    setSearchQuery(term);
+    addSearchTerm(term);
+  };
+
+  // ✨ Split header into static parts
+  const topHeader = (
     <View>
       <View style={styles.topBar}>
         <View style={styles.logoContainer}>
@@ -242,7 +254,6 @@ export const ProductListScreen: React.FC = () => {
         </View>
 
         <View style={styles.headerButtons}>
-          {/* Dark Mode Toggle */}
           <TouchableOpacity
             style={[styles.themeButton, { backgroundColor: colors.secondary }]}
             onPress={toggleTheme}
@@ -306,11 +317,11 @@ export const ProductListScreen: React.FC = () => {
           ))}
         </View>
       </View>
+    </View>
+  );
 
-      <View style={styles.searchSection}>
-        <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
-      </View>
-
+  const listHeader = (
+    <View>
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Explore Products</Text>
       </View>
@@ -323,7 +334,6 @@ export const ProductListScreen: React.FC = () => {
         <View style={styles.sortHeader}>
           <Text style={[styles.filterLabel, { color: colors.mutedForeground }]}>Sort by:</Text>
           
-          {/* Grid Toggle Button */}
           <TouchableOpacity
             onPress={toggleGridMode}
             style={[styles.gridToggleButton, { backgroundColor: colors.secondary }]}
@@ -339,21 +349,7 @@ export const ProductListScreen: React.FC = () => {
       {loading && <ActivityIndicator style={{ marginTop: 16 }} />}
       {error && <Text style={{ color: colors.destructive, padding: Spacing.lg }}>{error}</Text>}
     </View>
-  ), [
-    colors,
-    colorScheme,
-    toggleTheme,
-    navigation,
-    unreadCount,
-    wishlistCount,
-    stats,
-    searchQuery,
-    selectedCategory,
-    sortBy,
-    loading,
-    error,
-    gridMode,
-  ]);
+  );
 
   return (
     <ScreenWrapper backgroundColor={colors.background}>
@@ -363,62 +359,75 @@ export const ProductListScreen: React.FC = () => {
         }
       }}>
         <View style={{ flex: 1 }}>
-      <FlatList
-        data={filteredProducts}
-        key={`${numColumns}-${isSelectionMode ? 'select' : 'normal'}`}
-        numColumns={numColumns}
-        keyExtractor={(item) => String((item as any)?.id)}
-        ListHeaderComponent={header}
-        contentContainerStyle={[
-          styles.listContent,
-          isWeb && styles.webMaxWidth,
-        ]}
-        columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
-        ItemSeparatorComponent={numColumns === 1 ? () => <View style={{ height: Spacing.md }} /> : undefined}
-        renderItem={({ item }) => (
-          <View
-            style={[
-              numColumns > 1 && styles.gridItem,
-              numColumns > 1 && { flex: 1, maxWidth: `${100 / numColumns - 1}%` },
-              numColumns === 1 && { paddingHorizontal: Spacing.lg },
-            ]}
-          >
-            <SelectableProductCard
-              product={item}
-              numColumns={numColumns}
-              isSelectionMode={isSelectionMode}
-              isSelected={selectedItems.has(String((item as any)?.id ?? ''))}
-              onPress={handleCardPress}
-              onLongPress={handleCardLongPress}
-            />
-          </View>
-        )}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="none"
-        
-        ListFooterComponent={
-          <>
-            {filteredProducts.length > 0 && (
-              <LoadMoreCard
-                onPress={loadMoreProducts}
-                loading={loadingMore}
-                hasMore={hasMore}
-                currentPage={currentPage}
-                totalPages={totalPages}
+          {/* ✨ Static Header (TopBar + Hero + Search) */}
+          <View style={{ zIndex: 100 }}>
+            {topHeader}
+            <View style={styles.searchSection}>
+              <SearchBar 
+                value={searchQuery} 
+                onChangeText={setSearchQuery} 
+                onSearchSubmit={handleSearchSubmit}
               />
-            )}
-          </>
-        }
-        
-        ListEmptyComponent={
-          !loading ? (
-            <View style={{ padding: Spacing.xl }}>
-              <Text style={{ color: colors.mutedForeground }}>No products found.</Text>
             </View>
-          ) : null
-        }
-      />
+          </View>
+
+          {/* ✨ Product List */}
+          <FlatList
+            data={filteredProducts}
+            key={`${numColumns}-${isSelectionMode ? 'select' : 'normal'}`}
+            numColumns={numColumns}
+            keyExtractor={(item) => String((item as any)?.id)}
+            ListHeaderComponent={listHeader}
+            contentContainerStyle={[
+              styles.listContent,
+              isWeb && styles.webMaxWidth,
+            ]}
+            columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
+            ItemSeparatorComponent={numColumns === 1 ? () => <View style={{ height: Spacing.md }} /> : undefined}
+            renderItem={({ item }) => (
+              <View
+                style={[
+                  numColumns > 1 && styles.gridItem,
+                  numColumns > 1 && { flex: 1, maxWidth: `${100 / numColumns - 1}%` },
+                  numColumns === 1 && { paddingHorizontal: Spacing.lg },
+                ]}
+              >
+                <SelectableProductCard
+                  product={item}
+                  numColumns={numColumns}
+                  isSelectionMode={isSelectionMode}
+                  isSelected={selectedItems.has(String((item as any)?.id ?? ''))}
+                  onPress={handleCardPress}
+                  onLongPress={handleCardLongPress}
+                />
+              </View>
+            )}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            
+            ListFooterComponent={
+              <>
+                {filteredProducts.length > 0 && (
+                  <LoadMoreCard
+                    onPress={loadMoreProducts}
+                    loading={loadingMore}
+                    hasMore={hasMore}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                  />
+                )}
+              </>
+            }
+            
+            ListEmptyComponent={
+              !loading ? (
+                <View style={{ padding: Spacing.xl }}>
+                  <Text style={{ color: colors.mutedForeground }}>No products found.</Text>
+                </View>
+              ) : null
+            }
+          />
 
           {/* Floating action bar */}
           {isSelectionMode && selectedItems.size > 0 && (
@@ -545,7 +554,11 @@ const styles = StyleSheet.create({
   statValue: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
   statLabel: { fontSize: FontSize.xs },
 
-  searchSection: { paddingVertical: Spacing.lg },
+  searchSection: { 
+    paddingVertical: Spacing.lg,
+    zIndex: 9999, // ✨ Very high zIndex
+    elevation: 20, // ✨ High elevation
+  },
 
   sectionHeader: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm },
   sectionTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
@@ -583,6 +596,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: Spacing['3xl'],
     paddingTop: Spacing.sm,
+    // zIndex removed as it's now in a separate view
   },
 
   columnWrapper: {
