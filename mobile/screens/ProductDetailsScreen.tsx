@@ -23,6 +23,7 @@ import { ReviewCard } from '../components/ReviewCard';
 import { Button } from '../components/Button';
 import { AddReviewModal } from '../components/AddReviewModal';
 import { AISummaryCard } from '../components/AISummaryCard';
+import { LoadMoreCard } from '../components/LoadMoreCard';
 
 import { useWishlist } from '../context/WishlistContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -57,8 +58,12 @@ const ProductDetailsContent: React.FC = () => {
   const [helpfulReviews, setHelpfulReviews] = useState<string[]>([]);
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
 
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalPages, setTotalPages] = useState(0);
+
   const inWishlist = isInWishlist(productId);
-  // Wishlist button styling - theme-aware
   const wishlistButtonBg = inWishlist
     ? colors.primary
     : colorScheme === 'dark'
@@ -69,17 +74,14 @@ const ProductDetailsContent: React.FC = () => {
   useEffect(() => {
     fetchProduct();
     fetchUserVotes();
-  }, [productId]);
+    fetchReviews(0, false);
+  }, [productId, selectedRating]);
 
   const fetchProduct = async () => {
     try {
       setLoading(true);
       const data = await getProduct(productId);
       setProduct(data);
-      
-      // Fetch reviews separately
-      const reviewsData = await getReviews(productId);
-      setReviews(reviewsData.content || []);
     } catch (error: any) {
       showToast({
         type: 'error',
@@ -91,11 +93,45 @@ const ProductDetailsContent: React.FC = () => {
     }
   };
 
+  const fetchReviews = async (pageNum: number = 0, append: boolean = false) => {
+    try {
+      if (append) {
+        setLoadingMore(true);
+      }
+
+      const reviewsData = await getReviews(productId, {
+        page: pageNum,
+        size: 10,
+        rating: selectedRating
+      });
+
+      const newReviews = reviewsData.content || [];
+      
+      if (append) {
+        setReviews(prev => [...prev, ...newReviews]);
+      } else {
+        setReviews(newReviews);
+      }
+
+      setCurrentPage(pageNum);
+      setTotalPages(reviewsData.totalPages);
+      setHasMore(!reviewsData.last);
+    } catch (error: any) {
+      console.error('Error fetching reviews:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMoreReviews = () => {
+    if (!loadingMore && hasMore) {
+      fetchReviews(currentPage + 1, true);
+    }
+  };
+
   const fetchUserVotes = async () => {
     try {
-      console.log('Fetching user votes...');
       const votedIds = await getUserVotedReviews();
-      console.log('Voted IDs from backend:', votedIds);
       setHelpfulReviews(votedIds.map(String));
     } catch (error) {
       console.error('Error fetching user votes:', error);
@@ -108,13 +144,11 @@ const ProductDetailsContent: React.FC = () => {
     comment: string;
   }) => {
     try {
-      const newReview = await postReview(productId, {
+      await postReview(productId, {
         reviewerName: reviewData.userName,
         rating: reviewData.rating,
         comment: reviewData.comment,
       });
-      
-      setReviews(prev => [newReview as any, ...prev]);
       
       showToast({
         type: 'success',
@@ -130,6 +164,8 @@ const ProductDetailsContent: React.FC = () => {
       });
 
       await fetchProduct();
+      await fetchReviews(0, false);
+      
     } catch (error: any) {
       showToast({
         type: 'error',
@@ -141,13 +177,9 @@ const ProductDetailsContent: React.FC = () => {
 
   const handleHelpfulPress = useCallback(async (reviewId: string) => {
     const reviewIdStr = String(reviewId);
-    
-    // Optimistic update
     const isAlreadyHelpful = helpfulReviews.includes(reviewIdStr);
     
-    // Toggle Logic
     if (isAlreadyHelpful) {
-      // Remove vote
       setHelpfulReviews(prev => prev.filter(id => id !== reviewIdStr));
       setReviews(prev => prev.map(r => 
         String(r.id) === reviewIdStr 
@@ -155,7 +187,6 @@ const ProductDetailsContent: React.FC = () => {
           : r
       ));
     } else {
-      // Add vote
       setHelpfulReviews(prev => [...prev, reviewIdStr]);
       setReviews(prev => prev.map(r => 
         String(r.id) === reviewIdStr 
@@ -166,10 +197,8 @@ const ProductDetailsContent: React.FC = () => {
 
     try {
       await markReviewAsHelpful(reviewIdStr);
-      console.log('Toggled review vote:', reviewIdStr);
     } catch (error) {
       console.error('Error toggling review vote:', error);
-      // Revert on error
       if (isAlreadyHelpful) {
         setHelpfulReviews(prev => [...prev, reviewIdStr]);
         setReviews(prev => prev.map(r => 
@@ -194,9 +223,9 @@ const ProductDetailsContent: React.FC = () => {
       name: product?.name || 'Product',
       price: product?.price,
       imageUrl: product?.imageUrl || routeImageUrl,
-      category: product?.category,
+      categories: product?.categories, // ✨ Updated
       averageRating: product?.averageRating,
-    });
+    } as any);
 
     showToast({
       type: inWishlist ? 'info' : 'success',
@@ -215,12 +244,15 @@ const ProductDetailsContent: React.FC = () => {
     });
   };
 
-  const filteredReviews = useMemo(() => {
-    if (selectedRating === null) return reviews;
-    return reviews.filter(r => Math.floor(r.rating) === selectedRating);
-  }, [reviews, selectedRating]);
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('ProductList' as any);
+    }
+  };
 
-  if (loading) {
+  if (loading && !product) {
     return (
       <ScreenWrapper backgroundColor={colors.background}>
         <View style={styles.loadingContainer}>
@@ -238,7 +270,7 @@ const ProductDetailsContent: React.FC = () => {
           <Text style={[styles.errorText, { color: colors.foreground }]}>
             Product not found
           </Text>
-          <Button onPress={() => navigation.goBack()}>Go Back</Button>
+          <Button onPress={handleBack}>Go Back</Button>
         </View>
       </ScreenWrapper>
     );
@@ -251,7 +283,7 @@ const ProductDetailsContent: React.FC = () => {
     <ScreenWrapper backgroundColor={colors.background}>
       <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false}>
         {/* Back Button */}
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="chevron-back" size={20} color={colors.foreground} />
           <Text style={[styles.backButtonText, { color: colors.foreground }]}>Back</Text>
         </TouchableOpacity>
@@ -261,7 +293,6 @@ const ProductDetailsContent: React.FC = () => {
           <View style={styles.imageContainer}>
             <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
             
-            {/* Wishlist Button */}
             <TouchableOpacity
               onPress={handleWishlistToggle}
               style={[styles.wishlistButton, {
@@ -279,10 +310,17 @@ const ProductDetailsContent: React.FC = () => {
 
         {/* Product Info */}
         <View style={styles.infoSection}>
-          {product.category && (
-            <Text style={[styles.category, { color: colors.mutedForeground }]}>
-              {product.category}
-            </Text>
+          {/* ✨ Display all categories as chips */}
+          {product.categories && product.categories.length > 0 && (
+            <View style={styles.categoriesRow}>
+              {product.categories.map((cat: string) => (
+                <View key={cat} style={[styles.categoryBadge, { backgroundColor: colors.secondary }]}>
+                  <Text style={[styles.categoryText, { color: colors.foreground }]}>
+                    {cat}
+                  </Text>
+                </View>
+              ))}
+            </View>
           )}
           
           <Text style={[styles.productName, { color: colors.foreground }]}>
@@ -316,7 +354,7 @@ const ProductDetailsContent: React.FC = () => {
           )}
         </View>
 
-        {/* ✨ AI Summary Section */}
+        {/* AI Summary Section */}
         {product.aiSummary && (
           <View style={styles.section}>
             <AISummaryCard summary={product.aiSummary} />
@@ -324,18 +362,17 @@ const ProductDetailsContent: React.FC = () => {
         )}
 
         {/* Rating Breakdown */}
-        {reviews.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Rating Breakdown
-            </Text>
-            <RatingBreakdown
-              reviews={reviews}
-              selectedRating={selectedRating}
-              onSelectRating={setSelectedRating}
-            />
-          </View>
-        )}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            Rating Breakdown
+          </Text>
+          <RatingBreakdown
+            breakdown={product.ratingBreakdown}
+            totalCount={product.reviewCount}
+            selectedRating={selectedRating}
+            onSelectRating={setSelectedRating}
+          />
+        </View>
 
         {/* Reviews Section */}
         <View ref={reviewsSectionRef} style={styles.section} collapsable={false}>
@@ -345,7 +382,6 @@ const ProductDetailsContent: React.FC = () => {
             </Text>
 
             <View style={styles.reviewActions}>
-              {/* AI Assistant Button */}
               <TouchableOpacity
                 onPress={handleAIAssistant}
                 style={styles.aiChatButton}
@@ -359,14 +395,13 @@ const ProductDetailsContent: React.FC = () => {
                 </LinearGradient>
               </TouchableOpacity>
 
-              {/* Add Review Button */}
               <Button variant="premium" onPress={() => setIsReviewModalOpen(true)}>
                 Add Review
               </Button>
             </View>
           </View>
 
-          {filteredReviews.length === 0 ? (
+          {reviews.length === 0 ? (
             <Text style={{ color: colors.mutedForeground, marginTop: 8 }}>
               {selectedRating !== null
                 ? `No ${selectedRating}★ reviews found.`
@@ -374,7 +409,7 @@ const ProductDetailsContent: React.FC = () => {
             </Text>
           ) : (
             <View style={{ marginTop: Spacing.md, gap: Spacing.md }}>
-              {filteredReviews.map((r) => (
+              {reviews.map((r) => (
                 <ReviewCard
                   key={r.id}
                   review={r}
@@ -382,12 +417,19 @@ const ProductDetailsContent: React.FC = () => {
                   isHelpful={helpfulReviews.includes(String(r.id))}
                 />
               ))}
+              
+              <LoadMoreCard
+                onPress={loadMoreReviews}
+                loading={loadingMore}
+                hasMore={hasMore}
+                currentPage={currentPage}
+                totalPages={totalPages}
+              />
             </View>
           )}
         </View>
       </ScrollView>
 
-      {/* Add Review Modal */}
       <AddReviewModal
         visible={isReviewModalOpen}
         onClose={() => setIsReviewModalOpen(false)}
@@ -468,8 +510,21 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
 
-  category: {
-    fontSize: FontSize.sm,
+  categoriesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+    marginBottom: Spacing.xs,
+  },
+
+  categoryBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+
+  categoryText: {
+    fontSize: 12,
     fontWeight: FontWeight.medium,
     textTransform: 'uppercase',
   },
