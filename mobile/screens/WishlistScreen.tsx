@@ -144,7 +144,10 @@ export const WishlistScreen = () => {
   const stats = useMemo(() => {
     const itemCount = wishlist.length;
     const totalPrice = wishlist.reduce((sum, item: any) => sum + (Number(item?.price) || 0), 0);
-    return { itemCount, totalPrice };
+    const avgRating = wishlist.length > 0
+      ? wishlist.reduce((sum, item: any) => sum + (Number(item?.averageRating) || 0), 0) / wishlist.length
+      : 0;
+    return { itemCount, totalPrice, avgRating };
   }, [wishlist]);
 
   const renderWishlistItem = ({ item, index }: { item: WishlistItem; index: number }) => {
@@ -294,11 +297,21 @@ export const WishlistScreen = () => {
                 <View style={styles.statsRow}>
                   <View style={styles.statItem}>
                     <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
-                      <Ionicons name="cube" size={20} color={colors.primaryForeground} />
+                      <Ionicons name="heart" size={20} color={colors.primaryForeground} />
                     </LinearGradient>
                     <View>
                       <Text style={[styles.statValue, { color: colors.foreground }]}>{stats.itemCount}</Text>
                       <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Items</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.statItem}>
+                    <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
+                      <Ionicons name="star" size={20} color={colors.primaryForeground} />
+                    </LinearGradient>
+                    <View>
+                      <Text style={[styles.statValue, { color: colors.foreground }]}>{stats.avgRating.toFixed(1)}</Text>
+                      <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Avg Rating</Text>
                     </View>
                   </View>
 
@@ -443,7 +456,8 @@ const styles = StyleSheet.create({
 
   statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
+    flexWrap: 'wrap',
   },
 
   statItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },

@@ -249,7 +249,15 @@ export const ProductListScreen = () => {
     fetchProducts(currentPage + 1, true);
   };
 
-  const stats = useMemo(() => ({ productCount: totalElements }), [totalElements]);
+  const stats = useMemo(() => {
+    // Calculate aggregate stats from loaded products
+    const productCount = totalElements;
+    const totalReviews = apiProducts.reduce((sum, p) => sum + ((p as any)?.reviewCount || 0), 0);
+    const avgRating = apiProducts.length > 0 
+      ? apiProducts.reduce((sum, p) => sum + ((p as any)?.averageRating || 0), 0) / apiProducts.length
+      : 0;
+    return { productCount, totalReviews, avgRating };
+  }, [totalElements, apiProducts]);
 
   const handleSearchSubmit = (search: string) => {
     if (search.trim().length > 0) {
@@ -368,14 +376,30 @@ export const ProductListScreen = () => {
         ]}
       >
         <Text style={[styles.heroTitle, isWeb && styles.heroTitleWeb, { color: colors.foreground }]}>
-          Find your next favorite product
-        </Text>
-
-        <Text style={[styles.heroSubtitle, isWeb && styles.heroSubtitleWeb, { color: colors.mutedForeground }]}>
-          Browse, review, and discover products you’ll love.
+          Find Products You'll <Text style={{ color: colors.primary }}>Love</Text>
         </Text>
 
         <View style={[styles.statsRow, isWeb && webBp === 'narrow' && styles.statsRowNarrow]}>
+          <View style={styles.statItem}>
+            <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
+              <Ionicons name="star" size={18} color={colors.primaryForeground} />
+            </LinearGradient>
+            <View>
+              <Text style={[styles.statValue, { color: colors.foreground }]}>{stats.avgRating.toFixed(1)}</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Avg Rating</Text>
+            </View>
+          </View>
+
+          <View style={styles.statItem}>
+            <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
+              <Ionicons name="chatbubbles" size={18} color={colors.primaryForeground} />
+            </LinearGradient>
+            <View>
+              <Text style={[styles.statValue, { color: colors.foreground }]}>{String(stats.totalReviews)}</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Reviews</Text>
+            </View>
+          </View>
+
           <View style={styles.statItem}>
             <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
               <Ionicons name="cube" size={18} color={colors.primaryForeground} />
@@ -466,15 +490,6 @@ export const ProductListScreen = () => {
               data={filteredProducts}
               key={numColumns}
               numColumns={numColumns}
-              columnWrapperStyle={numColumns > 1 ? styles.columnWrap : undefined}
-              removeClippedSubviews={false}
-              keyExtractor={(item: any) => String(item?.id ?? '')}
-              contentContainerStyle={[
-                styles.listContent,
-                isWeb && styles.webListContent,
-                isWeb && { maxWidth: containerMaxWidth },
-                !isWeb && { paddingHorizontal: Spacing.lg }, // Mobile padding
-              ]}
               columnWrapperStyle={
                 numColumns > 1
                   ? [
@@ -483,6 +498,14 @@ export const ProductListScreen = () => {
                   ]
                   : undefined
               }
+              removeClippedSubviews={false}
+              keyExtractor={(item: any) => String(item?.id ?? '')}
+              contentContainerStyle={[
+                styles.listContent,
+                isWeb && styles.webListContent,
+                isWeb && { maxWidth: containerMaxWidth },
+                !isWeb && { paddingHorizontal: Spacing.lg }, // Mobile padding
+              ]}
               renderItem={({ item }) => (
                 <View
                   style={[
