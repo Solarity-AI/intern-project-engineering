@@ -51,14 +51,21 @@ export const StarRating: React.FC<StarRatingProps> = ({
   };
 
   const renderStar = (index: number) => {
-    const filled = index < Math.floor(rating);
-    const partial = index === Math.floor(rating) && rating % 1 !== 0;
-    
-    // For simplicity, we'll use full/empty stars
-    // For partial stars, you'd need a more complex implementation
-    const isFilled = filled || (partial && rating % 1 >= 0.5);
+    const floorRating = Math.floor(rating);
+    const isFull = index < floorRating;
+    const isHalf = index === floorRating && rating % 1 >= 0.2 && rating % 1 < 0.8;
+    const isActuallyFull = index === floorRating && rating % 1 >= 0.8;
 
     const StarComponent = interactive ? TouchableOpacity : View;
+
+    let iconName: 'star' | 'star-half' | 'star-outline' = 'star-outline';
+    if (isFull || isActuallyFull) {
+      iconName = 'star';
+    } else if (isHalf) {
+      iconName = 'star-half';
+    }
+
+    const isFilled = iconName !== 'star-outline';
 
     return (
       <StarComponent
@@ -68,7 +75,7 @@ export const StarRating: React.FC<StarRatingProps> = ({
         activeOpacity={0.7}
       >
         <Ionicons
-          name={isFilled ? 'star' : 'star-outline'}
+          name={iconName}
           size={iconSize}
           color={isFilled ? colors.starFilled : colors.starEmpty}
         />

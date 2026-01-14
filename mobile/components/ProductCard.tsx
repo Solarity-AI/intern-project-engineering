@@ -1,272 +1,186 @@
-import React, { memo, useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  Platform,
-  ViewStyle,
-  TextStyle,
-  ImageStyle,
-} from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 
+import { StarRating } from './StarRating';
+import { RootStackParamList } from '../types';
+import { Spacing, BorderRadius, Shadow, FontWeight } from '../constants/theme';
+import { ApiProduct } from '../services/api';
+import { useWishlist } from '../context/WishlistContext';
 import { useTheme } from '../context/ThemeContext';
-import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
 
-type ProductLike = {
-  id?: string | number;
-  name?: string;
-  title?: string;
-  price?: number | string;
-  image?: string;
-  imageUrl?: string;
-  thumbnail?: string;
-  category?: string;
-  rating?: number;
-  reviewCount?: number;
-};
+interface ProductCardProps {
+  product: ApiProduct;
+  numColumns?: number;
+}
 
-type Props = {
-  product: ProductLike;
-  onPress?: () => void;
+function imageForCategory(categories?: string[]) {
+  const c = (categories && categories.length > 0 ? categories[0] : '').toLowerCase();
+  if (c.includes('audio')) return 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80';
+  if (c.includes('smart') || c.includes('phone') || c.includes('mobile')) return 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80';
+  if (c.includes('camera') || c.includes('photo')) return 'https://images.unsplash.com/photo-1519183071298-a2962be96cdb?w=800&q=80';
+  if (c.includes('watch') || c.includes('wear')) return 'https://images.unsplash.com/photo-1523275335684-37898b6baf30e?w=800&q=80';
+  if (c.includes('laptop') || c.includes('computer')) return 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&q=80';
+  return 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=800&q=80';
+}
 
-  /**
-   * ProductList'ten geliyor: 1 / 2 / 4
-   * 4'lü grid’de metin/pill otomatik küçülür + kırpılır.
-   */
-  numColumns?: 1 | 2 | 4;
+export const ProductCard: React.FC<ProductCardProps> = ({ product, numColumns = 2 }) => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { colors, colorScheme } = useTheme();
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
-  /**
-   * Bazı yerlerde kartı farklı spacing ile kullanıyorsan override.
-   */
-  style?: ViewStyle;
-};
+  const productId = String(product.id ?? '');
+  const inWishlist = isInWishlist(productId);
 
-const getSafeString = (v: any) => (v === null || v === undefined ? '' : String(v));
+  const imageUri = useMemo(() => {
+    const direct = product.imageUrl;
+    if (typeof direct === 'string' && direct.trim().length > 0) return direct.trim();
+    return imageForCategory(product.categories);
+  }, [product]);
 
-export const ProductCard = memo(({ product, onPress, numColumns = 2, style }: Props) => {
-  const { colors } = useTheme();
+  const reviewCount = product.reviewCount ?? 0;
+  const avgRating = product.averageRating ?? 0;
 
-  const isWeb = Platform.OS === 'web';
+  const handlePress = () => {
+    navigation.navigate(
+      'ProductDetails',
+      {
+        productId: String(product.id ?? ''),
+        imageUrl: imageUri,
+        name: product.name ?? null,
+      } as any
+    );
+  };
 
-  const title = getSafeString(product?.name ?? product?.title ?? 'Untitled');
-  const category = getSafeString(product?.category ?? '');
-  const img = getSafeString(product?.imageUrl ?? product?.image ?? product?.thumbnail ?? '');
-  const rating = typeof product?.rating === 'number' ? product.rating : Number(product?.rating ?? 0);
-  const reviewCount =
-    typeof product?.reviewCount === 'number' ? product.reviewCount : Number(product?.reviewCount ?? 0);
+  const handleWishlistToggle = (e: any) => {
+    e.stopPropagation();
+    toggleWishlist({
+      id: productId,
+      name: product.name ?? 'Product',
+      price: product.price,
+      imageUrl: imageUri,
+      categories: product.categories,
+      averageRating: avgRating,
+    } as any);
+  };
 
-  const priceText = useMemo(() => {
-    const p = product?.price;
-    if (p === null || p === undefined || p === '') return '';
-    const n = typeof p === 'number' ? p : Number(p);
-    if (!Number.isFinite(n)) return getSafeString(p);
-    return `$${n.toFixed(2)}`;
-  }, [product?.price]);
+  const wishlistButtonBg = inWishlist 
+    ? colors.primary 
+    : colorScheme === 'dark' 
+      ? 'rgba(28, 25, 23, 0.9)' 
+      : 'rgba(255, 255, 255, 0.9)';
+  
+  const wishlistIconColor = inWishlist 
+    ? '#fff' 
+    : colors.foreground;
 
-  const density = useMemo(() => {
-    /**
-     * 4 columns: en yoğun layout -> her şeyi biraz küçült
-     * 2 columns: normal
-     * 1 column: daha rahat
-     */
-    if (numColumns === 4) return 'dense';
-    if (numColumns === 1) return 'relaxed';
-    return 'normal';
-  }, [numColumns]);
+  const showWishlistButton = numColumns < 4;
 
-  const s = useMemo(() => {
-    const cardRadius = BorderRadius.xl;
-    const imageHeight = density === 'dense' ? 72 : density === 'relaxed' ? 170 : 120;
-
-    const pad = density === 'dense' ? Spacing.sm : Spacing.md;
-
-    const titleSize =
-      density === 'dense'
-        ? Math.max(11, FontSize.sm - 1)
-        : density === 'relaxed'
-          ? FontSize.lg
-          : FontSize.base;
-
-    const metaSize =
-      density === 'dense'
-        ? Math.max(10, FontSize.xs ?? 10)
-        : density === 'relaxed'
-          ? FontSize.base
-          : FontSize.sm;
-
-    const priceSize =
-      density === 'dense'
-        ? Math.max(11, FontSize.sm - 1)
-        : density === 'relaxed'
-          ? FontSize.lg
-          : FontSize.base;
-
-    const pillFont =
-      density === 'dense'
-        ? Math.max(9, (FontSize.xs ?? 10) - 1)
-        : (FontSize.xs ?? 10);
-
-    const pillPadV = density === 'dense' ? 3 : 4;
-    const pillPadH = density === 'dense' ? 7 : 8;
-
-    return {
-      cardRadius,
-      imageHeight,
-      pad,
-      titleSize,
-      metaSize,
-      priceSize,
-      pillFont,
-      pillPadV,
-      pillPadH,
-      titleLines: density === 'dense' ? 1 : 2,
-    };
-  }, [density]);
+  let displayCategory = 'Uncategorized';
+  if (product.categories && product.categories.length > 0) {
+    displayCategory = product.categories[0];
+  } else if ((product as any).category) {
+    displayCategory = (product as any).category;
+  }
 
   return (
     <TouchableOpacity
       activeOpacity={0.9}
-      onPress={onPress}
-      style={[
-        styles.card,
-        {
-          backgroundColor: colors.card,
-          borderColor: colors.border,
-          borderRadius: s.cardRadius,
-        },
-        style,
-      ]}
+      style={[styles.container, { backgroundColor: colors.card }]}
+      onPress={handlePress}
     >
-      {/* IMAGE */}
-      <View
-        style={[
-          styles.imageWrap,
-          {
-            height: s.imageHeight,
-            borderTopLeftRadius: s.cardRadius,
-            borderTopRightRadius: s.cardRadius,
-            backgroundColor: colors.muted,
-          },
-        ]}
-      >
-        {img ? (
-          <Image
-            source={{ uri: img }}
-            style={[
-              styles.image as ImageStyle,
-              {
-                borderTopLeftRadius: s.cardRadius,
-                borderTopRightRadius: s.cardRadius,
-              },
-            ]}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.noImage}>
-            <Ionicons name="image-outline" size={22} color={colors.mutedForeground} />
-            <Text style={[styles.noImageText, { color: colors.mutedForeground }]}>No image</Text>
-          </View>
+      <View style={[
+        styles.imageContainer,
+        numColumns === 4 && styles.imageContainerCompact,
+        // ✨ iOS Single Column: Larger Image
+        (Platform.OS === 'ios' && numColumns === 1) && styles.imageContainerLarge
+      ]}>
+        <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
+
+        {showWishlistButton && (
+          <TouchableOpacity
+            style={[styles.wishlistButton, { backgroundColor: wishlistButtonBg, zIndex: 2 }]}
+            onPress={handleWishlistToggle}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={inWishlist ? 'heart' : 'heart-outline'}
+              size={20}
+              color={wishlistIconColor}
+            />
+          </TouchableOpacity>
         )}
 
-        {/* Category pill */}
-        {!!category && (
-          <View
-            style={[
-              styles.pill,
-              {
-                backgroundColor: isWeb ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.5)',
-                paddingVertical: s.pillPadV,
-                paddingHorizontal: s.pillPadH,
-                maxWidth: '78%',
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.pillText,
-                {
-                  fontSize: s.pillFont,
-                  color: '#fff',
-                },
-              ]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {category}
-            </Text>
-          </View>
-        )}
+        <View style={[styles.categoryBadge, { backgroundColor: colors.secondary }]}>
+          <Text style={[
+            styles.categoryText, 
+            { color: colors.foreground },
+            numColumns === 4 && styles.categoryTextCompact
+          ]}>
+            {displayCategory}
+          </Text>
+        </View>
       </View>
 
-      {/* BODY */}
-      <View style={[styles.body, { padding: s.pad }]}>
-        <Text
-          style={[
-            styles.title,
-            { color: colors.foreground, fontSize: s.titleSize },
-          ]}
-          numberOfLines={s.titleLines}
-          ellipsizeMode="tail"
-        >
-          {title}
+      <View style={[
+        styles.content,
+        numColumns === 4 && styles.contentCompact
+      ]}>
+        <Text numberOfLines={1} style={[
+          styles.name, 
+          { color: colors.foreground },
+          numColumns === 4 && styles.nameCompact
+        ]}>
+          {product.name ?? 'Product'}
         </Text>
 
-        {/* Rating row */}
         <View style={styles.ratingRow}>
-          {renderStars(rating, (colors as any).warning ?? '#f5c542')}
-          <Text style={[styles.reviewCount, { color: colors.mutedForeground, fontSize: s.metaSize }]}>
-            {reviewCount > 0 ? `(${reviewCount})` : ''}
+          <StarRating rating={avgRating} size="sm" compact={numColumns === 4} />
+          <Text style={[
+            styles.reviewCount, 
+            { color: colors.mutedForeground },
+            numColumns === 4 && styles.reviewCountCompact
+          ]}>
+            ({reviewCount})
           </Text>
         </View>
 
-        {!!priceText && (
-          <Text style={[styles.price, { color: colors.foreground, fontSize: s.priceSize }]}>
-            {priceText}
-          </Text>
-        )}
+        <Text style={[
+          styles.price, 
+          { color: colors.foreground },
+          numColumns === 4 && styles.priceCompact
+        ]}>
+          {`$${product.price.toFixed(2)}`}
+        </Text>
       </View>
     </TouchableOpacity>
   );
-});
-
-ProductCard.displayName = 'ProductCard';
-
-function renderStars(value: number, color: string) {
-  const v = Number.isFinite(value) ? Math.max(0, Math.min(5, value)) : 0;
-  const full = Math.floor(v);
-  const half = v - full >= 0.5;
-
-  const stars = [];
-  for (let i = 0; i < 5; i++) {
-    const name =
-      i < full ? 'star' : i === full && half ? 'star-half' : 'star-outline';
-    stars.push(
-      <Ionicons
-        key={i}
-        name={name as any}
-        size={12}
-        color={color}
-        style={{ marginRight: 1 }}
-      />
-    );
-  }
-  return <View style={{ flexDirection: 'row', alignItems: 'center' }}>{stars}</View>;
-}
+};
 
 const styles = StyleSheet.create({
-  card: {
+  container: {
     width: '100%',
+    borderRadius: BorderRadius.xl,
     overflow: 'hidden',
-    borderWidth: 1,
+    ...Shadow.soft,
   },
 
-  imageWrap: {
+  imageContainer: {
+    position: 'relative',
     width: '100%',
-    overflow: 'hidden',
+    aspectRatio: 16 / 9,
+    maxHeight: 220,
+  },
+  imageContainerCompact: {
+    aspectRatio: 1,
+    maxHeight: 150,
+  },
+  // ✨ Larger image for single column
+  imageContainerLarge: {
+    aspectRatio: 4 / 3, // More square-ish
+    maxHeight: 300,
   },
 
   image: {
@@ -274,49 +188,73 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  noImage: {
-    flex: 1,
+  wishlistButton: {
+    position: 'absolute',
+    top: Spacing.md,
+    right: Spacing.md,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    ...Shadow.soft,
   },
 
-  noImageText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-
-  pill: {
+  categoryBadge: {
     position: 'absolute',
-    top: 10,
-    left: 10,
+    top: Spacing.md,
+    left: Spacing.md,
+    maxWidth: '80%',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
     borderRadius: BorderRadius.full,
+    ...Shadow.soft,
+    zIndex: 1,
   },
 
-  pillText: {
-    fontWeight: '700',
+  categoryText: {
+    fontSize: 12,
+    fontWeight: FontWeight.medium,
+  },
+  categoryTextCompact: {
+    fontSize: 10,
   },
 
-  body: {
+  content: {
+    padding: Spacing.md,
     gap: 6,
   },
+  contentCompact: {
+    padding: Spacing.sm,
+    gap: 4,
+  },
 
-  title: {
+  name: {
+    fontSize: 14,
     fontWeight: FontWeight.semibold,
-    lineHeight: 16,
+  },
+  nameCompact: {
+    fontSize: 11,
   },
 
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: Spacing.xs,
   },
 
   reviewCount: {
-    fontWeight: '500',
+    fontSize: 12,
+  },
+  reviewCountCompact: {
+    fontSize: 10,
   },
 
   price: {
-    fontWeight: FontWeight.bold,
+    fontSize: 14,
+    fontWeight: FontWeight.semibold,
+  },
+  priceCompact: {
+    fontSize: 12,
   },
 });

@@ -33,7 +33,7 @@ const GRID_STORAGE_KEY = 'wishlist_grid_mode';
 export const WishlistScreen = () => {
   const navigation = useNavigation<WishlistNavigationProp>();
   const { colors, colorScheme, toggleTheme } = useTheme();
-  const { wishlist, removeFromWishlist, clearWishlist, addMultipleToWishlist } = useWishlist();
+  const { wishlist, removeFromWishlist, clearWishlist } = useWishlist();
 
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
@@ -43,8 +43,8 @@ export const WishlistScreen = () => {
   const headerIconSize = isWeb ? (webBp === 'wide' ? 26 : 24) : 20;
   const headerIconSizeBig = isWeb ? (webBp === 'wide' ? 28 : 26) : 22;
 
-  // Grid mode: 1 / 2 / 4
-  const [gridMode, setGridMode] = useState<1 | 2 | 4>(2);
+  // Grid mode: 1 / 2 / 3
+  const [gridMode, setGridMode] = useState<1 | 2 | 3>(2);
   const numColumns = gridMode;
 
   const gridTouchedRef = useRef(false);
@@ -54,7 +54,7 @@ export const WishlistScreen = () => {
     if (!isWeb) return;
     if (gridTouchedRef.current) return;
 
-    const next: 1 | 2 | 4 = width < 720 ? 1 : width < 1100 ? 2 : 4;
+    const next: 1 | 2 | 3 = width < 720 ? 1 : width < 1100 ? 2 : 3;
     if (gridMode !== next) setGridMode(next);
   }, [isWeb, width, gridMode]);
 
@@ -62,8 +62,8 @@ export const WishlistScreen = () => {
   const loadGridPreference = useCallback(async () => {
     try {
       const stored = await AsyncStorage.getItem(GRID_STORAGE_KEY);
-      const parsed = stored ? (Number(stored) as 1 | 2 | 4) : null;
-      if (parsed === 1 || parsed === 2 || parsed === 4) {
+      const parsed = stored ? (Number(stored) as 1 | 2 | 3) : null;
+      if (parsed === 1 || parsed === 2 || parsed === 3) {
         setGridMode(parsed);
       }
     } catch {
@@ -71,7 +71,7 @@ export const WishlistScreen = () => {
     }
   }, []);
 
-  const saveGridPreference = useCallback(async (value: 1 | 2 | 4) => {
+  const saveGridPreference = useCallback(async (value: 1 | 2 | 3) => {
     try {
       await AsyncStorage.setItem(GRID_STORAGE_KEY, String(value));
     } catch {
@@ -86,7 +86,7 @@ export const WishlistScreen = () => {
   const toggleGridMode = () => {
     gridTouchedRef.current = true;
     setGridMode(prev => {
-      const next = prev === 1 ? 2 : prev === 2 ? 4 : 1;
+      const next: 1 | 2 | 3 = prev === 1 ? 2 : prev === 2 ? 3 : 1;
       saveGridPreference(next);
       return next;
     });
@@ -102,6 +102,8 @@ export const WishlistScreen = () => {
   };
 
   const handleCardLongPress = (item: WishlistItem) => {
+    if (Platform.OS === 'android') return; // Disable long-press selection on Android
+
     const id = String((item as any)?.id ?? '');
     if (!id) return;
 
@@ -133,8 +135,10 @@ export const WishlistScreen = () => {
   };
 
   const handleRemoveSelected = () => {
-    selectedItems.forEach(id => removeFromWishlist(id));
-    handleCancelSelection();
+    requestAnimationFrame(() => {
+      selectedItems.forEach(id => removeFromWishlist(id));
+      handleCancelSelection();
+    });
   };
 
   const stats = useMemo(() => {
@@ -160,13 +164,18 @@ export const WishlistScreen = () => {
             width: `${100 / numColumns}%`,
             maxWidth: `${100 / numColumns}%`,
           },
+          !isGrid && {
+            width: '100%',
+          },
           // ✅ spacing: sadece sağa margin ver, satırın son item’ında verme
           isGrid && {
             paddingHorizontal: 0, // ✅ gridItemWrapper padding’ini ez
             marginRight: colIndex === numColumns - 1 ? 0 : Spacing.sm,
             marginBottom: Spacing.sm,
+            minWidth: 0,
           },
         ]}
+        collapsable={false}
       >
 
         <SelectableWishlistCard
@@ -202,6 +211,13 @@ export const WishlistScreen = () => {
       </TouchableOpacity>
     </View>
   );
+
+  const newToWishlistCount = useMemo(() => {
+    // Bu ekran Wishlist ekranı olduğu için seçilen her şey zaten favoridedir.
+    // Ancak mantığı korumak adına 0 döndürebiliriz veya farklı bir yaklaşım izleyebiliriz.
+    // Kullanıcı wishlistten kaldırmak istediği için buradaki buton 'Remove' butonu.
+    return selectedItems.size;
+  }, [selectedItems]);
 
   return (
     <ScreenWrapper>
@@ -317,12 +333,14 @@ export const WishlistScreen = () => {
               numColumns={numColumns}
               keyExtractor={(item: any) => String(item?.id ?? '')}
               renderItem={renderWishlistItem}
+              removeClippedSubviews={false}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
               contentContainerStyle={[
                 styles.listContent,
                 isWeb && styles.webListContent,
+                !isWeb && { paddingHorizontal: Spacing.lg }, // Mobile padding
               ]}
               // ✅ Android 4-col kayma fix: gap yerine space-between
               columnWrapperStyle={

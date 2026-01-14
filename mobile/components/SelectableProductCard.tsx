@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Animated,
   Easing,
+  Platform, // ✨ Added Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -118,7 +119,6 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
     outputRange: ['-2deg', '2deg'],
   });
 
-  // ✨ Fallback logic for category display
   let displayCategory = 'Uncategorized';
   if (product.categories && product.categories.length > 0) {
     displayCategory = product.categories[0];
@@ -150,6 +150,8 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
           style={[
             styles.imageContainer,
             numColumns === 4 && styles.imageContainerCompact,
+            // ✨ iOS Single Column: Larger Image
+            (Platform.OS === 'ios' && numColumns === 1) && styles.imageContainerLarge
           ]}
         >
           <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
@@ -265,6 +267,11 @@ const styles = StyleSheet.create({
   imageContainerCompact: {
     aspectRatio: 1,
     maxHeight: 150,
+  },
+  // ✨ Larger image for single column
+  imageContainerLarge: {
+    aspectRatio: 4 / 3,
+    maxHeight: 300,
   },
 
   image: {
