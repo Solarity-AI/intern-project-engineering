@@ -6,6 +6,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -65,6 +67,20 @@ export const NotificationDetailScreen: React.FC = () => {
   const { colors } = useTheme();
   const { notifications, markAsRead, clearNotification } = useNotifications();
 
+  // ✨ Responsive: Get window dimensions
+  const { width: windowWidth } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const MAX_CONTENT_WIDTH = 600;
+  const isWideScreen = windowWidth > MAX_CONTENT_WIDTH;
+
+  // ✨ Responsive container style
+  const responsiveContainerStyle = {
+    width: '100%' as const,
+    maxWidth: isWeb ? MAX_CONTENT_WIDTH : undefined,
+    alignSelf: 'center' as const,
+    flex: 1,
+  };
+
   const notificationId = route.params?.notificationId;
 
   const notification = useMemo(() => {
@@ -89,19 +105,22 @@ export const NotificationDetailScreen: React.FC = () => {
   if (!notification) {
     return (
       <ScreenWrapper backgroundColor={colors.background}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={colors.foreground} />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color={colors.mutedForeground} />
-          <Text style={[styles.errorTitle, { color: colors.foreground }]}>
-            Notification Not Found
-          </Text>
-          <Text style={[styles.errorSubtitle, { color: colors.mutedForeground }]}>
-            This notification may have been deleted.
-          </Text>
+        {/* ✨ Responsive Wrapper */}
+        <View style={responsiveContainerStyle}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={22} color={colors.foreground} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={48} color={colors.mutedForeground} />
+            <Text style={[styles.errorTitle, { color: colors.foreground }]}>
+              Notification Not Found
+            </Text>
+            <Text style={[styles.errorSubtitle, { color: colors.mutedForeground }]}>
+              This notification may have been deleted.
+            </Text>
+          </View>
         </View>
       </ScreenWrapper>
     );
@@ -124,19 +143,21 @@ export const NotificationDetailScreen: React.FC = () => {
 
   return (
     <ScreenWrapper backgroundColor={colors.background}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color={colors.foreground} />
-        </TouchableOpacity>
+      {/* ✨ Responsive Wrapper */}
+      <View style={responsiveContainerStyle}>
+        {/* Header */}
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={22} color={colors.foreground} />
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-          <Ionicons name="trash-outline" size={20} color={colors.destructive} />
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+            <Ionicons name="trash-outline" size={20} color={colors.destructive} />
+          </TouchableOpacity>
+        </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.content}>
           {/* Icon Badge */}
           <View style={styles.iconBadgeContainer}>
             <LinearGradient
@@ -216,8 +237,9 @@ export const NotificationDetailScreen: React.FC = () => {
               <Ionicons name="trash-outline" size={18} color={colors.destructive} />
             </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
+          </View>
+        </ScrollView>
+      </View>{/* ✨ End Responsive Wrapper */}
     </ScreenWrapper>
   );
 };

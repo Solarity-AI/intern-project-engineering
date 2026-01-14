@@ -7,6 +7,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
+  useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -77,6 +79,19 @@ export const NotificationsScreen: React.FC = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('all');
+
+  // ✨ Responsive: Get window dimensions
+  const { width: windowWidth } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const MAX_CONTENT_WIDTH = 600;
+  const isWideScreen = windowWidth > MAX_CONTENT_WIDTH;
+
+  // ✨ Responsive container style
+  const responsiveContainerStyle = {
+    width: '100%' as const,
+    maxWidth: isWeb ? MAX_CONTENT_WIDTH : undefined,
+    alignSelf: 'center' as const,
+  };
 
   const filteredNotifications = useMemo(() => {
     if (selectedFilter === 'all') return notifications;
@@ -205,39 +220,42 @@ export const NotificationsScreen: React.FC = () => {
 
   return (
     <ScreenWrapper backgroundColor={colors.background}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={colors.foreground} />
-          </TouchableOpacity>
-          <View>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Notifications</Text>
-            {unreadCount > 0 && (
-              <Text style={[styles.headerSubtitle, { color: colors.mutedForeground }]}>
-                {unreadCount} unread
-              </Text>
-            )}
+      {/* ✨ Responsive Wrapper */}
+      <View style={responsiveContainerStyle}>
+        {/* Header */}
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={22} color={colors.foreground} />
+            </TouchableOpacity>
+            <View>
+              <Text style={[styles.headerTitle, { color: colors.foreground }]}>Notifications</Text>
+              {unreadCount > 0 && (
+                <Text style={[styles.headerSubtitle, { color: colors.mutedForeground }]}>
+                  {unreadCount} unread
+                </Text>
+              )}
+            </View>
           </View>
+
+          {unreadCount > 0 && (
+            <TouchableOpacity onPress={markAllAsRead} activeOpacity={0.7}>
+              <Text style={[styles.markAllRead, { color: colors.primary }]}>Mark all read</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={markAllAsRead} activeOpacity={0.7}>
-            <Text style={[styles.markAllRead, { color: colors.primary }]}>Mark all read</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <FlatList
-        data={filteredNotifications}
-        keyExtractor={(item) => item.id}
-        renderItem={renderNotification}
-        ListHeaderComponent={renderHeader}
-        ListEmptyComponent={renderEmpty}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
-      />
+        <FlatList
+          data={filteredNotifications}
+          keyExtractor={(item) => item.id}
+          renderItem={renderNotification}
+          ListHeaderComponent={renderHeader}
+          ListEmptyComponent={renderEmpty}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
+        />
+      </View>{/* ✨ End Responsive Wrapper */}
     </ScreenWrapper>
   );
 };

@@ -9,6 +9,8 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -46,6 +48,20 @@ export const AIAssistantScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // ✨ Responsive: Get window dimensions
+  const { width: windowWidth } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const MAX_CONTENT_WIDTH = 600;
+  const isWideScreen = windowWidth > MAX_CONTENT_WIDTH;
+
+  // ✨ Responsive container style
+  const responsiveContainerStyle = {
+    width: '100%' as const,
+    maxWidth: isWeb ? MAX_CONTENT_WIDTH : undefined,
+    alignSelf: 'center' as const,
+    flex: 1,
+  };
 
   const productName = route.params?.productName || 'this product';
   const productId = route.params?.productId;
@@ -367,44 +383,47 @@ export const AIAssistantScreen: React.FC = () => {
 
   return (
     <ScreenWrapper backgroundColor={colors.background}>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color={colors.foreground} />
-        </TouchableOpacity>
+      {/* ✨ Responsive Wrapper */}
+      <View style={responsiveContainerStyle}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={22} color={colors.foreground} />
+          </TouchableOpacity>
 
-        <View style={styles.headerTitle}>
-          <LinearGradient colors={['#8B5CF6', '#6366F1']} style={styles.headerIcon}>
-            <Ionicons name="sparkles" size={20} color="#fff" />
-          </LinearGradient>
-          <View>
-            <Text style={[styles.headerTitleText, { color: colors.foreground }]}>
-              AI Assistant
-            </Text>
-            <Text style={[styles.headerSubtitle, { color: colors.mutedForeground }]}>
-              Analyzing {reviews.length} reviews
-            </Text>
+          <View style={styles.headerTitle}>
+            <LinearGradient colors={['#8B5CF6', '#6366F1']} style={styles.headerIcon}>
+              <Ionicons name="sparkles" size={20} color="#fff" />
+            </LinearGradient>
+            <View>
+              <Text style={[styles.headerTitleText, { color: colors.foreground }]}>
+                AI Assistant
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: colors.mutedForeground }]}>
+                Analyzing {reviews.length} reviews
+              </Text>
+            </View>
           </View>
+
+          <View style={{ width: 40 }} />
         </View>
 
-        <View style={{ width: 40 }} />
-      </View>
+        <ScrollView
+          ref={scrollViewRef}
+          contentContainerStyle={styles.messagesContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {messages.map(renderMessage)}
 
-      <ScrollView
-        ref={scrollViewRef}
-        contentContainerStyle={styles.messagesContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {messages.map(renderMessage)}
-
-        {isLoading && (
-          <View style={[styles.loadingBubble, { backgroundColor: colors.card }]}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
-              Analyzing reviews...
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+          {isLoading && (
+            <View style={[styles.loadingBubble, { backgroundColor: colors.card }]}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
+                Analyzing reviews...
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>{/* ✨ End Responsive Wrapper */}
     </ScreenWrapper>
   );
 };
