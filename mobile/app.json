@@ -38,6 +38,12 @@
         "projectId": "877d95dc-5a55-429d-888a-65e1ef31efb3"
       }
     },
-    "owner": "mehmetbegun"
+    "owner": "mehmetbegun",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/877d95dc-5a55-429d-888a-65e1ef31efb3"
+    }
   }
 }
