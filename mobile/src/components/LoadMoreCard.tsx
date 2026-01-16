@@ -4,7 +4,7 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,11 +56,13 @@ export const LoadMoreCard: React.FC<LoadMoreCardProps> = ({
 
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
       disabled={loading}
-      activeOpacity={0.8}
-      style={styles.container}
+      style={({ pressed }) => [
+        styles.container,
+        pressed && styles.pressed,
+      ]}
     >
       <LinearGradient
         colors={[colors.primary, colors.accent]}
@@ -90,17 +92,20 @@ export const LoadMoreCard: React.FC<LoadMoreCardProps> = ({
           </>
         )}
       </LinearGradient>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: Spacing.lg,
-    marginVertical: Spacing.xl,
     borderRadius: BorderRadius.xl,
     overflow: 'hidden',
     ...Shadow.soft,
+  },
+
+  pressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
   },
 
   gradientCard: {

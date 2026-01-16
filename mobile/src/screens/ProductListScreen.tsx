@@ -358,134 +358,178 @@ export const ProductListScreen = () => {
     }
   }, [checkConnection, fetchProducts]);
 
-  const topHeader = (
-    <View style={[isWeb && styles.webPageContainer, isWeb && { maxWidth: containerMaxWidth }]}>
-      <View style={[styles.topBar, isWeb && styles.topBarWeb]}>
-        <TouchableOpacity onPress={handleReset} style={styles.logoContainer}>
-          <LinearGradient colors={[colors.primary, colors.accent]} style={styles.logoIcon}>
-            <Ionicons name="star" size={16} color={colors.primaryForeground} />
-          </LinearGradient>
-          <Text style={[styles.logoText, { color: colors.foreground }]}>ProductReview</Text>
-        </TouchableOpacity>
-
-        <View style={styles.headerButtons}>
-          <TouchableOpacity
-            style={[
-              styles.themeButton,
-              isWeb && styles.headerIconButtonWeb,
-              { backgroundColor: colors.secondary },
-            ]}
-            onPress={toggleTheme}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={colorScheme === 'dark' ? 'sunny' : 'moon'}
-              size={headerIconSize}
-              color={colors.foreground}
-            />
+  // ✨ ListHeaderComponent - Hero, Search, Filter - all scroll together with list
+  const listHeaderContent = useMemo(() => (
+    <>
+      {/* Top Bar - Logo & Actions */}
+      <View style={[isWeb && styles.webPageContainer, isWeb && { maxWidth: containerMaxWidth }]}>
+        <View style={[styles.topBar, isWeb && styles.topBarWeb]}>
+          <TouchableOpacity onPress={handleReset} style={styles.logoContainer}>
+            <LinearGradient colors={[colors.primary, colors.accent]} style={styles.logoIcon}>
+              <Ionicons name="star" size={16} color={colors.primaryForeground} />
+            </LinearGradient>
+            <Text style={[styles.logoText, { color: colors.foreground }]}>ProductReview</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.gridButton,
-              isWeb && styles.headerIconButtonWeb,
-              { backgroundColor: colors.secondary },
-            ]}
-            onPress={toggleGridMode}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={gridMode === 1 ? 'list' : gridMode === 2 ? 'grid-outline' : 'grid'}
-              size={headerIconSize}
-              color={colors.foreground}
-            />
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity
+              style={[
+                styles.themeButton,
+                isWeb && styles.headerIconButtonWeb,
+                { backgroundColor: colors.secondary },
+              ]}
+              onPress={toggleTheme}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={colorScheme === 'dark' ? 'sunny' : 'moon'}
+                size={headerIconSize}
+                color={colors.foreground}
+              />
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.themeButton,
-              isWeb && styles.headerIconButtonWeb,
-              { backgroundColor: colors.secondary },
-            ]}
-            onPress={() => navigation.navigate('Wishlist')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="heart-outline" size={headerIconSizeBig} color={colors.foreground} />
-            {wishlistCount > 0 && (
-              <View style={[styles.badge, { backgroundColor: colors.destructive }]}>
-                <Text style={styles.badgeText}>{wishlistCount}</Text>
+            <TouchableOpacity
+              style={[
+                styles.gridButton,
+                isWeb && styles.headerIconButtonWeb,
+                { backgroundColor: colors.secondary },
+              ]}
+              onPress={toggleGridMode}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={gridMode === 1 ? 'list' : gridMode === 2 ? 'grid-outline' : 'grid'}
+                size={headerIconSize}
+                color={colors.foreground}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.themeButton,
+                isWeb && styles.headerIconButtonWeb,
+                { backgroundColor: colors.secondary },
+              ]}
+              onPress={() => navigation.navigate('Wishlist')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="heart-outline" size={headerIconSizeBig} color={colors.foreground} />
+              {wishlistCount > 0 && (
+                <View style={[styles.badge, { backgroundColor: colors.destructive }]}>
+                  <Text style={styles.badgeText}>{wishlistCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.notificationButton,
+                isWeb && styles.headerIconButtonWeb,
+                { backgroundColor: colors.secondary },
+              ]}
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="notifications-outline" size={headerIconSizeBig} color={colors.foreground} />
+              {unreadCount > 0 && (
+                <View style={[styles.badge, { backgroundColor: colors.destructive }]}>
+                  <Text style={styles.badgeText}>{unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Hero Section */}
+        <View
+          style={[
+            styles.heroSection,
+            { backgroundColor: colors.secondary },
+            isWeb && styles.heroSectionWeb,
+            isWeb && {
+              maxWidth: containerMaxWidth,
+              paddingVertical: webBp === 'narrow' ? Spacing.xl : Spacing['2xl'],
+            },
+          ]}
+        >
+          <Text style={[styles.heroTitle, isWeb && styles.heroTitleWeb, { color: colors.foreground }]}>
+            Find Products You'll <Text style={{ color: colors.primary }}>Love</Text>
+          </Text>
+
+          <View style={[styles.statsRow, isWeb && webBp === 'narrow' && styles.statsRowNarrow]}>
+            <View style={styles.statItem}>
+              <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
+                <Ionicons name="star" size={18} color={colors.primaryForeground} />
+              </LinearGradient>
+              <View>
+                <Text style={[styles.statValue, { color: colors.foreground }]}>{stats.avgRating.toFixed(1)}</Text>
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Avg Rating</Text>
               </View>
-            )}
-          </TouchableOpacity>
+            </View>
 
-          <TouchableOpacity
-            style={[
-              styles.notificationButton,
-              isWeb && styles.headerIconButtonWeb,
-              { backgroundColor: colors.secondary },
-            ]}
-            onPress={() => navigation.navigate('Notifications')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="notifications-outline" size={headerIconSizeBig} color={colors.foreground} />
-            {unreadCount > 0 && (
-              <View style={[styles.badge, { backgroundColor: colors.destructive }]}>
-                <Text style={styles.badgeText}>{unreadCount}</Text>
+            <View style={styles.statItem}>
+              <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
+                <Ionicons name="chatbubbles" size={18} color={colors.primaryForeground} />
+              </LinearGradient>
+              <View>
+                <Text style={[styles.statValue, { color: colors.foreground }]}>{String(stats.totalReviews)}</Text>
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Reviews</Text>
               </View>
-            )}
-          </TouchableOpacity>
+            </View>
+
+            <View style={styles.statItem}>
+              <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
+                <Ionicons name="cube" size={18} color={colors.primaryForeground} />
+              </LinearGradient>
+              <View>
+                <Text style={[styles.statValue, { color: colors.foreground }]}>{String(stats.productCount)}</Text>
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Products</Text>
+              </View>
+            </View>
+          </View>
         </View>
       </View>
 
+      {/* Search Section */}
       <View
         style={[
-          styles.heroSection,
-          { backgroundColor: colors.secondary },
-          isWeb && styles.heroSectionWeb,
-          isWeb && {
-            maxWidth: containerMaxWidth,
-            paddingVertical: webBp === 'narrow' ? Spacing.xl : Spacing['2xl'],
-          },
+          styles.searchSection,
+          isWeb && styles.searchSectionWeb,
+          isWeb && { maxWidth: containerMaxWidth },
         ]}
       >
-        <Text style={[styles.heroTitle, isWeb && styles.heroTitleWeb, { color: colors.foreground }]}>
-          Find Products You'll <Text style={{ color: colors.primary }}>Love</Text>
-        </Text>
-
-        <View style={[styles.statsRow, isWeb && webBp === 'narrow' && styles.statsRowNarrow]}>
-          <View style={styles.statItem}>
-            <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
-              <Ionicons name="star" size={18} color={colors.primaryForeground} />
-            </LinearGradient>
-            <View>
-              <Text style={[styles.statValue, { color: colors.foreground }]}>{stats.avgRating.toFixed(1)}</Text>
-              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Avg Rating</Text>
-            </View>
-          </View>
-
-          <View style={styles.statItem}>
-            <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
-              <Ionicons name="chatbubbles" size={18} color={colors.primaryForeground} />
-            </LinearGradient>
-            <View>
-              <Text style={[styles.statValue, { color: colors.foreground }]}>{String(stats.totalReviews)}</Text>
-              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Reviews</Text>
-            </View>
-          </View>
-
-          <View style={styles.statItem}>
-            <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
-              <Ionicons name="cube" size={18} color={colors.primaryForeground} />
-            </LinearGradient>
-            <View>
-              <Text style={[styles.statValue, { color: colors.foreground }]}>{String(stats.productCount)}</Text>
-              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Products</Text>
-            </View>
-          </View>
-        </View>
+        <SearchBar value={searchQuery} onChangeText={setSearchQuery} onSearchSubmit={handleSearchSubmit} />
       </View>
-    </View>
-  );
+
+      {/* Filter Section */}
+      <View style={[
+        styles.filterSection,
+        isWeb && styles.filterSectionWeb,
+        isWeb && { maxWidth: containerMaxWidth },
+      ]}>
+        <Text style={[styles.filterSectionTitle, { color: colors.foreground }]}>
+          Explore Products
+        </Text>
+        <CategoryFilter
+          selectedCategory={selectedCategory}
+          onCategoryChange={handleCategoryChange}
+        />
+        <View style={styles.sortRow}>
+          <Text style={[styles.sortLabel, { color: colors.mutedForeground }]}>Sort by:</Text>
+        </View>
+        <SortFilter
+          selectedSort={sortBy}
+          onSortChange={handleSortChange}
+        />
+      </View>
+    </>
+  ), [
+    isWeb, containerMaxWidth, webBp, colors, colorScheme, 
+    handleReset, toggleTheme, toggleGridMode, gridMode,
+    headerIconSize, headerIconSizeBig, wishlistCount, unreadCount,
+    stats, searchQuery, setSearchQuery, handleSearchSubmit,
+    selectedCategory, handleCategoryChange, sortBy, handleSortChange
+  ]);
 
   useFocusEffect(
     useCallback(() => {
@@ -509,152 +553,116 @@ export const ProductListScreen = () => {
         }}
       >
         <View style={{ flex: 1 }}>
-          <View style={{ zIndex: 100 }}>
-            {topHeader}
-
-            {/* ✅ SearchBar: hero/list ile aynı container genişliği */}
-            <View
-              style={[
-                styles.searchSection,
-                isWeb && styles.searchSectionWeb,
-                isWeb && { maxWidth: containerMaxWidth },
-              ]}
-            >
-              <SearchBar value={searchQuery} onChangeText={setSearchQuery} onSearchSubmit={handleSearchSubmit} />
-            </View>
-          </View>
-
-          {/* Filter Section */}
-          <View style={[
-            styles.filterSection,
-            isWeb && styles.filterSectionWeb,
-            isWeb && { maxWidth: containerMaxWidth },
-          ]}>
-            <Text style={[styles.filterSectionTitle, { color: colors.foreground }]}>
-              Explore Products
-            </Text>
-            <CategoryFilter
-              selectedCategory={selectedCategory}
-              onCategoryChange={handleCategoryChange}
-            />
-            <View style={styles.sortRow}>
-              <Text style={[styles.sortLabel, { color: colors.mutedForeground }]}>Sort by:</Text>
-            </View>
-            <SortFilter
-              selectedSort={sortBy}
-              onSortChange={handleSortChange}
-            />
-          </View>
-
           {isOffline && <OfflineBanner onRetry={handleRetry} />}
 
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading products...</Text>
-            </View>
-          ) : error ? (
-            <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle-outline" size={24} color={colors.destructive} />
-              <Text style={{ color: colors.destructive, marginLeft: Spacing.sm, flex: 1 }}>{error}</Text>
-              {isOffline && (
-                <TouchableOpacity onPress={handleRetry} style={styles.retryTextButton}>
-                  <Text style={{ color: colors.primary, fontWeight: FontWeight.semibold }}>Retry</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          ) : filteredProducts.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <View style={[styles.emptyIcon, { backgroundColor: colors.muted }]}>
-                <Ionicons name="search-outline" size={44} color={colors.mutedForeground} />
-              </View>
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No products found</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-                Try adjusting your search or filters to find what you're looking for.
-              </Text>
-              <TouchableOpacity
-                style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-                onPress={handleReset}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.emptyButtonText, { color: colors.primaryForeground }]}>Clear all filters</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <FlatList
-              data={filteredProducts}
-              key={numColumns}
-              numColumns={numColumns}
-              columnWrapperStyle={
-                numColumns > 1 ? styles.columnWrap : undefined
-              }
-              removeClippedSubviews={false}
-              keyExtractor={(item: any) => String(item?.id ?? '')}
-              contentContainerStyle={[
-                styles.listContent,
-                isWeb && styles.webListContent,
-                isWeb && { maxWidth: containerMaxWidth },
-                !isWeb && { paddingHorizontal: Spacing.lg }, // Mobile padding
-              ]}
-              renderItem={({ item, index }) => {
-                const isGrid = numColumns > 1;
-                const gapSize = Platform.OS === 'android' ? Spacing.md : Spacing.lg;
-                
-                return (
-                  <View
-                    style={[
-                      isGrid && {
-                        width: `${100 / numColumns}%`,
-                        paddingRight: index % numColumns === numColumns - 1 ? 0 : gapSize / 2,
-                        paddingLeft: index % numColumns === 0 ? 0 : gapSize / 2,
-                        marginBottom: Spacing.lg,
-                        flexGrow: 0,
-                        flexShrink: 0,
-                      },
-                      !isGrid && {
-                        width: '100%',
-                        marginBottom: Spacing.lg,
-                      },
-                    ]}
-                    collapsable={false}
+          <FlatList
+            data={loading || error ? [] : filteredProducts}
+            key={numColumns}
+            numColumns={numColumns}
+            columnWrapperStyle={
+              numColumns > 1 ? styles.columnWrap : undefined
+            }
+            removeClippedSubviews={false}
+            keyExtractor={(item: any) => String(item?.id ?? '')}
+            contentContainerStyle={[
+              styles.listContent,
+              isWeb && styles.webListContent,
+              isWeb && { maxWidth: containerMaxWidth },
+              !isWeb && { paddingHorizontal: Spacing.lg },
+            ]}
+            ListHeaderComponent={listHeaderContent}
+            ListEmptyComponent={
+              loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading products...</Text>
+                </View>
+              ) : error ? (
+                <View style={styles.errorContainer}>
+                  <Ionicons name="alert-circle-outline" size={24} color={colors.destructive} />
+                  <Text style={{ color: colors.destructive, marginLeft: Spacing.sm, flex: 1 }}>{error}</Text>
+                  {isOffline && (
+                    <TouchableOpacity onPress={handleRetry} style={styles.retryTextButton}>
+                      <Text style={{ color: colors.primary, fontWeight: FontWeight.semibold }}>Retry</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <View style={[styles.emptyIcon, { backgroundColor: colors.muted }]}>
+                    <Ionicons name="search-outline" size={44} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No products found</Text>
+                  <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
+                    Try adjusting your search or filters to find what you're looking for.
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.emptyButton, { backgroundColor: colors.primary }]}
+                    onPress={handleReset}
+                    activeOpacity={0.8}
                   >
-                    <SelectableProductCard
-                      product={item}
-                      numColumns={numColumns}
-                      isSelectionMode={isSelectionMode}
-                      isSelected={selectedItems.has(String((item as any)?.id ?? ''))}
-                      onPress={handleCardPress}
-                      onLongPress={handleCardLongPress}
-                    />
-                  </View>
-                );
-              }}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
-              maxToRenderPerBatch={Platform.OS === 'android' ? 10 : 15}
-              updateCellsBatchingPeriod={Platform.OS === 'android' ? 50 : 30}
-              initialNumToRender={10}
-              ListFooterComponent={
-                filteredProducts.length > 0 ? (
-                  <View style={[styles.footerWrap, isWeb && styles.footerWrapWeb, isWeb && { maxWidth: containerMaxWidth }]}>
-                    {/* ✅ LoadMoreCard artık FULL-WIDTH olacak (LoadMoreCard.tsx fix ile) */}
-                    <LoadMoreCard
-                      onPress={loadMoreProducts}
-                      loading={loadingMore}
-                      hasMore={hasMore}
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                    />
-                  </View>
-                ) : null
-              }
-              onEndReachedThreshold={0.4}
-              onEndReached={() => {
-                if (hasMore && !loadingMore) loadMoreProducts();
-              }}
-            />
-          )}
+                    <Text style={[styles.emptyButtonText, { color: colors.primaryForeground }]}>Clear all filters</Text>
+                  </TouchableOpacity>
+                </View>
+              )
+            }
+            renderItem={({ item, index }) => {
+              const isGrid = numColumns > 1;
+              const gapSize = Platform.OS === 'android' ? Spacing.md : Spacing.lg;
+              
+              return (
+                <View
+                  style={[
+                    isGrid && {
+                      width: `${100 / numColumns}%`,
+                      paddingRight: index % numColumns === numColumns - 1 ? 0 : gapSize / 2,
+                      paddingLeft: index % numColumns === 0 ? 0 : gapSize / 2,
+                      marginBottom: Spacing.lg,
+                      flexGrow: 0,
+                      flexShrink: 0,
+                    },
+                    !isGrid && {
+                      width: '100%',
+                      marginBottom: Spacing.lg,
+                    },
+                  ]}
+                  collapsable={false}
+                >
+                  <SelectableProductCard
+                    product={item}
+                    numColumns={numColumns}
+                    isSelectionMode={isSelectionMode}
+                    isSelected={selectedItems.has(String((item as any)?.id ?? ''))}
+                    onPress={handleCardPress}
+                    onLongPress={handleCardLongPress}
+                  />
+                </View>
+              );
+            }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            maxToRenderPerBatch={Platform.OS === 'android' ? 10 : 15}
+            updateCellsBatchingPeriod={Platform.OS === 'android' ? 50 : 30}
+            initialNumToRender={10}
+            ListFooterComponent={
+              !loading && !error && filteredProducts.length > 0 ? (
+                <View style={styles.footerWrap}>
+                  <LoadMoreCard
+                    onPress={loadMoreProducts}
+                    loading={loadingMore}
+                    hasMore={hasMore}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                  />
+                </View>
+              ) : null
+            }
+            onEndReachedThreshold={0.4}
+            onEndReached={() => {
+              if (hasMore && !loadingMore && !loading && !error) loadMoreProducts();
+            }}
+          />
 
           {isSelectionMode && selectedItems.size > 0 && (
             <View style={[styles.floatingBar, { backgroundColor: colors.card }]}>
@@ -863,14 +871,16 @@ const styles = StyleSheet.create({
   },
 
   listContent: {
-    paddingBottom: Spacing['5xl'] + Spacing.xl,
+    flexGrow: 1,
+    paddingBottom: Spacing.lg,
   },
 
   webListContent: {
     width: '100%',
     alignSelf: 'center',
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing['5xl'] + Spacing.xl,
+    flexGrow: 1,
+    paddingBottom: Spacing.lg,
   },
 
   gridItem: {
@@ -905,18 +915,11 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
   },
 
-  // ✅ Footer artık full-width, center + container max width
+  // ✅ Footer flows naturally as part of list content
   footerWrap: {
     width: '100%',
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.xl,
-  },
-  footerWrapWeb: {
-    width: '100%',
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing['3xl'],
   },
 
   floatingBar: {

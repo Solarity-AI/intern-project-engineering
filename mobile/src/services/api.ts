@@ -2,8 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
-const BASE_URL = "https://product-review-app-solarityai-a391ad53d79a.herokuapp.com"; // Heroku
-// const BASE_URL = "http://192.168.1.6:8080"; // Mehmet
+//const BASE_URL = "https://product-review-app-solarityai-a391ad53d79a.herokuapp.com";
+//const BASE_URL = "http://192.168.1.6:8080";
+
+//EREN LOCAL URL
+const BASE_URL = "http://9.3.137.114:8080";
 
 const USER_ID_KEY = 'device_user_id';
 
@@ -35,7 +38,7 @@ export type ApiProduct = {
   id: number;
   name: string;
   description: string;
-  categories: string[];
+  categories: string[]; // ✨ Changed from category: string to categories: string[]
   price: number;
   averageRating?: number;
   reviewCount?: number;
@@ -62,6 +65,13 @@ export type ApiNotification = {
   productId?: number;
 };
 
+// ✨ NEW: Global stats type
+export type GlobalStats = {
+  totalProducts: number;
+  totalReviews: number;
+  averageRating: number;
+};
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const userId = await getUserId();
   
@@ -81,6 +91,26 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return text ? JSON.parse(text) : {} as T;
 }
 
+// ✨ NEW: Get global stats for hero section (supports filtering)
+export function getGlobalStats(params?: { category?: string; search?: string }) {
+  const q = new URLSearchParams();
+  
+  if (params?.category && params.category !== 'All') {
+    q.append('category', params.category);
+  }
+  
+  if (params?.search) {
+    q.append('search', params.search);
+  }
+  
+  const queryString = q.toString();
+  const url = queryString 
+    ? `${BASE_URL}/api/products/stats?${queryString}` 
+    : `${BASE_URL}/api/products/stats`;
+    
+  return request<GlobalStats>(url);
+}
+
 export function getProducts(params?: { page?: number; size?: number; sort?: string; category?: string; search?: string }) {
   const q = new URLSearchParams({
     page: String(params?.page ?? 0),
@@ -97,20 +127,6 @@ export function getProducts(params?: { page?: number; size?: number; sort?: stri
   }
   
   return request<Page<ApiProduct>>(`${BASE_URL}/api/products?${q.toString()}`);
-}
-
-export function getProductStats(params?: { category?: string; search?: string }) {
-  const q = new URLSearchParams();
-  
-  if (params?.category && params.category !== 'All') {
-    q.append('category', params.category);
-  }
-  
-  if (params?.search) {
-    q.append('search', params.search);
-  }
-  
-  return request<{ totalReviews: number; averageRating: number }>(`${BASE_URL}/api/products/stats?${q.toString()}`);
 }
 
 export function getProduct(id: number | string) {
@@ -161,17 +177,6 @@ export function chatWithAI(productId: number | string, question: string) {
 
 export function getWishlist() {
   return request<number[]>(`${BASE_URL}/api/user/wishlist`);
-}
-
-// ✨ New function for paged wishlist products
-export function getWishlistProducts(params?: { page?: number; size?: number; sort?: string }) {
-  const q = new URLSearchParams({
-    page: String(params?.page ?? 0),
-    size: String(params?.size ?? 10),
-    sort: params?.sort ?? "id,desc",
-  });
-  
-  return request<Page<ApiProduct>>(`${BASE_URL}/api/user/wishlist/products?${q.toString()}`);
 }
 
 export function toggleWishlistApi(productId: number) {
