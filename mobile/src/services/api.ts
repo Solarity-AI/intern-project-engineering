@@ -179,18 +179,15 @@ export function getWishlist() {
   return request<number[]>(`${BASE_URL}/api/user/wishlist`);
 }
 
-// ✨ Get full product details for wishlist items
-export async function getWishlistProducts(): Promise<ApiProduct[]> {
-  const productIds = await getWishlist();
-  if (!productIds || productIds.length === 0) return [];
+// ✨ New function for paged wishlist products
+export function getWishlistProducts(params?: { page?: number; size?: number; sort?: string }) {
+  const q = new URLSearchParams({
+    page: String(params?.page ?? 0),
+    size: String(params?.size ?? 10),
+    sort: params?.sort ?? "id,desc",
+  });
   
-  // Fetch each product's details in parallel
-  const products = await Promise.all(
-    productIds.map(id => getProduct(id).catch(() => null))
-  );
-  
-  // Filter out any failed fetches
-  return products.filter((p): p is ApiProduct => p !== null);
+  return request<Page<ApiProduct>>(`${BASE_URL}/api/user/wishlist/products?${q.toString()}`);
 }
 
 export function toggleWishlistApi(productId: number) {
