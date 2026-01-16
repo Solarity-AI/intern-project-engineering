@@ -4,7 +4,7 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getProducts, getGlobalStats, ApiProduct, GlobalStats } from '../services/api';
-import { TouchableWithoutFeedback } from 'react-native';
+import { TouchableWithoutFeedback, DeviceEventEmitter } from 'react-native'; // ✨ Added DeviceEventEmitter
 
 const SORT_STORAGE_KEY = 'user_sort_preference';
 
@@ -287,6 +287,25 @@ export const ProductListScreen = () => {
     fetchProducts(0, false);
   }, [selectedCategory, submittedSearchQuery, sortBy, sortLoaded]);
 
+  // ✨ Listen for review updates
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('reviewAdded', (event) => {
+      console.log('Review added event received:', event);
+      // Refresh the list silently (or with loading if preferred)
+      fetchProducts(0, false);
+      
+      // Also refresh stats
+      getGlobalStats({
+        category: selectedCategory === 'All' ? undefined : selectedCategory,
+        search: submittedSearchQuery?.trim() || undefined,
+      }).then(setGlobalStats).catch(console.error);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [fetchProducts, selectedCategory, submittedSearchQuery]);
+
   useEffect(() => {
     const category = (route.params as any)?.category;
     const search = (route.params as any)?.search;
@@ -320,12 +339,46 @@ export const ProductListScreen = () => {
     return { productCount, totalReviews, avgRating };
   }, [globalStats, totalElements, apiProducts]);
 
+  const handleReset = useCallback(() => {
+    setSearchQuery('');
+    setSubmittedSearchQuery('');
+    setSelectedCategory('All');
+    setSortBy('name,asc');
+    if (Platform.OS === 'web') navigation.setParams({ category: 'All', search: '' } as any);
+  }, [navigation]);
+
+  // ✨ Debounce search query & Auto-reset on clear
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log('Setting debounced search query:', searchQuery);
+      
+      if (searchQuery.trim().length === 0 && submittedSearchQuery.length > 0) {
+        // ✨ Auto-reset when search is cleared
+        handleReset();
+      } else if (searchQuery.trim().length > 0) {
+        // Optional: Auto-search while typing (if desired)
+        // setSubmittedSearchQuery(searchQuery);
+      }
+      
+      if (Platform.OS === 'web') {
+        navigation.setParams({ 
+            category: selectedCategory, 
+            search: searchQuery 
+        } as any);
+      }
+    }, 1000); // 1 second delay
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, submittedSearchQuery, selectedCategory, navigation, handleReset]);
+
   const handleSearchSubmit = (search: string) => {
     if (search.trim().length > 0) {
       addSearchTerm(search);
+      setSubmittedSearchQuery(search);
+      if (Platform.OS === 'web') navigation.setParams({ search } as any);
+    } else {
+      handleReset();
     }
-    setSubmittedSearchQuery(search);
-    if (Platform.OS === 'web') navigation.setParams({ search } as any);
   };
 
   const handleCategoryChange = (category: string) => {
@@ -340,14 +393,6 @@ export const ProductListScreen = () => {
     } catch (error) {
       console.error('Failed to save sort preference:', error);
     }
-  };
-
-  const handleReset = () => {
-    setSearchQuery('');
-    setSubmittedSearchQuery('');
-    setSelectedCategory('All');
-    setSortBy('name,asc');
-    if (Platform.OS === 'web') navigation.setParams({ category: 'All', search: '' } as any);
   };
 
   const handleRetry = useCallback(async () => {

@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   Platform,
+  DeviceEventEmitter, // ✨ Added DeviceEventEmitter
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -190,6 +191,9 @@ const ProductDetailsContent: React.FC = () => {
         body: `Your review for ${displayName} has been published.`,
         data: { productId, productName: displayName },
       });
+
+      // ✨ Emit event to update ProductList
+      DeviceEventEmitter.emit('reviewAdded', { productId });
 
       await fetchProduct();
       await fetchReviews(0, false);
