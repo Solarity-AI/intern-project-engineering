@@ -1,5 +1,6 @@
 // ThemeContext - Manages dark/light mode state
 // ✨ Fixed: Prevents white flash on Android by delaying render until theme loads
+// ✨ Fixed: Proper edge-to-edge navigation bar handling on Android
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useMemo } from 'react';
 import { View, StyleSheet, useColorScheme, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -33,6 +34,49 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [colorScheme, setColorScheme] = useState<ColorScheme>(initialScheme);
   const [isThemeLoaded, setIsThemeLoaded] = useState(false);
 
+  // ✨ Configure Android navigation bar for edge-to-edge
+  const configureNavigationBar = useCallback(async (scheme: ColorScheme) => {
+    if (Platform.OS !== 'android') return;
+    
+    try {
+      // ✨ FIX: Set navigation bar to transparent for edge-to-edge
+      await NavigationBar.setBackgroundColorAsync('transparent');
+      
+      // ✨ FIX: Set position to absolute so it overlays content instead of pushing it
+      await NavigationBar.setPositionAsync('absolute');
+      
+      // Set button style based on theme (light buttons on dark bg, dark on light)
+      await NavigationBar.setButtonStyleAsync(scheme === 'dark' ? 'light' : 'dark');
+      
+      // ✨ Set behavior to overlay with swipe to reveal
+      await NavigationBar.setBehaviorAsync('overlay-swipe');
+    } catch (error) {
+      // Fallback for older Android versions or when methods aren't available
+      try {
+        await NavigationBar.setButtonStyleAsync(scheme === 'dark' ? 'light' : 'dark');
+      } catch (fallbackError) {
+        console.debug('NavigationBar configuration skipped:', fallbackError);
+      }
+    }
+  }, []);
+
+  // ✨ Configure navigation bar immediately on mount (before theme loads)
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      // Set initial configuration immediately to prevent layout issues on launch
+      const initNavigationBar = async () => {
+        try {
+          await NavigationBar.setBackgroundColorAsync('transparent');
+          await NavigationBar.setPositionAsync('absolute');
+          await NavigationBar.setBehaviorAsync('overlay-swipe');
+        } catch (error) {
+          // Silently fail - not all methods available on all Android versions
+        }
+      };
+      initNavigationBar();
+    }
+  }, []);
+
   // ✨ Load saved theme on mount
   useEffect(() => {
     let isMounted = true;
@@ -62,19 +106,12 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   }, []);
 
-  // ✨ Update Android navigation bar (safely with edge-to-edge)
+  // ✨ Update Android navigation bar when theme changes
   useEffect(() => {
-    if (Platform.OS === 'android' && isThemeLoaded) {
-      try {
-        // setBackgroundColorAsync is not supported with edge-to-edge enabled
-        // Only set button style for better compatibility
-        NavigationBar.setButtonStyleAsync(colorScheme === 'dark' ? 'light' : 'dark');
-      } catch (error) {
-        // Silently fail - edge-to-edge may prevent this operation
-        console.debug('NavigationBar update skipped due to edge-to-edge:', error);
-      }
+    if (isThemeLoaded) {
+      configureNavigationBar(colorScheme);
     }
-  }, [colorScheme, isThemeLoaded]);
+  }, [colorScheme, isThemeLoaded, configureNavigationBar]);
 
   const saveTheme = useCallback(async (scheme: ColorScheme) => {
     try {
