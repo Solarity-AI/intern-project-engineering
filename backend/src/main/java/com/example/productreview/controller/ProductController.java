@@ -45,13 +45,22 @@ public class ProductController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "name,asc") String sort) {
         
-        log.info("getAllProducts called with category: {}, search: {}", category, search);
+        log.info("getAllProducts called with category: {}, search: {}, sort: {}", category, search, sort);
         
         String[] sortParams = sort.split(",");
+        String sortField = sortParams[0];
         Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc") 
                 ? Sort.Direction.DESC : Sort.Direction.ASC;
         
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+        // ✨ FIX: Case-insensitive sorting for name field
+        // This ensures "iPhone" sorts correctly with other "I" names
+        Sort.Order order = new Sort.Order(direction, sortField);
+        if (sortField.equalsIgnoreCase("name")) {
+            order = order.ignoreCase();
+            log.info("Applying case-insensitive sorting for name field");
+        }
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by(order));
         
         return ResponseEntity.ok(productService.getAllProducts(category, search, pageable));
     }
@@ -70,10 +79,17 @@ public class ProductController {
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
         
         String[] sortParams = sort.split(",");
+        String sortField = sortParams[0];
         Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc") 
                 ? Sort.Direction.DESC : Sort.Direction.ASC;
         
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+        // ✨ FIX: Case-insensitive sorting for reviewerName field as well
+        Sort.Order order = new Sort.Order(direction, sortField);
+        if (sortField.equalsIgnoreCase("reviewerName")) {
+            order = order.ignoreCase();
+        }
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by(order));
         
         if (rating != null) {
             return ResponseEntity.ok(productService.getReviewsByProductId(id, rating, pageable));
