@@ -87,12 +87,12 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   };
 
-  const wishlistCount = wishlist.length;
+  const wishlistCount = wishlist?.length || 0;
 
   const isInWishlist = useCallback(
     (productId: string | number) => {
       const idStr = String(productId);
-      return wishlist.some((item) => String(item.id) === idStr);
+      return wishlist?.some((item) => String(item.id) === idStr) ?? false;
     },
     [wishlist]
   );
@@ -100,9 +100,10 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
   const addToWishlist = useCallback(
     (product: Omit<WishlistItem, 'addedAt'>) => {
       setWishlist(currentWishlist => {
+        const list = currentWishlist || [];
         const idStr = String(product.id);
-        if (currentWishlist.some(item => String(item.id) === idStr)) {
-          return currentWishlist;
+        if (list.some(item => String(item.id) === idStr)) {
+          return list;
         }
 
         const newItem: WishlistItem = {
@@ -111,7 +112,7 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
           addedAt: new Date(),
         };
         
-        const updated = [newItem, ...currentWishlist];
+        const updated = [newItem, ...list];
         saveWishlistToStorage(updated);
         
         // Sync with Backend
@@ -125,7 +126,8 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
   const addMultipleToWishlist = useCallback(
     (products: Array<Omit<WishlistItem, 'addedAt'>>) => {
       setWishlist(currentWishlist => {
-        const existingIds = new Set(currentWishlist.map(item => String(item.id)));
+        const list = currentWishlist || [];
+        const existingIds = new Set(list.map(item => String(item.id)));
         const uniqueNewProducts = Array.from(new Map(products.map(p => [String(p.id), p])).values());
         
         const newItems = uniqueNewProducts
@@ -136,9 +138,9 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
             addedAt: new Date(),
           }));
         
-        if (newItems.length === 0) return currentWishlist;
+        if (newItems.length === 0) return list;
 
-        const updated = [...newItems, ...currentWishlist];
+        const updated = [...newItems, ...list];
         saveWishlistToStorage(updated);
         
         // Sync each item (Parallel)
@@ -155,12 +157,13 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
   const removeFromWishlist = useCallback(
     (productId: string | number) => {
       setWishlist(currentWishlist => {
+        const list = currentWishlist || [];
         const idStr = String(productId);
-        if (!currentWishlist.some(item => String(item.id) === idStr)) {
-          return currentWishlist;
+        if (!list.some(item => String(item.id) === idStr)) {
+          return list;
         }
 
-        const updated = currentWishlist.filter((item) => String(item.id) !== idStr);
+        const updated = list.filter((item) => String(item.id) !== idStr);
         saveWishlistToStorage(updated);
         
         // Sync with Backend
@@ -174,12 +177,13 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
   const removeMultipleFromWishlist = useCallback(
     (productIds: Array<string | number>) => {
       setWishlist(currentWishlist => {
+        const list = currentWishlist || [];
         const idsSet = new Set(productIds.map(String));
-        const toRemove = currentWishlist.filter(item => idsSet.has(String(item.id)));
+        const toRemove = list.filter(item => idsSet.has(String(item.id)));
         
-        if (toRemove.length === 0) return currentWishlist;
+        if (toRemove.length === 0) return list;
 
-        const updated = currentWishlist.filter((item) => !idsSet.has(String(item.id)));
+        const updated = list.filter((item) => !idsSet.has(String(item.id)));
         saveWishlistToStorage(updated);
         
         // Sync each item
@@ -206,7 +210,7 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const clearWishlist = useCallback(async () => {
     // Get current IDs to remove them from backend
-    const currentIds = wishlist.map(item => item.id);
+    const currentIds = wishlist?.map(item => item.id) || [];
     
     setWishlist([]);
     saveWishlistToStorage([]);

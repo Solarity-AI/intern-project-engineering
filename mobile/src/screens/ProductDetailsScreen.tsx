@@ -250,21 +250,23 @@ const ProductDetailsContent: React.FC = () => {
   }, [helpfulReviews]);
 
   const handleWishlistToggle = () => {
+    if (!product) return; // ✨ Safety check
+
     toggleWishlist({
       id: productId,
-      name: product?.name || 'Product',
-      price: product?.price,
-      imageUrl: product?.imageUrl || routeImageUrl,
-      categories: product?.categories, // ✨ Updated
-      averageRating: product?.averageRating,
+      name: product.name || 'Product',
+      price: product.price,
+      imageUrl: product.imageUrl || routeImageUrl,
+      categories: product.categories, // ✨ Updated
+      averageRating: product.averageRating,
     } as any);
 
     showToast({
       type: inWishlist ? 'info' : 'success',
       title: inWishlist ? 'Removed from wishlist' : 'Added to wishlist',
       message: inWishlist
-        ? `${product?.name || 'Product'} removed from your wishlist`
-        : `${product?.name || 'Product'} added to your wishlist`,
+        ? `${product.name || 'Product'} removed from your wishlist`
+        : `${product.name || 'Product'} added to your wishlist`,
     });
   };
 
