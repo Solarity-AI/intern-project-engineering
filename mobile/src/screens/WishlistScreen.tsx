@@ -177,11 +177,20 @@ export const WishlistScreen = () => {
     fetchWishlist(0, false); // Refresh list
   };
 
-  const handleRemoveSingle = async (id: string) => {
-    await removeFromWishlist(id);
-    setPagedWishlist(prev => prev.filter(item => String(item.id) !== id));
-    setTotalItems(prev => prev - 1);
-  };
+  // ✨ Wrapped in useCallback to prevent unnecessary re-renders
+  const handleRemoveSingle = useCallback((id: string) => {
+    console.log('Removing item:', id);
+    // ✨ Optimistic update: Remove immediately from UI
+    setPagedWishlist(prev => {
+      const filtered = prev.filter(item => String(item.id) !== String(id));
+      console.log('Previous length:', prev.length, 'New length:', filtered.length);
+      return filtered;
+    });
+    setTotalItems(prev => Math.max(0, prev - 1));
+    
+    // Then sync with backend/context
+    removeFromWishlist(id);
+  }, [removeFromWishlist]);
 
   const stats = useMemo(() => {
     const totalPrice = pagedWishlist.reduce((sum, item) => sum + (item.price || 0), 0);
@@ -373,6 +382,7 @@ export const WishlistScreen = () => {
           ) : (
             <FlatList
               data={pagedWishlist}
+              extraData={pagedWishlist} // ✨ Force re-render
               key={numColumns}
               numColumns={numColumns}
               keyExtractor={(item) => String(item.id)}
