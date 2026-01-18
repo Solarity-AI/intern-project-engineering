@@ -64,7 +64,7 @@ export const WishlistScreen = () => {
       else setLoadingMore(true);
 
       const page = await getWishlistProducts({ page: pageNum, size: 10 });
-      
+
       if (append) {
         setPagedWishlist(prev => [...prev, ...page.content]);
       } else {
@@ -139,9 +139,14 @@ export const WishlistScreen = () => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
+  const [selectionTick, setSelectionTick] = useState(0);
+  const bumpSelectionTick = useCallback(() => setSelectionTick(t => t + 1), []);
+
+
   const handleCancelSelection = () => {
     setIsSelectionMode(false);
     setSelectedItems(new Set());
+    bumpSelectionTick();
   };
 
   const handleCardLongPress = (item: ApiProduct) => {
@@ -150,6 +155,7 @@ export const WishlistScreen = () => {
     setSelectedItems(prev => {
       const next = new Set(prev);
       next.add(id);
+      bumpSelectionTick();
       return next;
     });
   };
@@ -164,6 +170,7 @@ export const WishlistScreen = () => {
         if (next.size === 0) setIsSelectionMode(false);
         return next;
       });
+      bumpSelectionTick();
       return;
     }
     navigation.navigate('ProductDetails', { productId: id });
@@ -172,17 +179,17 @@ export const WishlistScreen = () => {
   const handleRemoveSelected = useCallback(() => {
     const idsToRemove = Array.from(selectedItems);
     if (idsToRemove.length === 0) return;
-    
+
     // ✨ Optimistic update: Remove immediately from UI
     setPagedWishlist(prev => {
       const idsSet = new Set(idsToRemove);
       return prev.filter(item => !idsSet.has(String(item.id)));
     });
     setTotalItems(prev => Math.max(0, prev - idsToRemove.length));
-    
+
     // Exit selection mode first
     handleCancelSelection();
-    
+
     // Then sync with backend/context (batch operation)
     removeMultipleFromWishlist(idsToRemove);
   }, [selectedItems, removeMultipleFromWishlist]);
@@ -197,7 +204,7 @@ export const WishlistScreen = () => {
       return filtered;
     });
     setTotalItems(prev => Math.max(0, prev - 1));
-    
+
     // Then sync with backend/context
     removeFromWishlist(id);
   }, [removeFromWishlist]);
@@ -215,6 +222,11 @@ export const WishlistScreen = () => {
     const selected = selectedItems.has(id);
     const isGrid = numColumns > 1;
     const gapSize = Spacing.sm;
+
+    const forceKey =
+      Platform.OS === 'android'
+        ? `${id}-${isSelectionMode ? 1 : 0}-${selected ? 1 : 0}-${selectionTick}`
+        : id;
 
     return (
       <View
@@ -235,6 +247,7 @@ export const WishlistScreen = () => {
         ]}
       >
         <SelectableWishlistCard
+          key={forceKey} // ✅ (Android only remount)
           item={item as any}
           numColumns={numColumns}
           isSelectionMode={isSelectionMode}
@@ -392,7 +405,7 @@ export const WishlistScreen = () => {
           ) : (
             <FlatList
               data={pagedWishlist}
-              extraData={[pagedWishlist, selectedItems, isSelectionMode]}
+              extraData={selectionTick}
               key={numColumns}
               numColumns={numColumns}
               keyExtractor={(item) => String(item.id)}
