@@ -35,7 +35,7 @@ const GRID_STORAGE_KEY = 'wishlist_grid_mode';
 export const WishlistScreen = () => {
   const navigation = useNavigation<WishlistNavigationProp>();
   const { colors, colorScheme, toggleTheme } = useTheme();
-  const { removeFromWishlist, clearWishlist, wishlistCount } = useWishlist();
+  const { removeFromWishlist, removeMultipleFromWishlist, clearWishlist, wishlistCount } = useWishlist();
 
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
@@ -169,13 +169,23 @@ export const WishlistScreen = () => {
     navigation.navigate('ProductDetails', { productId: id });
   };
 
-  const handleRemoveSelected = async () => {
-    for (const id of selectedItems) {
-      await removeFromWishlist(id);
-    }
+  const handleRemoveSelected = useCallback(() => {
+    const idsToRemove = Array.from(selectedItems);
+    if (idsToRemove.length === 0) return;
+    
+    // ✨ Optimistic update: Remove immediately from UI
+    setPagedWishlist(prev => {
+      const idsSet = new Set(idsToRemove);
+      return prev.filter(item => !idsSet.has(String(item.id)));
+    });
+    setTotalItems(prev => Math.max(0, prev - idsToRemove.length));
+    
+    // Exit selection mode first
     handleCancelSelection();
-    fetchWishlist(0, false); // Refresh list
-  };
+    
+    // Then sync with backend/context (batch operation)
+    removeMultipleFromWishlist(idsToRemove);
+  }, [selectedItems, removeMultipleFromWishlist]);
 
   // ✨ Wrapped in useCallback to prevent unnecessary re-renders
   const handleRemoveSingle = useCallback((id: string) => {
@@ -382,7 +392,7 @@ export const WishlistScreen = () => {
           ) : (
             <FlatList
               data={pagedWishlist}
-              extraData={pagedWishlist} // ✨ Force re-render
+              extraData={[pagedWishlist, selectedItems, isSelectionMode]}
               key={numColumns}
               numColumns={numColumns}
               keyExtractor={(item) => String(item.id)}

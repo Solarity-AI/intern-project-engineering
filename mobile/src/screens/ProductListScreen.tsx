@@ -607,6 +607,7 @@ export const ProductListScreen = () => {
 
           <FlatList
             data={loading || error ? [] : filteredProducts}
+            extraData={[selectedItems, isSelectionMode]}
             key={numColumns}
             numColumns={numColumns}
             columnWrapperStyle={
