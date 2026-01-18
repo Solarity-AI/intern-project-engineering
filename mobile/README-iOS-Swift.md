@@ -1,124 +1,254 @@
-# 🍎 iOS Frontend (Swift) - Implementation Guide
+# 🍎 iOS Frontend (Swift) – Implementation Guide
 
-This document serves as the comprehensive guide for interns choosing the **iOS (Swift)** stack. Your goal is to build a native iOS application that consumes the Spring Boot backend API, matching the features of the reference React Native implementation.
+> This document describes the **iOS (Swift) frontend implementation** of the Product Review App.  
+> It is written **from a native iOS perspective** and should be treated as the **source of truth** for iOS expectations, architecture, and feature scope.
 
 ---
 
 ## 🎯 Objective
-Develop a production-ready iOS application using **Swift** and **SwiftUI** (preferred) or UIKit. The app must demonstrate clean architecture, modern concurrency, and responsive UI.
+
+Build a **native, scalable, and maintainable iOS application** that:
+
+- Implements all **Products**, **Reviews**, **Wishlist**, **Notifications**, and **AI** features
+- Communicates reliably with the backend API
+- Follows **Apple Human Interface Guidelines (HIG)**
+- Handles lifecycle, state, and scene changes correctly
+- Is future-proof for new feature additions
+
+> ✅ This guide defines **what must exist on iOS**, independent of other platforms.
 
 ---
 
 ## 🛠️ Tech Stack & Requirements
 
-| Category | Requirement | Recommended Libraries |
-|----------|-------------|----------------------|
-| **Language** | Swift 5.9+ | - |
-| **UI Framework** | SwiftUI (Preferred) | - |
-| **Architecture** | MVVM (Model-View-ViewModel) | - |
-| **Networking** | Async/Await (Concurrency) | Alamofire (Optional) or URLSession |
-| **Image Loading** | AsyncImage | Kingfisher or SDWebImage |
-| **Dependency Manager** | Swift Package Manager (SPM) | - |
+### Core iOS Stack
+- `Swift`
+- `iOS SDK`
+- `SwiftUI`
+- `Xcode`
+
+### Architecture & State
+- `MVVM`
+- `ObservableObject`
+- `@Published`
+- `Unidirectional Data Flow (UDF)`
+
+### Networking & Data
+- `URLSession`
+- `Codable`
+- Repository abstraction layer
+
+### Concurrency & Lifecycle
+- `async / await`
+- `Task`
+- `MainActor`
+- Scene-aware state handling
+
+### Tooling & Testing
+- `Xcode`
+- `XCTest`
+- `XCUITest`
 
 ---
 
 ## 📱 Features to Implement
 
-### 1. Product List (Home)
-- **UI:** Grid or List view of products with images, names, prices, and ratings.
-- **Features:**
-  - **Pagination:** Implement "Infinite Scroll" to load more products as the user scrolls.
-  - **Filtering:** Filter by category (e.g., Electronics, Fashion).
-  - **Search:** Search bar to query products by name.
+### 🛍️ Product List
+- Paginated product listing
+- Search functionality
+- Category-based filtering
+- Sorting options
+- Adaptive grid layout
+- Pull-to-refresh
+- Global product statistics header
+- Offline state indication
 
-### 2. Product Details
-- **UI:** Hero image, detailed description, price, and "Add to Cart/Wishlist" buttons.
-- **Features:**
-  - **AI Summary:** Display the `aiSummary` field from the API in a dedicated card.
-  - **Rating Breakdown:** Visualize star ratings (5★ to 1★) using a bar chart.
+### ⭐ Reviews System (Must-Have)
+- Review list per product
+- Add review flow (rating + text)
+- Client-side validation
+- “Helpful” vote interaction
+- “Voted” state hydration
+- Loading / empty / error states
+- Optimistic UI where safe
 
-### 3. Reviews System
-- **UI:** List of user reviews with timestamps and helpful counts.
-- **Features:**
-  - **Add Review:** A modal/sheet to submit a rating (1-5) and comment.
-  - **Helpful Vote:** Ability to mark a review as helpful.
+### 📦 Product Details
+- Product metadata display
+- **AI-generated summary card**
+- Rating breakdown visualization
+- Reviews section entry + inline list
+- AI chat entry point
+- Wishlist toggle
+
+### ❤️ Wishlist
+- Wishlist product listing
+- Grid layout support
+- Multi-select actions (iOS-friendly)
+- Bulk delete action
+- Optimistic UI updates
+
+### 🔔 Notifications
+- Notification list screen
+- Notification detail screen
+- Unread count badge
+- Mark as read / mark all as read
+- Delete single or all notifications
+
+### 🤖 AI Features
+- AI Summary Card
+- AI Chat interface
+  - Single active request
+  - Clear loading & error states
 
 ---
 
-## 🏗️ Recommended Architecture (MVVM)
+## 🏗️ Recommended Architecture
 
-The project should follow a strict **MVVM** pattern to separate logic from UI.
+Use a clean, layered architecture aligned with SwiftUI best practices:
 
 ```
-ProductReviewApp/
-├── App/
-│   ├── ProductReviewApp.swift       # Entry Point
-│   ├── AppState.swift               # Global State (if needed)
-├── Models/                          # Data Structures (Codable)
-│   ├── Product.swift
-│   ├── Review.swift
-│   ├── Page.swift                   # Pagination Wrapper
-├── Views/                           # SwiftUI Views
-│   ├── Components/                  # Reusable UI (StarRating, ProductCard)
-│   ├── Screens/
-│   │   ├── ProductList/
-│   │   │   ├── ProductListView.swift
-│   │   │   ├── ProductListViewModel.swift
-│   │   ├── ProductDetail/
-│   │   │   ├── ProductDetailView.swift
-│   │   │   ├── ProductDetailViewModel.swift
-├── Services/                        # Networking Layer
-│   ├── APIService.swift             # Generic API Client
-│   ├── Endpoints.swift              # URL Definitions
-├── Utils/                           # Extensions & Helpers
-│   ├── Constants.swift
-│   ├── Extensions.swift
-├── Resources/
-│   ├── Assets.xcassets
-│   ├── Localizable.strings
+App/
+ ├─ AppEntry/            # App & Scene setup
+ ├─ Navigation/          # NavigationStack & routes
+ └─ Core/                # Shared utilities, error mapping
+
+Data/
+ ├─ Network/             # API clients, DTOs
+ ├─ Mapper/              # DTO <-> Domain mapping
+ └─ Repository/          # Repository implementations
+
+Domain/
+ ├─ Model/               # Domain models
+ ├─ UseCase/             # Business logic units
+ └─ Repository/          # Repository protocols
+
+Presentation/
+ ├─ Views/               # SwiftUI views
+ ├─ ViewModels/          # ObservableObjects
+ ├─ State/               # ViewState / ViewAction definitions
+ └─ Components/          # Reusable UI components
 ```
+
+### Key Guidelines
+- Views are **declarative and lightweight**
+- No business logic inside Views
+- ViewModels expose observable state only
+- UseCases encapsulate business rules
+- Repository is the single source of truth
+- Side effects are explicit and isolated
+- State updates happen on the `MainActor`
 
 ---
 
 ## 🚀 Step-by-Step Implementation Plan
 
-### Phase 1: Setup & Networking
-1.  Create a new Xcode project (SwiftUI).
-2.  Set up `APIService` using `URLSession` and Swift Concurrency (`async/await`).
-3.  Define `Codable` structs for `Product` and `Review` matching the Backend JSON.
-
-### Phase 2: Product Listing
-1.  Create `ProductListViewModel` to fetch data.
-2.  Implement `ProductListView` with a `LazyVGrid`.
-3.  Add pagination logic (detect end of list and fetch next page).
-
-### Phase 3: Details & Reviews
-1.  Pass `productId` to `ProductDetailView`.
-2.  Fetch full details and reviews in parallel (`async let`).
-3.  Implement the **AI Summary Card** UI.
-
-### Phase 4: User Interaction
-1.  Create `AddReviewView` as a `.sheet`.
-2.  Implement `POST` request to submit reviews.
-3.  Add validation (e.g., comment length > 10 chars).
+### Phase 1 – Project Foundation 🧱
+1. Initialize SwiftUI app entry
+2. Configure global appearance (Light/Dark, Dynamic Type)
+3. Setup base navigation using `NavigationStack`
+4. Define core folders (`Data`, `Domain`, `Presentation`)
 
 ---
 
-## 🧪 Testing Requirements
-- **Unit Tests:** Write tests for `ViewModels` and `APIService` (mocking URLSession).
-- **UI Tests:** Simple UI tests for navigation flows.
+### Phase 2 – Networking & Data Layer 🌐
+1. Implement API client with `URLSession`
+2. Define DTOs and `Codable` models
+3. Create Repository protocols and implementations
+4. Centralize error mapping and result handling
 
-## 💡 Best Practices
-- Use **Dependency Injection** for services.
-- Handle **Loading** and **Error** states gracefully (shimmer effects, alerts).
-- Ensure **Dark Mode** support.
+---
+
+### Phase 3 – Product List 🛍️
+1. Build `ProductCardView` and list/grid layout
+2. Implement pagination & pull-to-refresh
+3. Add search, filter, and sort controls
+4. Handle loading, empty, and error states
+
+---
+
+### Phase 4 – Product Details & Reviews ⭐
+1. Build product detail view
+2. Implement Reviews system:
+   - Fetch reviews
+   - Add review flow
+   - Helpful voting
+   - Voted-state hydration
+3. Display rating breakdown
+4. Ensure smooth state updates on actions
+
+---
+
+### Phase 5 – Wishlist ❤️
+1. Implement wishlist repository
+2. Grid-based wishlist UI
+3. Multi-select & bulk delete
+4. Optimistic updates + background sync
+
+---
+
+### Phase 6 – Notifications 🔔
+1. List & detail views
+2. Unread count badge
+3. Mark read / read all
+4. Delete single or all notifications
+
+---
+
+### Phase 7 – AI Features 🤖
+1. Render AI Summary Card
+2. Integrate AI Chat flow
+3. Enforce single active request
+4. Handle loading, error, and retry states
+
+---
+
+### Phase 8 – Offline, Errors & Quality ✅
+1. Offline-aware UI
+2. Graceful error handling (`Alert`, inline states)
+3. Unit tests for ViewModels & UseCases
+4. UI tests for critical navigation flows
 
 ---
 
 ## 🔗 API Reference
-Base URL: `https://product-review-app-solarityai-a391ad53d79a.herokuapp.com`
 
-- `GET /api/products?page=0&size=10`
+### Base URL
+```
+https://product-review-app-solarityai-a391ad53d79a.herokuapp.com
+```
+
+### Products
+- `GET /api/products`
+- `GET /api/products/stats`
 - `GET /api/products/{id}`
+
+### Reviews
 - `GET /api/products/{id}/reviews`
 - `POST /api/products/{id}/reviews`
+- `PUT /api/products/reviews/{id}/helpful`
+- `GET /api/products/reviews/voted`
+
+### AI
+- `POST /api/products/{id}/chat`
+
+### Wishlist
+- `GET /api/user/wishlist`
+- `POST /api/user/wishlist/{productId}`
+- `GET /api/user/wishlist/products`
+
+### Notifications
+- `GET /api/user/notifications`
+- `GET /api/user/notifications/unread-count`
+- `PUT /api/user/notifications/{id}/read`
+- `PUT /api/user/notifications/read-all`
+- `POST /api/user/notifications`
+- `DELETE /api/user/notifications/{id}`
+- `DELETE /api/user/notifications`
+
+---
+
+## ✅ Final Notes
+
+- This document represents the **iOS-native contract**
+- Other platforms must align with the feature scope defined here
+- UI visuals may vary, **behavior must not**
