@@ -26,7 +26,24 @@ cd backend
 *   **API Base URL:** `http://localhost:8080`
 *   **H2 Console:** `http://localhost:8080/h2-console` (User: `sa`, Password: [empty])
 
-### 3. Frontend Setup (React Native / Expo)
+### 3. Frontend Setup (Mobile)
+
+#### Android
+- Kotlin
+- Jetpack Compose
+- MVVM + StateFlow
+- Material 3
+
+See: `README-Android-Kotlin-FINAL.md`
+
+#### iOS
+- Swift
+- SwiftUI
+- MVVM + async/await
+- Apple Human Interface Guidelines
+
+See: `README-iOS-Swift-FINAL.md`
+
 ```bash
 cd mobile
 npm install
@@ -48,14 +65,14 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 *   **Data Layer:** Spring Data JPA with optimized SQL queries for filtering and aggregation.
 *   **Security:** (Planned) JWT-based authentication and RBAC.
 
-### Frontend (React Native & Web)
+### Frontend (Mobile)
 *   **State Management:** React Context API for Wishlist, Search, and Notifications.
 *   **Responsive Design:** Adaptive layouts for Mobile (Android/iOS) and Web (Vercel).
 *   **Networking:** Centralized API service with race-condition protection and abort controllers.
 
 ---
 
-## 🧩 Key Features & Recent Improvements
+## 🧩 Key Features
 
 ### 🛒 Advanced Product Management
 *   **Server-Side Pagination:** Efficiently handles large datasets for both main product list and user wishlist.
