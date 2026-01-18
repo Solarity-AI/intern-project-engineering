@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   Platform,
+  Vibration,
 } from 'react-native';
 
 import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
@@ -174,10 +175,14 @@ export const ProductListScreen = () => {
   };
 
   const handleCardLongPress = (product: ApiProduct) => {
-    if (Platform.OS === 'android') return; // Disable long-press selection on Android
-
     const id = String((product as any)?.id ?? '');
     if (!id) return;
+    
+    // ✨ Haptic feedback for Android when entering selection mode
+    if (Platform.OS === 'android') {
+      Vibration.vibrate(50);
+    }
+    
     setIsSelectionMode(true);
     setSelectedItems(prev => new Set(prev).add(id));
   };
