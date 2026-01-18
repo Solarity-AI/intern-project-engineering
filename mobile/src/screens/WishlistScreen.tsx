@@ -437,18 +437,21 @@ export const WishlistScreen = () => {
           {/* Floating bottom bar for selection mode */}
           {isSelectionMode && selectedItems.size > 0 && (
             <View style={[styles.floatingBar, { backgroundColor: colors.card }]}>
-              <TouchableOpacity
-                style={[styles.floatingButton, { backgroundColor: colors.destructive }]}
-                onPress={handleRemoveSelected}
-                activeOpacity={0.9}
-              >
-                <Ionicons name="trash" size={18} color="#fff" />
-                <Text style={[styles.floatingButtonText, { color: '#fff' }]}>
-                  Remove ({selectedItems.size})
-                </Text>
-              </TouchableOpacity>
+              <View style={isWeb ? styles.floatingBarInnerWeb : undefined}>
+                <TouchableOpacity
+                  style={[styles.floatingButton, { backgroundColor: colors.destructive }]}
+                  onPress={handleRemoveSelected}
+                  activeOpacity={0.9}
+                >
+                  <Ionicons name="trash" size={18} color="#fff" />
+                  <Text style={[styles.floatingButtonText, { color: '#fff' }]}>
+                    Remove ({selectedItems.size})
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
+
         </View>
       </TouchableWithoutFeedback>
     </ScreenWrapper>
@@ -641,4 +644,11 @@ const styles = StyleSheet.create({
     fontSize: FontSize.base,
     fontWeight: FontWeight.semibold,
   },
+  floatingBarInnerWeb: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.lg,
+  },
+
 });
