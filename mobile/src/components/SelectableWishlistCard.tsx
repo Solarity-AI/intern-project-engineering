@@ -37,7 +37,7 @@ function SelectableWishlistCardComponent({
   numColumns,
 }: SelectableWishlistCardProps) {
 
-  const { colors } = useTheme();
+  const { colors, colorScheme } = useTheme();
   const [imageError, setImageError] = React.useState(false);
   const [imageKey, setImageKey] = React.useState(0);
 
@@ -78,6 +78,11 @@ function SelectableWishlistCardComponent({
     inputRange: [-1.2, 1.2],
     outputRange: ['-1.2deg', '1.2deg'],
   });
+
+  // ✨ Quick delete button styling - theme-aware
+  const deleteButtonBg = colorScheme === 'dark'
+    ? 'rgba(28, 25, 23, 0.9)'
+    : 'rgba(255, 255, 255, 0.9)';
 
   return (
     <View style={{ zIndex: isSelectionMode ? (isSelected ? 2 : 1) : 1 }}>
@@ -132,6 +137,27 @@ function SelectableWishlistCardComponent({
               </View>
             )}
 
+            {/* ✨ Quick Delete Button (×) - Top Right Corner */}
+            {!isSelectionMode && (
+              <TouchableOpacity
+                style={[
+                  styles.quickDeleteButton,
+                  { backgroundColor: deleteButtonBg },
+                  numColumns !== undefined && numColumns >= 3 && styles.quickDeleteButtonCompact,
+                ]}
+                onPress={() => onRemove(item.id)}
+                activeOpacity={0.8}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons 
+                  name="close" 
+                  size={numColumns !== undefined && numColumns >= 3 ? 14 : 18} 
+                  color={colors.foreground} 
+                />
+              </TouchableOpacity>
+            )}
+
+            {/* Selection indicator (shown in selection mode) */}
             {isSelectionMode && (
               <View
                 style={[
@@ -148,6 +174,7 @@ function SelectableWishlistCardComponent({
           </View>
 
           <View style={styles.content}>
+            {/* Category badge row */}
             <View style={styles.compactTopRow}>
               {item.category && (
                 <View style={[styles.categoryBadgeCompact, { backgroundColor: colors.secondary + '88' }, numColumns !== undefined && numColumns >= 2 && { marginLeft: -Spacing.xs }]}>
@@ -156,19 +183,13 @@ function SelectableWishlistCardComponent({
                   </Text>
                 </View>
               )}
-              {!isSelectionMode && (
-                <TouchableOpacity
-                  onPress={() => onRemove(item.id)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  style={numColumns !== undefined && numColumns >= 2 ? { marginRight: -Spacing.xs } : undefined}
-                >
-                  <Ionicons 
-                    name="heart" 
-                    size={numColumns >= 3 ? 16 : 20} 
-                    color={colors.primary} 
-                  />
-                </TouchableOpacity>
-              )}
+              {/* ✨ Heart icon for visual indication (not clickable anymore - use × button instead) */}
+              <Ionicons 
+                name="heart" 
+                size={numColumns !== undefined && numColumns >= 3 ? 14 : 16} 
+                color={colors.primary} 
+                style={numColumns !== undefined && numColumns >= 2 ? { marginRight: -Spacing.xs } : undefined}
+              />
             </View>
 
             <Text numberOfLines={2} style={[styles.name, { color: colors.foreground }]}>
@@ -177,13 +198,13 @@ function SelectableWishlistCardComponent({
 
             {item.averageRating !== undefined && (
               <View style={styles.ratingRow}>
-                <StarRating rating={item.averageRating} size="sm" compact={numColumns >= 3} />
+                <StarRating rating={item.averageRating} size="sm" compact={numColumns !== undefined && numColumns >= 3} />
                 <Text
                   numberOfLines={1}
                   style={[
                     styles.reviewCount,
                     { color: colors.mutedForeground },
-                    numColumns >= 3 && styles.reviewCountCompact,
+                    numColumns !== undefined && numColumns >= 3 && styles.reviewCountCompact,
                   ]}
                 >
                   ({(item as any).reviewCount ?? 0})
@@ -194,12 +215,6 @@ function SelectableWishlistCardComponent({
             {item.price !== undefined && (
               <Text style={[styles.price, { color: colors.primary }]}>
                 ${item.price.toFixed(2)}
-              </Text>
-            )}
-
-            {item.category && numColumns < 3 && false && (
-              <Text style={[styles.category, { color: colors.mutedForeground }]}>
-                {item.category}
               </Text>
             )}
           </View>
@@ -253,26 +268,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  removeButton: {
+  // ✨ Quick Delete Button (×) - positioned at top-right of image
+  quickDeleteButton: {
     position: 'absolute',
-    top: Spacing.xs,
-    right: Spacing.xs,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    top: Spacing.sm,
+    right: Spacing.sm,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
     ...Shadow.soft,
   },
+  quickDeleteButtonCompact: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    top: Spacing.xs,
+    right: Spacing.xs,
+  },
 
   selectionIndicator: {
     position: 'absolute',
-    top: Spacing.xs,
-    right: Spacing.xs,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    top: Spacing.sm,
+    right: Spacing.sm,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -290,7 +313,7 @@ const styles = StyleSheet.create({
   categoryBadgeCompact: {
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: BorderRadius.xs,
+    borderRadius: BorderRadius.sm,
     maxWidth: '80%',
   },
   categoryTextCompact: {
