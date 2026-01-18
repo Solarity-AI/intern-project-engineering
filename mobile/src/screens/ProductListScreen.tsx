@@ -87,6 +87,9 @@ export const ProductListScreen = () => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
+  const [selectionTick, setSelectionTick] = useState(0);
+  const bumpSelectionTick = useCallback(() => setSelectionTick(t => t + 1), []);
+
   const [apiProducts, setApiProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -147,6 +150,7 @@ export const ProductListScreen = () => {
   const handleCancelSelection = () => {
     setIsSelectionMode(false);
     setSelectedItems(new Set());
+    bumpSelectionTick();
   };
 
   const handleAddSelectedToWishlist = () => {
@@ -154,7 +158,7 @@ export const ProductListScreen = () => {
       const id = String((p as any)?.id ?? '');
       return selectedItems.has(id) && !isInWishlist(id);
     });
-    
+
     if (selectedProducts.length === 0) {
       handleCancelSelection();
       return;
@@ -177,14 +181,15 @@ export const ProductListScreen = () => {
   const handleCardLongPress = (product: ApiProduct) => {
     const id = String((product as any)?.id ?? '');
     if (!id) return;
-    
+
     // ✨ Haptic feedback for Android when entering selection mode
     if (Platform.OS === 'android') {
       Vibration.vibrate(50);
     }
-    
+
     setIsSelectionMode(true);
     setSelectedItems(prev => new Set(prev).add(id));
+    bumpSelectionTick();
   };
 
   const handleCardPress = (product: ApiProduct) => {
@@ -199,6 +204,7 @@ export const ProductListScreen = () => {
         if (next.size === 0) setIsSelectionMode(false);
         return next;
       });
+      bumpSelectionTick();
       return;
     }
 
@@ -222,7 +228,7 @@ export const ProductListScreen = () => {
 
       // Create new abort controller
       abortControllerRef.current = new AbortController();
-      
+
       // Increment fetch ID to track this specific request
       fetchIdRef.current += 1;
       const currentFetchId = fetchIdRef.current;
@@ -298,7 +304,7 @@ export const ProductListScreen = () => {
       console.log('Review added event received:', event);
       // Refresh the list silently (or with loading if preferred)
       fetchProducts(0, false);
-      
+
       // Also refresh stats
       getGlobalStats({
         category: selectedCategory === 'All' ? undefined : selectedCategory,
@@ -338,7 +344,7 @@ export const ProductListScreen = () => {
     // Fallback: Calculate from loaded products (only used before backend responds)
     const productCount = totalElements;
     const totalReviews = apiProducts.reduce((sum, p) => sum + ((p as any)?.reviewCount || 0), 0);
-    const avgRating = apiProducts.length > 0 
+    const avgRating = apiProducts.length > 0
       ? apiProducts.reduce((sum, p) => sum + ((p as any)?.averageRating || 0), 0) / apiProducts.length
       : 0;
     return { productCount, totalReviews, avgRating };
@@ -356,7 +362,7 @@ export const ProductListScreen = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       console.log('Setting debounced search query:', searchQuery);
-      
+
       if (searchQuery.trim().length === 0 && submittedSearchQuery.length > 0) {
         // ✨ Auto-reset when search is cleared
         handleReset();
@@ -364,11 +370,11 @@ export const ProductListScreen = () => {
         // Optional: Auto-search while typing (if desired)
         // setSubmittedSearchQuery(searchQuery);
       }
-      
+
       if (Platform.OS === 'web') {
-        navigation.setParams({ 
-            category: selectedCategory, 
-            search: searchQuery 
+        navigation.setParams({
+          category: selectedCategory,
+          search: searchQuery
         } as any);
       }
     }, 1000); // 1 second delay
@@ -574,7 +580,7 @@ export const ProductListScreen = () => {
       </View>
     </>
   ), [
-    isWeb, containerMaxWidth, webBp, colors, colorScheme, 
+    isWeb, containerMaxWidth, webBp, colors, colorScheme,
     handleReset, toggleTheme, toggleGridMode, gridMode,
     headerIconSize, headerIconSizeBig, wishlistCount, unreadCount,
     stats, searchQuery, setSearchQuery, handleSearchSubmit,
@@ -607,7 +613,7 @@ export const ProductListScreen = () => {
 
           <FlatList
             data={loading || error ? [] : filteredProducts}
-            extraData={[selectedItems, isSelectionMode]}
+            extraData={selectionTick}
             key={numColumns}
             numColumns={numColumns}
             columnWrapperStyle={
@@ -667,7 +673,15 @@ export const ProductListScreen = () => {
             renderItem={({ item, index }) => {
               const isGrid = numColumns > 1;
               const gapSize = Platform.OS === 'android' ? Spacing.md : Spacing.lg;
-              
+
+              const id = String((item as any)?.id ?? '');
+              const selected = selectedItems.has(id);
+
+              const forceKey =
+                Platform.OS === 'android'
+                  ? `${id}-${isSelectionMode ? 1 : 0}-${selected ? 1 : 0}-${selectionTick}`
+                  : id;
+
               return (
                 <View
                   style={[
@@ -687,16 +701,18 @@ export const ProductListScreen = () => {
                   collapsable={false}
                 >
                   <SelectableProductCard
+                    key={forceKey}
                     product={item}
                     numColumns={numColumns}
                     isSelectionMode={isSelectionMode}
-                    isSelected={selectedItems.has(String((item as any)?.id ?? ''))}
+                    isSelected={selected}
                     onPress={handleCardPress}
                     onLongPress={handleCardLongPress}
                   />
                 </View>
               );
             }}
+
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
@@ -726,7 +742,7 @@ export const ProductListScreen = () => {
             <View style={[styles.floatingBar, { backgroundColor: colors.card }]}>
               <TouchableOpacity
                 style={[
-                  styles.floatingButton, 
+                  styles.floatingButton,
                   { backgroundColor: newToWishlistCount > 0 ? colors.primary : colors.muted }
                 ]}
                 onPress={handleAddSelectedToWishlist}
@@ -735,7 +751,7 @@ export const ProductListScreen = () => {
               >
                 <Ionicons name="heart" size={18} color="#fff" />
                 <Text style={[styles.floatingButtonText, { color: '#fff' }]}>
-                  {newToWishlistCount > 0 
+                  {newToWishlistCount > 0
                     ? `Add to Wishlist (${newToWishlistCount})`
                     : 'Already in Wishlist'
                   }
@@ -1007,7 +1023,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-start',
   },
-  
+
   // ✅ Offline state (minimal - banner handles the main message)
   offlineContainer: {
     alignItems: 'center',
@@ -1020,7 +1036,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     textAlign: 'center',
   },
-  
+
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
