@@ -133,5 +133,18 @@ Future interns are expected to:
 
 ---
 
+## 📦 Deliverables
+
+The final submission must include the following items:
+
+1. **System Architecture:** An [Excalidraw link] explaining the overall system design.
+2. **Frontend Code Walkthrough:** A 3–5 minute demo video [Google Drive Link] explaining the frontend codebase.
+3. **Backend Code Walkthrough:** A 3–5 minute demo video [Google Drive Link] explaining the backend architecture.
+4. **Application Demo:** A 3–5 minute video [Google Drive Link] showcasing all features on an emulator or real device.
+5. **Build Artifacts:** A [Google Drive Link] to download the generated APK (Android) or IPA (iOS).
+6. **Web Access:** A public web application link (e.g., Vercel) for testing in a browser.
+7. **Future Improvements:** A section describing potential enhancements (see Roadmap below).
+8. **Final Presentation:** A slide deck summarizing the project and learnings.
+
 **Maintained by:** @MehmetBegun & Engineering Team
 **Last Updated:** January 2026
