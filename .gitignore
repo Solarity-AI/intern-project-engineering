@@ -1,0 +1,57 @@
+# ===== Gradle =====
+.gradle/
+build/
+*/build/
+
+# ===== Android Studio / IntelliJ =====
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# ===== Local configuration =====
+local.properties
+
+# ===== OS files =====
+.DS_Store
+Thumbs.db
+
+# ===== Logs =====
+*.log
+
+# ===== APK / AAB outputs =====
+*.apk
+*.aab
+
+# ===== Keystore (VERY IMPORTANT) =====
+*.jks
+*.keystore
+
+# ===== CMake =====
+.cxx/
+
+# ===== Lint / Test outputs =====
+lint-results*.xml
+lint-results*.html
+test-results/
+reports/
+
+# ===== Kotlin / Java =====
+out/
+
+# ===== Firebase =====
+google-services.json
+
+# ===== React Native / Expo (if applicable) =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# ===== Environment variables =====
+.env
+.env.*
