@@ -1,0 +1,18 @@
+# Maven
+target/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+
+# Environment / Secrets
+.env
+application-local.yml
+application-local.properties
+
+# Logs
+*.log
