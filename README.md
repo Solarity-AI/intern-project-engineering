@@ -111,17 +111,40 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 ## 🌐 Deployment
 
 ### Production Environment
-*   **Backend:** Hosted on **Heroku** (Eco/Basic Dynos).
-*   **Web Frontend:** Hosted on **Vercel** - [Live Production URL]
+*   **Backend:** Hosted on **Render.com (Free Tier)** - [Backend Deployment Guide](./BACKEND_DEPLOYMENT_GUIDE.md)
+*   **Web Frontend:** Hosted on **Vercel (Free Tier)** - [Frontend Deployment Guide](./VERCEL_DEPLOYMENT_GUIDE.md)
 *   **Mobile App:** Distributed via **EAS Build (APK)** with **OTA Updates** support.
+
+### Why Render.com + Vercel?
+**Render.com** (Backend):
+- ✅ Completely free (750 hours/month)
+- ✅ Automatic HTTPS
+- ✅ GitHub integration
+- ✅ Health check support
+- ⚠️ Cold start (~30-60s for first request)
+
+**Vercel** (Frontend):
+- ✅ Completely free
+- ✅ Global CDN
+- ✅ Automatic deployments
+- ✅ Edge functions
+- ✅ Zero configuration
 
 ### Deployment Workflow
 The project includes automated CI/CD integration:
 - Push to `main` branch triggers automatic Vercel production deployment
+- Backend updates deploy automatically via Render.com GitHub integration
 - Pull requests create preview deployments for testing
-- See `mobile/DEPLOYMENT.md` for detailed deployment instructions
+- See deployment guides for detailed instructions
 
-### Quick Deploy to Vercel
+### Quick Deploy Commands
+**Backend (Render.com):**
+```bash
+# Already configured with render.yaml
+# Just connect your GitHub repo on render.com dashboard
+```
+
+**Frontend (Vercel):**
 ```bash
 cd mobile
 npm install -g vercel  # Install Vercel CLI

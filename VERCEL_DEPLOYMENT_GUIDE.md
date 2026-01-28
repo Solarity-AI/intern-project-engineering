@@ -1,22 +1,109 @@
-# 🚀 Vercel Deployment - Step-by-Step Guide
+# 🚀 Full-Stack Deployment Guide
 
-## Overview
-This document provides the exact steps to deploy the Product Review App to Vercel production.
+## Genel Bakış
+Bu kılavuz, Product Review App'in hem backend'ini hem de frontend'ini ücretsiz cloud platformlara deploy etmek için gereken adımları açıklar.
 
-**Deadline:** 2026-01-28 24:00
-**Owner:** @MehmetBegun
-**Status:** Ready for deployment
+**Deadline:** 2026-01-28 24:00  
+**Owner:** @MehmetBegun  
+**Status:** Deployment için hazır  
 
 ---
 
-## ✅ Pre-Deployment Checklist
+## 📦 Deployment Yapısı
 
-- [x] Build scripts added to package.json
-- [x] Production build tested locally (successful)
-- [x] Color palette updated with professional, WCAG AA compliant colors
-- [x] Vercel configuration file created
-- [x] GitHub Actions CI/CD workflow configured
-- [ ] **Deploy to Vercel** ⬅️ NEXT STEP
+### Backend → Render.com (Ücretsiz)
+- **Platform:** Render.com
+- **Runtime:** Java 17
+- **Database:** H2 (in-memory)
+- **URL:** `https://product-review-backend.onrender.com`
+
+### Frontend → Vercel (Ücretsiz)
+- **Platform:** Vercel
+- **Runtime:** Node.js 20
+- **Framework:** Expo Web (React Native)
+- **URL:** `https://product-review-app.vercel.app`
+
+---
+
+## 🎯 Deployment Sırası
+
+**ÖNEMLİ:** Backend'i önce deploy et, sonra frontend!
+
+1. ✅ Backend'i Render.com'a deploy et
+2. ✅ Backend URL'ini frontend koduna ekle
+3. ✅ Frontend'i Vercel'e deploy et
+4. ✅ Test et
+
+---
+
+## 🔧 ADIM 1: Backend Deployment (Render.com)
+
+### Detaylı Kılavuz
+👉 **[BACKEND_DEPLOYMENT_GUIDE.md](./BACKEND_DEPLOYMENT_GUIDE.md)** dosyasına bakın
+
+### Hızlı Adımlar
+
+1. **Render.com'a kaydol:** [render.com](https://render.com)
+2. **New Web Service** oluştur
+3. **Yapılandır:**
+   ```
+   Name: product-review-backend
+   Root Directory: backend
+   Build Command: ./mvnw clean package -DskipTests
+   Start Command: java -Dserver.port=$PORT -jar target/*.jar
+   ```
+4. **Environment Variables:**
+   ```
+   JAVA_VERSION = 17
+   OPENAI_API_KEY = <your-key> (opsiyonel)
+   ```
+5. **Deploy** et ve URL'i kopyala
+
+### Backend Test
+```bash
+curl https://YOUR-BACKEND-URL.onrender.com/actuator/health
+```
+
+---
+
+## 🔧 ADIM 2: Frontend API URL Güncelleme
+
+Backend deploy edildikten sonra, frontend'deki API URL'ini güncelle:
+
+```typescript
+// mobile/src/services/api.ts
+const BASE_URL = "https://YOUR-BACKEND-URL.onrender.com";
+```
+
+Commit et:
+```bash
+git add mobile/src/services/api.ts
+git commit -m "chore: update backend URL to Render.com"
+git push origin main
+```
+
+---
+
+## 🔧 ADIM 3: Frontend Deployment (Vercel)
+
+---
+
+## ✅ Ön-Deployment Kontrol Listesi
+
+**Backend:**
+- [x] Render.com yapılandırması hazır
+- [x] Spring Boot Actuator eklendi
+- [x] Health check endpoint aktif
+- [ ] **Backend'i Render.com'a deploy et** ⬅️ ÖNCELİK 1
+
+**Frontend:**
+- [x] Build scriptleri eklendi
+- [x] Production build test edildi
+- [x] Renk paleti güncellendi
+- [x] Vercel yapılandırması oluşturuldu
+- [x] GitHub Actions CI/CD hazır
+- [ ] **Backend URL'ini güncelle** ⬅️ ÖNCELİK 2
+- [ ] **Frontend'i Vercel'e deploy et** ⬅️ ÖNCELİK 3
 
 ---
 

@@ -1,0 +1,20 @@
+# Render.com deployment configuration
+# https://render.com/docs/yaml-spec
+
+services:
+  # Spring Boot Backend Service
+  - type: web
+    name: product-review-backend
+    runtime: java
+    env: java
+    buildCommand: ./mvnw clean package -DskipTests
+    startCommand: java -Dserver.port=$PORT -jar target/*.jar
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: JAVA_VERSION
+        value: 17
+      - key: OPENAI_API_KEY
+        sync: false  # Set this in Render dashboard
+    healthCheckPath: /actuator/health
+    autoDeploy: true
