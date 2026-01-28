@@ -2,6 +2,7 @@ services:
   - type: web
     name: product-review-backend
     env: java
+    rootDir: backend
     buildCommand: ./mvnw clean package -DskipTests
     startCommand: java -Dserver.port=$PORT -jar target/*.jar
     envVars:
