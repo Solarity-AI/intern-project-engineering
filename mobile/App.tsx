@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+import { Analytics } from '@vercel/analytics/react';
 
 import { ProductListScreen } from './src/screens/ProductListScreen';
 import { ProductDetailsScreen } from './src/screens/ProductDetailsScreen';
@@ -126,6 +127,8 @@ export default function App() {
                   <AppNavigator />
                   {/* ✨ Vercel Speed Insights - web only */}
                   {Platform.OS === 'web' && <SpeedInsights />}
+                  {/* ✨ Vercel Analytics - web only */}
+                  {Platform.OS === 'web' && <Analytics />}
                 </ToastProvider>
               </SearchProvider>
             </WishlistProvider>
