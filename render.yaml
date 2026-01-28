@@ -1,14 +1,13 @@
 services:
   - type: web
     name: product-review-backend
-    env: java
-    rootDir: backend
-    buildCommand: ./mvnw clean package -DskipTests
-    startCommand: java -Dserver.port=$PORT -jar target/*.jar
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
     envVars:
+      - key: PORT
+        value: 10000
       - key: JAVA_VERSION
         value: 17
       - key: OPENAI_API_KEY
         sync: false
     healthCheckPath: /actuator/health
-    autoDeploy: true
