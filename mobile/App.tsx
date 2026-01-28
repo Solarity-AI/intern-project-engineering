@@ -1,10 +1,11 @@
 // React Native App Entry Point with SafeAreaProvider, Notifications, Toast, Wishlist, Theme, Network, and Linking
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 import { ProductListScreen } from './src/screens/ProductListScreen';
 import { ProductDetailsScreen } from './src/screens/ProductDetailsScreen';
@@ -123,6 +124,8 @@ export default function App() {
               <SearchProvider> 
                 <ToastProvider>
                   <AppNavigator />
+                  {/* ✨ Vercel Speed Insights - web only */}
+                  {Platform.OS === 'web' && <SpeedInsights />}
                 </ToastProvider>
               </SearchProvider>
             </WishlistProvider>
