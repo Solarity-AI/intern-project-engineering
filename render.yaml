@@ -1,8 +1,6 @@
-# yaml
 services:
   - type: web
     name: product-review-backend
-    runtime: docker
     env: java
     buildCommand: ./mvnw clean package -DskipTests
     startCommand: java -Dserver.port=$PORT -jar target/*.jar

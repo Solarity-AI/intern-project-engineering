@@ -111,8 +111,6 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 ## 🌐 Deployment
 
 ### Production Environment
-*   **Backend:** Hosted on **Render.com (Free Tier)** - [Backend Deployment Guide](./BACKEND_DEPLOYMENT_GUIDE.md)
-*   **Web Frontend:** Hosted on **Vercel (Free Tier)** - [Frontend Deployment Guide](./VERCEL_DEPLOYMENT_GUIDE.md)
 *   **Mobile App:** Distributed via **EAS Build (APK)** with **OTA Updates** support.
 
 ### Why Render.com + Vercel?
