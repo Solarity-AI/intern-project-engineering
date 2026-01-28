@@ -110,9 +110,39 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 
 ## 🌐 Deployment
 
+### Production Environment
 *   **Backend:** Hosted on **Heroku** (Eco/Basic Dynos).
-*   **Web Frontend:** Hosted on **Vercel** (SPA Routing enabled).
+*   **Web Frontend:** Hosted on **Vercel** - [Live Production URL]
 *   **Mobile App:** Distributed via **EAS Build (APK)** with **OTA Updates** support.
+
+### Deployment Workflow
+The project includes automated CI/CD integration:
+- Push to `main` branch triggers automatic Vercel production deployment
+- Pull requests create preview deployments for testing
+- See `mobile/DEPLOYMENT.md` for detailed deployment instructions
+
+### Quick Deploy to Vercel
+```bash
+cd mobile
+npm install -g vercel  # Install Vercel CLI
+vercel login           # Login to Vercel
+vercel --prod          # Deploy to production
+```
+
+### Color Palette (Updated 2026-01)
+The application features a professional, modern color system with WCAG AA compliance:
+
+**Light Mode:**
+- Primary: `#0066FF` (Vibrant Blue - trustworthy, modern)
+- Background: `#FAFAFA` (Soft neutral for reduced eye strain)
+- Accent: `#4F46E5` (Professional Indigo)
+
+**Dark Mode:**
+- Primary: `#3B82F6` (Softer blue for dark mode)
+- Background: `#0A0A0A` (OLED optimized)
+- Accent: `#C7D2FE` (High contrast indigo)
+
+All colors maintain optimal contrast ratios for accessibility standards.
 
 ---
 

@@ -50,7 +50,7 @@ function AppNavigator() {
 
   // ✨ Show loading screen until theme is loaded - prevents white flash
   if (!isThemeLoaded) {
-    const bgColor = colorScheme === 'dark' ? '#0C0A09' : '#FDFBF8';
+    const bgColor = colorScheme === 'dark' ? '#0A0A0A' : '#FAFAFA';
     return <LoadingScreen backgroundColor={bgColor} />;
   }
 
