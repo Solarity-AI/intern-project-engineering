@@ -1,8 +1,11 @@
 package com.productreview.app.data.repository
 
-import fw.core.FWError
-import fw.core.FWResult
-import fw.logging.*
+import com.productreview.app.core.FWError
+import com.productreview.app.core.FWResult
+import com.productreview.app.core.logging.LogCategory
+import com.productreview.app.core.logging.LogEvent
+import com.productreview.app.core.logging.LogLevel
+import com.productreview.app.core.logging.Logger
 import com.productreview.app.data.model.ApiNotification
 import com.productreview.app.data.model.NotificationCreateRequest
 import com.productreview.app.data.remote.ProductReviewApi
@@ -27,60 +30,70 @@ class NotificationRepository @Inject constructor(
 ) {
     private val _notifications = MutableStateFlow<List<Notification>>(emptyList())
     val notifications: StateFlow<List<Notification>> = _notifications.asStateFlow()
-    
+
     private val _unreadCount = MutableStateFlow(0)
     val unreadCount: StateFlow<Int> = _unreadCount.asStateFlow()
-    
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-    
+
     suspend fun loadNotifications(): FWResult<Unit> {
         _isLoading.value = true
-        logger.log(LogEvent.debug(LogCategory.DATA, "load_notifications").build())
-        
+        logger.log(LogEvent(
+            category = LogCategory.DATA,
+            name = "load_notifications",
+            level = LogLevel.DEBUG
+        ))
+
         return safeApiCall {
             val apiNotifications = api.getNotifications()
             _notifications.value = apiNotifications.map { it.toDomain() }
             _unreadCount.value = _notifications.value.count { !it.isRead }
-            logger.log(
-                LogEvent.info(LogCategory.DATA, "notifications_loaded")
-                    .metadata(LogKey.TOTAL_ITEMS, apiNotifications.size)
-                    .build()
-            )
+            logger.log(LogEvent(
+                category = LogCategory.DATA,
+                name = "notifications_loaded",
+                level = LogLevel.INFO,
+                metadata = mapOf("totalItems" to apiNotifications.size.toString())
+            ))
         }.also { _isLoading.value = false }
     }
-    
+
     suspend fun refreshUnreadCount(): FWResult<Unit> {
         return safeApiCall {
             val response = api.getUnreadCount()
             _unreadCount.value = response.count
         }
     }
-    
+
     suspend fun markAsRead(notificationId: String): FWResult<Unit> {
         _notifications.value = _notifications.value.map {
             if (it.id == notificationId) it.copy(isRead = true) else it
         }
         _unreadCount.value = _notifications.value.count { !it.isRead }
-        
-        logger.log(
-            LogEvent.info(LogCategory.DATA, "notification_read")
-                .message("Marking notification as read: $notificationId")
-                .build()
-        )
-        
+
+        logger.log(LogEvent(
+            category = LogCategory.DATA,
+            name = "notification_read",
+            level = LogLevel.INFO,
+            metadata = mapOf("notificationId" to notificationId)
+        ))
+
         return safeApiCall { api.markNotificationAsRead(notificationId.toLong()) }
     }
-    
+
     suspend fun markAllAsRead(): FWResult<Unit> {
         _notifications.value = _notifications.value.map { it.copy(isRead = true) }
         _unreadCount.value = 0
-        
-        logger.log(LogEvent.info(LogCategory.DATA, "notifications_all_read").build())
-        
+
+        logger.log(LogEvent(
+            category = LogCategory.DATA,
+            name = "notifications_all_read",
+            level = LogLevel.INFO
+        ))
+
         return safeApiCall { api.markAllNotificationsAsRead() }
     }
-    
+
     suspend fun addNotification(
         type: NotificationType,
         title: String,
@@ -100,13 +113,14 @@ class NotificationRepository @Inject constructor(
         )
         _notifications.value = listOf(tempNotification) + _notifications.value
         _unreadCount.value = _unreadCount.value + 1
-        
-        logger.log(
-            LogEvent.info(LogCategory.DATA, "notification_added")
-                .message("Added local notification: $title")
-                .build()
-        )
-        
+
+        logger.log(LogEvent(
+            category = LogCategory.DATA,
+            name = "notification_added",
+            level = LogLevel.INFO,
+            metadata = mapOf("title" to title)
+        ))
+
         return safeApiCall {
             api.createNotification(
                 NotificationCreateRequest(
@@ -118,39 +132,44 @@ class NotificationRepository @Inject constructor(
             loadNotifications()
         }
     }
-    
+
     suspend fun deleteNotification(notificationId: String): FWResult<Unit> {
         val wasUnread = _notifications.value.find { it.id == notificationId }?.isRead == false
-        
+
         _notifications.value = _notifications.value.filter { it.id != notificationId }
         if (wasUnread) {
             _unreadCount.value = maxOf(0, _unreadCount.value - 1)
         }
-        
-        logger.log(
-            LogEvent.info(LogCategory.DATA, "notification_deleted")
-                .message("Deleting notification: $notificationId")
-                .build()
-        )
-        
+
+        logger.log(LogEvent(
+            category = LogCategory.DATA,
+            name = "notification_deleted",
+            level = LogLevel.INFO,
+            metadata = mapOf("notificationId" to notificationId)
+        ))
+
         if (notificationId.startsWith("local-")) return FWResult.success(Unit)
-        
+
         return safeApiCall { api.deleteNotification(notificationId.toLong()) }
     }
-    
+
     suspend fun deleteAllNotifications(): FWResult<Unit> {
         _notifications.value = emptyList()
         _unreadCount.value = 0
-        
-        logger.log(LogEvent.info(LogCategory.DATA, "notifications_all_deleted").build())
-        
+
+        logger.log(LogEvent(
+            category = LogCategory.DATA,
+            name = "notifications_all_deleted",
+            level = LogLevel.INFO
+        ))
+
         return safeApiCall { api.deleteAllNotifications() }
     }
-    
+
     fun getNotificationById(id: String): Notification? {
         return _notifications.value.find { it.id == id }
     }
-    
+
     private suspend inline fun <T> safeApiCall(crossinline block: suspend () -> T): FWResult<T> {
         return try {
             FWResult.success(block())

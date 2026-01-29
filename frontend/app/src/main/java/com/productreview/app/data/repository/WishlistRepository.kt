@@ -1,10 +1,13 @@
 package com.productreview.app.data.repository
 
-import fw.core.FWError
-import fw.core.FWResult
-import fw.logging.*
-import fw.pagination.Page
-import fw.pagination.PageCursor
+import com.productreview.app.core.FWError
+import com.productreview.app.core.FWResult
+import com.productreview.app.core.pagination.Page
+import com.productreview.app.core.pagination.PageCursor
+import com.productreview.app.core.logging.LogCategory
+import com.productreview.app.core.logging.LogEvent
+import com.productreview.app.core.logging.LogLevel
+import com.productreview.app.core.logging.Logger
 import com.productreview.app.data.model.ApiProduct
 import com.productreview.app.data.remote.ProductReviewApi
 import com.productreview.app.domain.model.WishlistItem
@@ -26,28 +29,33 @@ class WishlistRepository @Inject constructor(
 ) {
     private val _wishlistIds = MutableStateFlow<Set<String>>(emptySet())
     val wishlistIds: StateFlow<Set<String>> = _wishlistIds.asStateFlow()
-    
+
     private val _wishlistItems = MutableStateFlow<List<WishlistItem>>(emptyList())
     val wishlistItems: StateFlow<List<WishlistItem>> = _wishlistItems.asStateFlow()
-    
+
     val wishlistCount: Int get() = _wishlistIds.value.size
-    
+
     fun isInWishlist(productId: String): Boolean = _wishlistIds.value.contains(productId)
-    
+
     suspend fun loadWishlist(): FWResult<Unit> {
-        logger.log(LogEvent.debug(LogCategory.DATA, "load_wishlist").build())
-        
+        logger.log(LogEvent(
+            category = LogCategory.DATA,
+            name = "load_wishlist",
+            level = LogLevel.DEBUG
+        ))
+
         return safeApiCall {
             val ids = api.getWishlist()
             _wishlistIds.value = ids.map { it.toString() }.toSet()
-            logger.log(
-                LogEvent.info(LogCategory.DATA, "wishlist_loaded")
-                    .metadata(LogKey.TOTAL_ITEMS, ids.size)
-                    .build()
-            )
+            logger.log(LogEvent(
+                category = LogCategory.DATA,
+                name = "wishlist_loaded",
+                level = LogLevel.INFO,
+                metadata = mapOf("totalItems" to ids.size.toString())
+            ))
         }
     }
-    
+
     suspend fun getWishlistProducts(
         page: Int = 0,
         size: Int = 10,
@@ -58,7 +66,7 @@ class WishlistRepository @Inject constructor(
             response.toPage()
         }
     }
-    
+
     suspend fun getWishlistProductsPage(
         cursor: PageCursor?,
         size: Int = 10
@@ -66,11 +74,11 @@ class WishlistRepository @Inject constructor(
         val page = cursor?.toPageNumber() ?: 0
         return getWishlistProducts(page, size)
     }
-    
+
     suspend fun toggleWishlist(product: ApiProduct): FWResult<Unit> {
         val productId = product.id.toString()
         val wasInWishlist = _wishlistIds.value.contains(productId)
-        
+
         // Optimistic update
         if (wasInWishlist) {
             _wishlistIds.value = _wishlistIds.value - productId
@@ -79,16 +87,19 @@ class WishlistRepository @Inject constructor(
             _wishlistIds.value = _wishlistIds.value + productId
             _wishlistItems.value = _wishlistItems.value + product.toWishlistItem()
         }
-        
-        logger.log(
-            LogEvent.info(LogCategory.DATA, if (wasInWishlist) "wishlist_remove" else "wishlist_add")
-                .metadata(LogKey.PRODUCT_ID, productId)
-                .build()
-        )
-        
-        return safeApiCall {
+
+        logger.log(LogEvent(
+            category = LogCategory.DATA,
+            name = if (wasInWishlist) "wishlist_remove" else "wishlist_add",
+            level = LogLevel.INFO,
+            metadata = mapOf("productId" to productId)
+        ))
+
+        val result = safeApiCall {
             api.toggleWishlist(product.id)
-        }.onFailure {
+        }
+
+        if (result.isFailure) {
             // Rollback on failure
             if (wasInWishlist) {
                 _wishlistIds.value = _wishlistIds.value + productId
@@ -96,47 +107,54 @@ class WishlistRepository @Inject constructor(
                 _wishlistIds.value = _wishlistIds.value - productId
             }
         }
+
+        return result
     }
-    
+
     suspend fun addToWishlist(product: ApiProduct): FWResult<Unit> {
         val productId = product.id.toString()
         if (_wishlistIds.value.contains(productId)) return FWResult.success(Unit)
-        
+
         _wishlistIds.value = _wishlistIds.value + productId
         _wishlistItems.value = _wishlistItems.value + product.toWishlistItem()
-        
-        return safeApiCall { api.toggleWishlist(product.id) }.onFailure {
+
+        val result = safeApiCall { api.toggleWishlist(product.id) }
+        if (result.isFailure) {
             _wishlistIds.value = _wishlistIds.value - productId
         }
+        return result
     }
-    
+
     suspend fun removeFromWishlist(productId: String): FWResult<Unit> {
         if (!_wishlistIds.value.contains(productId)) return FWResult.success(Unit)
-        
+
         val oldItems = _wishlistItems.value
         _wishlistIds.value = _wishlistIds.value - productId
         _wishlistItems.value = _wishlistItems.value.filter { it.id != productId }
-        
-        return safeApiCall { api.toggleWishlist(productId.toLong()) }.onFailure {
+
+        val result = safeApiCall { api.toggleWishlist(productId.toLong()) }
+        if (result.isFailure) {
             _wishlistIds.value = _wishlistIds.value + productId
             _wishlistItems.value = oldItems
         }
+        return result
     }
-    
+
     suspend fun addMultipleToWishlist(products: List<ApiProduct>): FWResult<Unit> {
         val newProducts = products.filter { !_wishlistIds.value.contains(it.id.toString()) }
         if (newProducts.isEmpty()) return FWResult.success(Unit)
-        
+
         val newIds = newProducts.map { it.id.toString() }.toSet()
         _wishlistIds.value = _wishlistIds.value + newIds
         _wishlistItems.value = _wishlistItems.value + newProducts.map { it.toWishlistItem() }
-        
-        logger.log(
-            LogEvent.info(LogCategory.DATA, "wishlist_batch_add")
-                .metadata(LogKey.TOTAL_ITEMS, newProducts.size)
-                .build()
-        )
-        
+
+        logger.log(LogEvent(
+            category = LogCategory.DATA,
+            name = "wishlist_batch_add",
+            level = LogLevel.INFO,
+            metadata = mapOf("totalItems" to newProducts.size.toString())
+        ))
+
         return try {
             newProducts.forEach { api.toggleWishlist(it.id) }
             FWResult.success(Unit)
@@ -144,16 +162,16 @@ class WishlistRepository @Inject constructor(
             FWResult.failure(FWError.fromThrowable(e))
         }
     }
-    
+
     suspend fun removeMultipleFromWishlist(productIds: List<String>): FWResult<Unit> {
         val toRemove = productIds.filter { _wishlistIds.value.contains(it) }
         if (toRemove.isEmpty()) return FWResult.success(Unit)
-        
+
         val oldIds = _wishlistIds.value
         val oldItems = _wishlistItems.value
         _wishlistIds.value = _wishlistIds.value - toRemove.toSet()
         _wishlistItems.value = _wishlistItems.value.filter { it.id !in toRemove }
-        
+
         return try {
             toRemove.forEach { api.toggleWishlist(it.toLong()) }
             FWResult.success(Unit)
@@ -163,22 +181,23 @@ class WishlistRepository @Inject constructor(
             FWResult.failure(FWError.fromThrowable(e))
         }
     }
-    
+
     suspend fun clearWishlist(): FWResult<Unit> {
         val currentIds = _wishlistIds.value.toList()
         if (currentIds.isEmpty()) return FWResult.success(Unit)
-        
+
         val oldIds = _wishlistIds.value
         val oldItems = _wishlistItems.value
         _wishlistIds.value = emptySet()
         _wishlistItems.value = emptyList()
-        
-        logger.log(
-            LogEvent.info(LogCategory.DATA, "wishlist_clear")
-                .metadata(LogKey.TOTAL_ITEMS, currentIds.size)
-                .build()
-        )
-        
+
+        logger.log(LogEvent(
+            category = LogCategory.DATA,
+            name = "wishlist_clear",
+            level = LogLevel.INFO,
+            metadata = mapOf("totalItems" to currentIds.size.toString())
+        ))
+
         return try {
             currentIds.forEach { api.toggleWishlist(it.toLong()) }
             FWResult.success(Unit)
@@ -188,7 +207,7 @@ class WishlistRepository @Inject constructor(
             FWResult.failure(FWError.fromThrowable(e))
         }
     }
-    
+
     private suspend inline fun <T> safeApiCall(crossinline block: suspend () -> T): FWResult<T> {
         return try {
             FWResult.success(block())

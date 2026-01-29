@@ -290,7 +290,7 @@ fun ProductListScreen(
                             tint = colors.destructive
                         )
                         Text(
-                            text = error,
+                            text = error.message,
                             color = colors.destructive,
                             modifier = Modifier.weight(1f)
                         )

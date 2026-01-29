@@ -1,10 +1,14 @@
 package com.productreview.app.data.repository
 
-import fw.core.FWError
-import fw.core.FWResult
-import fw.logging.*
-import fw.pagination.Page
-import fw.pagination.PageCursor
+import com.productreview.app.core.FWError
+import com.productreview.app.core.FWResult
+import com.productreview.app.core.pagination.Page
+import com.productreview.app.core.pagination.PageCursor
+import com.productreview.app.core.logging.LogCategory
+import com.productreview.app.core.logging.LogEvent
+import com.productreview.app.core.logging.LogKey
+import com.productreview.app.core.logging.LogLevel
+import com.productreview.app.core.logging.Logger
 import com.productreview.app.data.model.*
 import com.productreview.app.data.remote.ProductReviewApi
 import com.productreview.app.domain.model.Product
@@ -14,7 +18,7 @@ import javax.inject.Singleton
 
 /**
  * Repository for product-related data operations.
- * 
+ *
  * All methods return FWResult for consistent error handling.
  * Uses structured logging for observability.
  */
@@ -24,7 +28,7 @@ class ProductRepository @Inject constructor(
     private val logger: Logger
 ) {
     // ==================== PRODUCTS ====================
-    
+
     suspend fun getProducts(
         page: Int = 0,
         size: Int = 10,
@@ -32,18 +36,21 @@ class ProductRepository @Inject constructor(
         category: String? = null,
         search: String? = null
     ): FWResult<Page<ApiProduct>> {
-        logger.log(
-            LogEvent.debug(LogCategory.NETWORK, "get_products")
-                .metadata(LogKey.PAGE, page)
-                .metadata(LogKey.PAGE_SIZE, size)
-                .metadata(LogKey.SORT, sort)
-                .apply {
-                    category?.let { metadata(LogKey.CATEGORY, it) }
-                    search?.let { metadata(LogKey.SEARCH_QUERY, it) }
-                }
-                .build()
+        val metadata = mutableMapOf(
+            "page" to page.toString(),
+            "pageSize" to size.toString(),
+            "sort" to sort
         )
-        
+        category?.let { metadata["category"] = it }
+        search?.let { metadata["searchQuery"] = it }
+
+        logger.log(LogEvent(
+            category = LogCategory.NETWORK,
+            name = "get_products",
+            level = LogLevel.DEBUG,
+            metadata = metadata
+        ))
+
         return safeApiCall {
             val response = api.getProducts(
                 page = page,
@@ -55,7 +62,7 @@ class ProductRepository @Inject constructor(
             response.toPage()
         }
     }
-    
+
     suspend fun getProductsPage(
         cursor: PageCursor?,
         size: Int = 20,
@@ -66,17 +73,18 @@ class ProductRepository @Inject constructor(
         val page = cursor?.toPageNumber() ?: 0
         return getProducts(page, size, sort, category, search)
     }
-    
+
     suspend fun getProduct(id: Long): FWResult<ApiProduct> {
-        logger.log(
-            LogEvent.debug(LogCategory.NETWORK, "get_product")
-                .metadata(LogKey.PRODUCT_ID, id.toString())
-                .build()
-        )
-        
+        logger.log(LogEvent(
+            category = LogCategory.NETWORK,
+            name = "get_product",
+            level = LogLevel.DEBUG,
+            metadata = mapOf("productId" to id.toString())
+        ))
+
         return safeApiCall { api.getProduct(id) }
     }
-    
+
     suspend fun getGlobalStats(
         category: String? = null,
         search: String? = null
@@ -88,9 +96,9 @@ class ProductRepository @Inject constructor(
             )
         }
     }
-    
+
     // ==================== REVIEWS ====================
-    
+
     suspend fun getReviews(
         productId: Long,
         page: Int = 0,
@@ -98,19 +106,22 @@ class ProductRepository @Inject constructor(
         sort: String = "createdAt,desc",
         rating: Int? = null
     ): FWResult<Page<ApiReview>> {
-        logger.log(
-            LogEvent.debug(LogCategory.NETWORK, "get_reviews")
-                .metadata(LogKey.PRODUCT_ID, productId.toString())
-                .metadata(LogKey.PAGE, page)
-                .build()
-        )
-        
+        logger.log(LogEvent(
+            category = LogCategory.NETWORK,
+            name = "get_reviews",
+            level = LogLevel.DEBUG,
+            metadata = mapOf(
+                "productId" to productId.toString(),
+                "page" to page.toString()
+            )
+        ))
+
         return safeApiCall {
             val response = api.getReviews(productId, page, size, sort, rating)
             response.toPage()
         }
     }
-    
+
     suspend fun getReviewsPage(
         productId: Long,
         cursor: PageCursor?,
@@ -120,75 +131,80 @@ class ProductRepository @Inject constructor(
         val page = cursor?.toPageNumber() ?: 0
         return getReviews(productId, page, size, rating = rating)
     }
-    
+
     suspend fun postReview(
         productId: Long,
         reviewerName: String?,
         rating: Int,
         comment: String
     ): FWResult<ApiReview> {
-        logger.log(
-            LogEvent.info(LogCategory.DATA, "post_review")
-                .metadata(LogKey.PRODUCT_ID, productId.toString())
-                .build()
-        )
-        
+        logger.log(LogEvent(
+            category = LogCategory.DATA,
+            name = "post_review",
+            level = LogLevel.INFO,
+            metadata = mapOf("productId" to productId.toString())
+        ))
+
         return safeApiCall {
             api.postReview(productId, ReviewRequest(reviewerName, rating, comment))
         }
     }
-    
+
     suspend fun markReviewAsHelpful(reviewId: Long): FWResult<ApiReview> {
-        logger.log(
-            LogEvent.info(LogCategory.DATA, "mark_helpful")
-                .metadata(LogKey.REVIEW_ID, reviewId.toString())
-                .build()
-        )
-        
+        logger.log(LogEvent(
+            category = LogCategory.DATA,
+            name = "mark_helpful",
+            level = LogLevel.INFO,
+            metadata = mapOf("reviewId" to reviewId.toString())
+        ))
+
         return safeApiCall { api.markReviewAsHelpful(reviewId) }
     }
-    
+
     suspend fun getUserVotedReviews(): FWResult<List<Long>> {
         return safeApiCall { api.getUserVotedReviews() }
     }
-    
+
     // ==================== AI CHAT ====================
-    
+
     suspend fun chatWithAI(productId: Long, question: String): FWResult<ChatResponse> {
-        logger.log(
-            LogEvent.info(LogCategory.DATA, "ai_chat")
-                .metadata(LogKey.PRODUCT_ID, productId.toString())
-                .build()
-        )
-        
+        logger.log(LogEvent(
+            category = LogCategory.DATA,
+            name = "ai_chat",
+            level = LogLevel.INFO,
+            metadata = mapOf("productId" to productId.toString())
+        ))
+
         return safeApiCall { api.chatWithAI(productId, ChatRequest(question)) }
     }
-    
+
     // ==================== HELPERS ====================
-    
+
     private suspend inline fun <T> safeApiCall(crossinline block: suspend () -> T): FWResult<T> {
         return try {
             FWResult.success(block())
         } catch (e: retrofit2.HttpException) {
             val error = FWError.fromHttpStatus(e.code(), e.message())
-            logger.log(
-                LogEvent.error(LogCategory.NETWORK, "api_error")
-                    .metadata(LogKey.STATUS, e.code())
-                    .metadata(LogKey.ERROR_CODE, error.code)
-                    .metadata(LogKey.IS_RETRIABLE, error.isRetriable)
-                    .error(e)
-                    .build()
-            )
+            logger.log(LogEvent(
+                category = LogCategory.NETWORK,
+                name = "api_error",
+                level = LogLevel.ERROR,
+                metadata = mapOf(
+                    LogKey.STATUS.value to e.code().toString(),
+                    LogKey.ERROR_CODE.value to error.code
+                )
+            ))
             FWResult.failure(error)
         } catch (e: Exception) {
             val error = FWError.fromThrowable(e)
-            logger.log(
-                LogEvent.error(LogCategory.NETWORK, "api_error")
-                    .metadata(LogKey.ERROR_CODE, error.code)
-                    .metadata(LogKey.IS_RETRIABLE, error.isRetriable)
-                    .error(e)
-                    .build()
-            )
+            logger.log(LogEvent(
+                category = LogCategory.NETWORK,
+                name = "api_error",
+                level = LogLevel.ERROR,
+                metadata = mapOf(
+                    LogKey.ERROR_CODE.value to error.code
+                )
+            ))
             FWResult.failure(error)
         }
     }
@@ -196,13 +212,13 @@ class ProductRepository @Inject constructor(
 
 // ==================== EXTENSIONS ====================
 
-fun <T> PageResponse<T>.toPage(): Page<T> = Page.fromSpringPage(
-    content = content,
-    currentPage = number,
-    totalPages = totalPages,
-    totalElements = totalElements,
-    isLast = last
-)
+fun <T> PageResponse<T>.toPage(): Page<T> {
+    val nextCursor = if (last) null else PageCursor((number + 1).toString())
+    return Page(
+        items = content,
+        nextCursor = nextCursor
+    )
+}
 
 fun ApiProduct.toDomain(): Product = Product(
     id = id.toString(),

@@ -2,13 +2,16 @@ package com.productreview.app.ui.screens.productlist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import fw.core.DispatcherProvider
-import fw.core.FWError
-import fw.core.FWResult
-import fw.logging.*
-import fw.pagination.Page
-import fw.pagination.PageCursor
-import fw.pagination.Paginator
+import com.productreview.app.core.DispatcherProvider
+import com.productreview.app.core.FWError
+import com.productreview.app.core.FWResult
+import com.productreview.app.core.logging.LogCategory
+import com.productreview.app.core.logging.LogEvent
+import com.productreview.app.core.logging.LogKey
+import com.productreview.app.core.logging.Logger
+import com.productreview.app.core.pagination.Page
+import com.productreview.app.core.pagination.PageCursor
+import com.productreview.app.core.pagination.Paginator
 import com.productreview.app.data.local.UserPreferencesManager
 import com.productreview.app.data.model.ApiProduct
 import com.productreview.app.data.model.GlobalStats

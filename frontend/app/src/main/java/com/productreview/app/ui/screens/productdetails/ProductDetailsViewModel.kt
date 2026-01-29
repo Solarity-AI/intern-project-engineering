@@ -2,9 +2,12 @@ package com.productreview.app.ui.screens.productdetails
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import fw.core.FWError
-import fw.core.FWResult
-import fw.logging.*
+import com.productreview.app.core.FWError
+import com.productreview.app.core.FWResult
+import com.productreview.app.core.logging.LogCategory
+import com.productreview.app.core.logging.LogEvent
+import com.productreview.app.core.logging.LogKey
+import com.productreview.app.core.logging.Logger
 import com.productreview.app.data.model.ApiProduct
 import com.productreview.app.data.model.ApiReview
 import com.productreview.app.data.repository.NotificationRepository
