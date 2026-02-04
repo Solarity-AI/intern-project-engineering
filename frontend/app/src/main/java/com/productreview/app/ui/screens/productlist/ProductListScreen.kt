@@ -228,7 +228,7 @@ fun ProductListScreen(
                     CategoryFilter(
                         selectedCategory = uiState.selectedCategory,
                         onCategoryChange = { viewModel.setCategory(it) },
-                        modifier = Modifier.padding(horizontal = (-16).dp) // Extend to edges
+                        modifier = Modifier.padding(horizontal = 0.dp) // safe: padding can't be negative
                     )
 
                     Row(
@@ -245,7 +245,7 @@ fun ProductListScreen(
                     SortFilter(
                         selectedSort = uiState.sortBy,
                         onSortChange = { viewModel.setSort(it) },
-                        modifier = Modifier.padding(horizontal = (-16).dp)
+                        modifier = Modifier.padding(horizontal = 0.dp)
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
