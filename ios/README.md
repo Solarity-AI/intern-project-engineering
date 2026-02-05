@@ -23,12 +23,18 @@ ios/
 │   │   ├── Navigation/         # NavigationStack & routes
 │   │   │   └── NavigationRouter.swift
 │   │   └── Core/               # Shared utilities
-│   │       └── Constants.swift
+│   │       ├── Constants.swift
+│   │       ├── HapticManager.swift
+│   │       ├── NetworkMonitor.swift
+│   │       └── ThemeManager.swift
 │   │
 │   ├── Data/
 │   │   ├── Network/            # API clients, DTOs
 │   │   │   ├── APIClient.swift
 │   │   │   └── DTOs.swift
+│   │   ├── Local/              # Local storage & caching
+│   │   │   ├── ImageCache.swift
+│   │   │   └── SearchHistoryManager.swift
 │   │   ├── Mapper/             # DTO <-> Domain mapping
 │   │   │   ├── ProductMapper.swift
 │   │   │   ├── ReviewMapper.swift
@@ -63,6 +69,13 @@ ios/
 │   │   │   ├── ProductListViewModel.swift
 │   │   │   └── ProductDetailViewModel.swift
 │   │   └── Components/         # Reusable UI components
+│   │       ├── AnimatedHeartButton.swift
+│   │       ├── ConfirmationDialog.swift
+│   │       ├── EmptyStateView.swift
+│   │       ├── LoadingButton.swift
+│   │       ├── RatingStarsView.swift
+│   │       ├── ShimmerView.swift
+│   │       └── ToastView.swift
 │   │
 │   └── Resources/
 │       └── Assets.xcassets
@@ -80,23 +93,31 @@ ios/
 
 ### Getting Started
 
-1. **Open in Xcode**
+1. **Install XcodeGen** (if not installed)
    ```bash
-   cd ios
-   # Create Xcode project manually or use swift package init
-   open .
+   brew install xcodegen
    ```
 
-2. **Create Xcode Project**
-   - Open Xcode
-   - Create new iOS App project
-   - Select SwiftUI for interface
-   - Set minimum deployment target to iOS 17.0
-   - Copy source files into the project structure
+2. **Generate Xcode Project**
+   ```bash
+   cd ios
+   xcodegen generate
+   ```
 
-3. **Build & Run**
-   - Select target device/simulator
-   - Press Cmd+R to build and run
+3. **Open in Xcode**
+   ```bash
+   open ProductReview.xcodeproj
+   ```
+
+4. **Build & Run**
+   - Select target device/simulator (iPhone 16 Pro recommended)
+   - Press `Cmd + R` to build and run
+
+5. **Start Backend** (for local development)
+   ```bash
+   cd ../backend
+   ./mvnw spring-boot:run
+   ```
 
 ## Features
 
@@ -123,18 +144,33 @@ ios/
 
 The app connects to the backend API at:
 ```
-https://product-review-app-ybmf.onrender.com
+Production: https://product-review-app-ybmf.onrender.com
+Development: http://localhost:8080 (DEBUG builds)
 ```
 
 Configuration is in `App/Core/Constants.swift`:
 ```swift
 enum AppConstants {
     enum API {
-        static let baseURL = "https://product-review-app-ybmf.onrender.com"
-        static let timeoutInterval: TimeInterval = 30.0
+        #if DEBUG
+        static let useLocalServer = true
+        #else
+        static let useLocalServer = false
+        #endif
+
+        static var baseURL: String {
+            useLocalServer ? "http://localhost:8080" : "https://product-review-app-ybmf.onrender.com"
+        }
+        static let timeoutInterval: TimeInterval = 10.0
+        static let aiTimeoutInterval: TimeInterval = 20.0
     }
 }
 ```
+
+### Network Features
+- **Exponential Backoff Retry**: Automatic retry with 1s → 2s → 4s delays
+- **User-Friendly Errors**: Clear messages for timeout, no connection, server errors
+- **Connectivity Monitoring**: Real-time network status with offline banner
 
 ## User Identification
 
@@ -143,31 +179,53 @@ The app generates a unique device UUID on first launch, stored in UserDefaults:
 - Sent as `X-User-ID` header on all API requests
 - Enables per-device wishlist and notifications
 
+## Reusable Components
+
+| Component | Description |
+|-----------|-------------|
+| `EmptyStateView` | Empty state with icon, title, subtitle, and action button |
+| `ShimmerView` | Loading skeleton with shimmer animation |
+| `ToastView` | Toast notifications (success, error, warning, info) |
+| `LoadingButton` | Button with loading spinner state |
+| `AnimatedHeartButton` | Wishlist heart with bounce animation |
+| `RatingStarsView` | Display and interactive star ratings |
+| `ConfirmationDialog` | Reusable confirmation dialogs |
+
+## Core Utilities
+
+| Utility | Description |
+|---------|-------------|
+| `HapticManager` | Centralized haptic feedback (impact, notification, selection) |
+| `ThemeManager` | Theme persistence (system, light, dark) with UserDefaults |
+| `NetworkMonitor` | Real-time connectivity monitoring with offline banner |
+| `ImageCache` | In-memory image caching (NSCache, 50MB limit) |
+| `SearchHistoryManager` | Search history persistence (max 10 items) |
+
+## Implemented Features
+
+- ✅ Xcode project with XcodeGen
+- ✅ Offline detection and banner
+- ✅ Search history persistence
+- ✅ Theme toggle (system/light/dark)
+- ✅ Error retry with exponential backoff
+- ✅ Loading skeletons (shimmer)
+- ✅ Haptic feedback
+- ✅ Accessibility labels and hints
+- ✅ Toast notifications
+- ✅ Image caching
+- ✅ Animated interactions
+
 ## Next Steps
 
-To complete the iOS implementation:
-
-1. **Create Xcode Project**
-   - Initialize new SwiftUI project in Xcode
-   - Configure signing & capabilities
-   - Set up asset catalog (app icons, colors)
-
-2. **Add Missing Features**
-   - Offline detection and banner
-   - Search history persistence
-   - Theme toggle (light/dark mode)
-   - Error retry mechanisms
-
-3. **Testing**
+1. **Testing**
    - Unit tests for ViewModels
    - Integration tests for repositories
    - UI tests for critical flows
 
-4. **Polish**
-   - Loading skeletons
-   - Animations and transitions
-   - Accessibility support
-   - Localization
+2. **Polish**
+   - Localization (i18n)
+   - App icons and launch screen
+   - Push notifications integration
 
 ## Development in VS Code
 
