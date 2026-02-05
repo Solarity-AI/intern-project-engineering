@@ -99,18 +99,19 @@ struct InteractiveRatingStars: View {
     }
 }
 
+// MARK: - Preview Helper
+private struct RatingPreviewWrapper: View {
+    @State var rating = 3
+    var body: some View {
+        InteractiveRatingStars(rating: $rating)
+    }
+}
+
 #Preview {
     VStack(spacing: 30) {
         RatingStarsView(rating: 3.5)
         RatingStarsView(rating: 4.2, size: 20, color: .orange)
-
-        struct PreviewWrapper: View {
-            @State var rating = 3
-            var body: some View {
-                InteractiveRatingStars(rating: $rating)
-            }
-        }
-        PreviewWrapper()
+        RatingPreviewWrapper()
     }
     .padding()
 }
