@@ -5,7 +5,7 @@
 //  Network connectivity monitoring
 //
 
-import Foundation
+import SwiftUI
 import Network
 
 @MainActor
