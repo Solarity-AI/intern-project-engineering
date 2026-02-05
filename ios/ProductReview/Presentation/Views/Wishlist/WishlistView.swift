@@ -21,23 +21,9 @@ struct WishlistView: View {
     var body: some View {
         Group {
             if viewModel.products.isEmpty && !viewModel.isLoading {
-                // Empty state
-                VStack(spacing: 16) {
-                    Image(systemName: "heart.slash")
-                        .font(.system(size: 60))
-                        .foregroundColor(.secondary)
-                    Text("Your wishlist is empty")
-                        .font(.title2)
-                        .fontWeight(.medium)
-                    Text("Add products you love to see them here")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                    Button("Browse Products") {
-                        navigationRouter.popToRoot()
-                    }
-                    .buttonStyle(.borderedProminent)
+                EmptyStateView.wishlist {
+                    navigationRouter.popToRoot()
                 }
-                .padding()
             } else {
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 16) {
@@ -146,8 +132,10 @@ struct WishlistProductCard: View {
                     Rectangle()
                         .fill(Color.gray.opacity(0.2))
                 }
+                .frame(maxWidth: .infinity)
                 .frame(height: 120)
                 .clipped()
+                .contentShape(Rectangle())
                 .cornerRadius(8)
 
                 // Selection indicator
@@ -181,9 +169,13 @@ struct WishlistProductCard: View {
         }
         .padding(12)
         .background(isSelected ? Color.blue.opacity(0.1) : Color(.systemBackground))
-        .cornerRadius(12)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
         .onTapGesture { onTap() }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(product.name), \(product.formattedPrice)\(isSelected ? ", selected" : "")")
+        .accessibilityHint(isSelectionMode ? "Double tap to toggle selection" : "Double tap to view details")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

@@ -74,6 +74,8 @@ struct ProductListView: View {
                 } label: {
                     Image(systemName: "line.3.horizontal.decrease.circle")
                 }
+                .accessibilityLabel("Filter by category")
+                .accessibilityHint("Select a category to filter products")
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -83,12 +85,16 @@ struct ProductListView: View {
                     } label: {
                         Image(systemName: "heart")
                     }
+                    .accessibilityLabel("Wishlist")
+                    .accessibilityHint("View your saved products")
 
                     Button {
                         navigationRouter.navigate(to: .notifications)
                     } label: {
                         Image(systemName: "bell")
                     }
+                    .accessibilityLabel("Notifications")
+                    .accessibilityHint("View your notifications")
                 }
             }
         }
@@ -120,6 +126,8 @@ struct StatsHeaderView: View {
         .background(Color.blue.opacity(0.1))
         .cornerRadius(12)
         .padding(.horizontal)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(stats.totalProducts) products, \(stats.totalReviews) reviews, average rating \(String(format: "%.1f", stats.averageRating))")
     }
 }
 
@@ -158,9 +166,12 @@ struct ProductCardView: View {
                             .foregroundColor(.gray)
                     }
             }
+            .frame(maxWidth: .infinity)
             .frame(height: 120)
             .clipped()
+            .contentShape(Rectangle())
             .cornerRadius(8)
+            .accessibilityHidden(true)
 
             // Product info
             Text(product.name)
@@ -172,12 +183,15 @@ struct ProductCardView: View {
                 Image(systemName: "star.fill")
                     .foregroundColor(.yellow)
                     .font(.caption)
+                    .accessibilityHidden(true)
                 Text(product.formattedRating)
                     .font(.caption)
                 Text("(\(product.reviewCount))")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(product.formattedRating) stars, \(product.reviewCount) reviews")
 
             Text(product.formattedPrice)
                 .font(.subheadline)
@@ -186,8 +200,11 @@ struct ProductCardView: View {
         }
         .padding(12)
         .background(Color(.systemBackground))
-        .cornerRadius(12)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(product.name), \(product.formattedPrice), \(product.formattedRating) stars")
+        .accessibilityHint("Double tap to view details")
     }
 }
 

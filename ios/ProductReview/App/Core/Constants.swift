@@ -20,7 +20,8 @@ enum AppConstants {
         static var baseURL: String {
             useLocalServer ? "http://localhost:8080" : "https://product-review-app-ybmf.onrender.com"
         }
-        static let timeoutInterval: TimeInterval = 30.0
+        static let timeoutInterval: TimeInterval = 10.0
+        static let aiTimeoutInterval: TimeInterval = 20.0 // Longer timeout for AI calls
     }
 
     // MARK: - Storage Keys

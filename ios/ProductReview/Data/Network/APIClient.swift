@@ -14,6 +14,8 @@ enum APIError: Error, LocalizedError {
     case httpError(statusCode: Int, message: String?)
     case decodingError(Error)
     case networkError(Error)
+    case noConnection
+    case timeout
     case unknown
 
     var errorDescription: String? {
@@ -22,14 +24,50 @@ enum APIError: Error, LocalizedError {
             return "Invalid URL"
         case .invalidResponse:
             return "Invalid server response"
-        case .httpError(let statusCode, let message):
-            return message ?? "HTTP Error: \(statusCode)"
-        case .decodingError(let error):
-            return "Failed to decode response: \(error.localizedDescription)"
-        case .networkError(let error):
-            return "Network error: \(error.localizedDescription)"
+        case .httpError(let statusCode, _):
+            return Self.userFriendlyMessage(for: statusCode)
+        case .decodingError:
+            return "Unable to process server response. Please try again."
+        case .networkError:
+            return "Connection failed. Please check your internet."
+        case .noConnection:
+            return "No internet connection. Please check your network settings."
+        case .timeout:
+            return "Request timed out. Please try again."
         case .unknown:
-            return "An unknown error occurred"
+            return "Something went wrong. Please try again."
+        }
+    }
+
+    /// User-friendly messages for HTTP status codes
+    private static func userFriendlyMessage(for statusCode: Int) -> String {
+        switch statusCode {
+        case 400:
+            return "Invalid request. Please try again."
+        case 401:
+            return "Session expired. Please restart the app."
+        case 403:
+            return "Access denied."
+        case 404:
+            return "Content not found."
+        case 429:
+            return "Too many requests. Please wait a moment."
+        case 500...599:
+            return "Server is temporarily unavailable. Please try later."
+        default:
+            return "Something went wrong. Please try again."
+        }
+    }
+
+    /// Whether the error is retryable
+    var isRetryable: Bool {
+        switch self {
+        case .timeout, .networkError, .noConnection:
+            return true
+        case .httpError(let statusCode, _):
+            return statusCode >= 500 || statusCode == 429
+        default:
+            return false
         }
     }
 }
@@ -124,9 +162,50 @@ actor APIClient {
             throw error
         } catch let error as DecodingError {
             throw APIError.decodingError(error)
+        } catch let error as URLError {
+            switch error.code {
+            case .timedOut:
+                throw APIError.timeout
+            case .notConnectedToInternet, .networkConnectionLost:
+                throw APIError.noConnection
+            default:
+                throw APIError.networkError(error)
+            }
         } catch {
             throw APIError.networkError(error)
         }
+    }
+
+    // MARK: - Request with Retry
+    func requestWithRetry<T: Decodable>(
+        endpoint: String,
+        method: HTTPMethod = .get,
+        queryParams: [String: String]? = nil,
+        body: Encodable? = nil,
+        maxRetries: Int = 3
+    ) async throws -> T {
+        var lastError: Error = APIError.unknown
+        var delay: UInt64 = 1_000_000_000 // 1 second
+
+        for attempt in 0..<maxRetries {
+            do {
+                return try await request(
+                    endpoint: endpoint,
+                    method: method,
+                    queryParams: queryParams,
+                    body: body
+                )
+            } catch let error as APIError where error.isRetryable {
+                lastError = error
+                if attempt < maxRetries - 1 {
+                    try await Task.sleep(nanoseconds: delay)
+                    delay *= 2 // Exponential backoff
+                }
+            } catch {
+                throw error // Non-retryable error, throw immediately
+            }
+        }
+        throw lastError
     }
 
     // MARK: - Request without response body
