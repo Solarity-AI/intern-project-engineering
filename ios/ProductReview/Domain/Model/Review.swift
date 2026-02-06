@@ -26,7 +26,8 @@ struct Review: Identifiable, Hashable {
 
     // Rating as stars
     var starsText: String {
-        String(repeating: "★", count: rating) + String(repeating: "☆", count: 5 - rating)
+        let safe = min(max(rating, 0), 5)
+        return String(repeating: "★", count: safe) + String(repeating: "☆", count: 5 - safe)
     }
 }
 
