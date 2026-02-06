@@ -27,7 +27,7 @@ final class ProductReviewTests: XCTestCase {
         )
 
         // When
-        let product = ProductMapper.toDomain(dto)
+        let product = ProductMapper.map(dto)
 
         // Then
         XCTAssertEqual(product.id, 1)
@@ -49,7 +49,7 @@ final class ProductReviewTests: XCTestCase {
         )
 
         // When
-        let review = ReviewMapper.toDomain(dto)
+        let review = ReviewMapper.map(dto)
 
         // Then
         XCTAssertEqual(review.id, 1)
