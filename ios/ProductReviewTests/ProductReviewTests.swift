@@ -39,21 +39,23 @@ final class ProductReviewTests: XCTestCase {
         // Given
         let dto = ReviewDTO(
             id: 1,
-            productId: 1,
+            reviewerName: "John",
             rating: 5,
-            title: "Great Product",
             comment: "Highly recommended",
-            userName: "John",
+            helpfulCount: 10,
             createdAt: "2024-01-01T00:00:00",
-            helpfulCount: 10
+            productId: 1
         )
 
         // When
         let review = ReviewMapper.map(dto)
 
         // Then
-        XCTAssertEqual(review.id, 1)
-        XCTAssertEqual(review.rating, 5)
-        XCTAssertEqual(review.title, "Great Product")
+        XCTAssertNotNil(review)
+        XCTAssertEqual(review?.id, 1)
+        XCTAssertEqual(review?.rating, 5)
+        XCTAssertEqual(review?.reviewerName, "John")
+        XCTAssertEqual(review?.comment, "Highly recommended")
+        XCTAssertEqual(review?.helpfulCount, 10)
     }
 }
