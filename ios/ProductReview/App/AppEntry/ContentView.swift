@@ -22,8 +22,8 @@ struct ContentView: View {
                         WishlistView()
                     case .notifications:
                         NotificationsView()
-                    case .notificationDetail(let notificationId):
-                        NotificationDetailView(notificationId: notificationId)
+                    case .notificationDetail(let notification):
+                        NotificationDetailView(notification: notification)
                     case .aiAssistant(let productId, let productName):
                         AIAssistantView(productId: productId, productName: productName)
                     }

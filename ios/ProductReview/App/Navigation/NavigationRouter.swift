@@ -12,7 +12,7 @@ enum Route: Hashable {
     case productDetail(productId: Int)
     case wishlist
     case notifications
-    case notificationDetail(notificationId: Int)
+    case notificationDetail(notification: AppNotification)
     case aiAssistant(productId: Int, productName: String)
 }
 

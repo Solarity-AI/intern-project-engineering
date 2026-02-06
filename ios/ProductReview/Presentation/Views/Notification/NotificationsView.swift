@@ -35,7 +35,7 @@ struct NotificationsView: View {
                                 Task {
                                     await viewModel.markAsRead(notificationId: notification.id)
                                 }
-                                navigationRouter.navigate(to: .notificationDetail(notificationId: notification.id))
+                                navigationRouter.navigate(to: .notificationDetail(notification: notification))
                             }
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) {
@@ -127,43 +127,35 @@ struct NotificationRow: View {
 // MARK: - Notification Detail View
 struct NotificationDetailView: View {
     @EnvironmentObject var navigationRouter: NavigationRouter
-    let notificationId: Int
-
-    @State private var notification: AppNotification?
+    let notification: AppNotification
 
     var body: some View {
-        Group {
-            if let notification = notification {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(notification.title)
-                        .font(.title2)
-                        .fontWeight(.bold)
+        VStack(alignment: .leading, spacing: 16) {
+            Text(notification.title)
+                .font(.title2)
+                .fontWeight(.bold)
 
-                    Text(notification.formattedDate)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+            Text(notification.formattedDate)
+                .font(.caption)
+                .foregroundColor(.secondary)
 
-                    Divider()
+            Divider()
 
-                    Text(notification.message)
-                        .font(.body)
+            Text(notification.message)
+                .font(.body)
 
-                    if let productId = notification.productId {
-                        Button {
-                            navigationRouter.navigate(to: .productDetail(productId: productId))
-                        } label: {
-                            Label("View Product", systemImage: "arrow.right.circle")
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-
-                    Spacer()
+            if let productId = notification.productId {
+                Button {
+                    navigationRouter.navigate(to: .productDetail(productId: productId))
+                } label: {
+                    Label("View Product", systemImage: "arrow.right.circle")
                 }
-                .padding()
-            } else {
-                ProgressView()
+                .buttonStyle(.borderedProminent)
             }
+
+            Spacer()
         }
+        .padding()
         .navigationTitle("Notification")
         .navigationBarTitleDisplayMode(.inline)
     }
