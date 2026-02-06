@@ -22,14 +22,18 @@ class NetworkMonitor: ObservableObject {
         case unknown
     }
 
-    private let monitor = NWPathMonitor()
+    private var monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "NetworkMonitor")
+    private var isMonitoring = false
 
     private init() {
         startMonitoring()
     }
 
     func startMonitoring() {
+        guard !isMonitoring else { return }
+
+        monitor = NWPathMonitor()
         monitor.pathUpdateHandler = { [weak self] path in
             Task { @MainActor in
                 self?.isConnected = path.status == .satisfied
@@ -37,10 +41,12 @@ class NetworkMonitor: ObservableObject {
             }
         }
         monitor.start(queue: queue)
+        isMonitoring = true
     }
 
     func stopMonitoring() {
         monitor.cancel()
+        isMonitoring = false
     }
 
     private func getConnectionType(_ path: NWPath) -> ConnectionType {
