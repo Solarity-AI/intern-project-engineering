@@ -16,6 +16,7 @@ enum APIError: Error, LocalizedError {
     case networkError(Error)
     case noConnection
     case timeout
+    case nonIdempotentMethod
     case unknown
 
     var errorDescription: String? {
@@ -34,6 +35,8 @@ enum APIError: Error, LocalizedError {
             return "No internet connection. Please check your network settings."
         case .timeout:
             return "Request timed out. Please try again."
+        case .nonIdempotentMethod:
+            return "Retry is not supported for non-idempotent requests."
         case .unknown:
             return "Something went wrong. Please try again."
         }
@@ -66,6 +69,8 @@ enum APIError: Error, LocalizedError {
             return true
         case .httpError(let statusCode, _):
             return statusCode >= 500 || statusCode == 429
+        case .nonIdempotentMethod:
+            return false
         default:
             return false
         }
@@ -184,6 +189,14 @@ actor APIClient {
         body: Encodable? = nil,
         maxRetries: Int = 3
     ) async throws -> T {
+        // Reject non-idempotent methods to avoid duplicate mutations on retry
+        switch method {
+        case .post, .put, .delete:
+            throw APIError.nonIdempotentMethod
+        case .get:
+            break
+        }
+
         var lastError: Error = APIError.unknown
         var delay: UInt64 = 1_000_000_000 // 1 second
 
