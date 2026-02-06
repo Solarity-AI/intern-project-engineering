@@ -135,8 +135,12 @@ actor APIClient {
 
         // Add body if present
         if let body = body {
-            let encoder = JSONEncoder()
-            request.httpBody = try encoder.encode(body)
+            do {
+                let encoder = JSONEncoder()
+                request.httpBody = try encoder.encode(body)
+            } catch {
+                throw APIError.decodingError(error)
+            }
         }
 
         // Execute request

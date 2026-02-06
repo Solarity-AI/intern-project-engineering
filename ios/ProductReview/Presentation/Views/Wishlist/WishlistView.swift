@@ -252,12 +252,18 @@ class WishlistViewModel: ObservableObject {
         // Optimistic update
         products.removeAll { productIds.contains($0.id) }
 
+        var hasFailed = false
         for id in productIds {
             do {
                 try await repository.toggleWishlist(productId: id)
             } catch {
+                hasFailed = true
                 self.error = error.localizedDescription
             }
+        }
+
+        if hasFailed {
+            await loadWishlist()
         }
     }
 }
