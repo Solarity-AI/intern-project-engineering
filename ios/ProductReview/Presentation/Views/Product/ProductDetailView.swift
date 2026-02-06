@@ -168,7 +168,10 @@ struct ProductDetailView: View {
                 await viewModel.filterReviewsByRating(newValue)
             }
         }
-        .alert("Error", isPresented: .constant(viewModel.error != nil)) {
+        .alert("Error", isPresented: Binding<Bool>(
+            get: { viewModel.error != nil },
+            set: { if !$0 { viewModel.error = nil } }
+        )) {
             Button("OK") { viewModel.error = nil }
         } message: {
             Text(viewModel.error ?? "")
@@ -271,7 +274,7 @@ struct ReviewsSection: View {
     let onLoadMore: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        LazyVStack(alignment: .leading, spacing: 12) {
             Text("Reviews")
                 .font(.headline)
 
