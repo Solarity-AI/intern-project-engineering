@@ -16,21 +16,25 @@ struct EmptyStateView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.system(size: 60))
-                .foregroundColor(.secondary)
-                .accessibilityHidden(true)
+            Group {
+                Image(systemName: icon)
+                    .font(.system(size: 60))
+                    .foregroundColor(.secondary)
+                    .accessibilityHidden(true)
 
-            Text(title)
-                .font(.title2)
-                .fontWeight(.medium)
-                .multilineTextAlignment(.center)
+                Text(title)
+                    .font(.title2)
+                    .fontWeight(.medium)
+                    .multilineTextAlignment(.center)
 
-            Text(subtitle)
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+                Text(subtitle)
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(title). \(subtitle)")
 
             if let actionTitle = actionTitle, let action = action {
                 Button(actionTitle, action: action)
@@ -39,8 +43,6 @@ struct EmptyStateView: View {
             }
         }
         .padding()
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title). \(subtitle)")
     }
 }
 
