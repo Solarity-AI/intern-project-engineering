@@ -1,0 +1,82 @@
+name: ProductReview
+options:
+  bundleIdPrefix: com.solarity
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  ProductReview:
+    type: application
+    platform: iOS
+    sources:
+      - ProductReview
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.solarity.productreview
+        INFOPLIST_FILE: ProductReview/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+    entitlements:
+      path: ProductReview/ProductReview.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+
+  ProductReviewTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - ProductReviewTests
+    dependencies:
+      - target: ProductReview
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.solarity.productreview.tests
+
+  ProductReviewUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - ProductReviewUITests
+    dependencies:
+      - target: ProductReview
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.solarity.productreview.uitests
+        TEST_TARGET_NAME: ProductReview
+
+schemes:
+  ProductReview:
+    build:
+      targets:
+        ProductReview: all
+        ProductReviewTests: [test]
+        ProductReviewUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - ProductReviewTests
+        - ProductReviewUITests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
