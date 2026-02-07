@@ -133,9 +133,9 @@ struct WishlistView: View {
             message: viewModel.toastMessage,
             type: viewModel.toastType,
             duration: 3.0,
-            actionTitle: viewModel.isUndoAvailable ? "Undo" : nil,
+            actionTitle: viewModel.toastActionTitle,
             onAction: {
-                viewModel.undoPendingRemoval()
+                viewModel.handleToastAction()
             }
         )
         .alert("Error", isPresented: Binding(
@@ -235,8 +235,12 @@ class WishlistViewModel: ObservableObject {
     private struct PendingRemoval {
         let id: UUID
         let items: [RemovedItem]
-        let productIds: [Int]
         let commitTask: Task<Void, Never>
+    }
+
+    enum ToastAction {
+        case undoPendingRemoval
+        case retryFailedRemovals
     }
 
     @Published var products: [Product] = []
@@ -245,12 +249,13 @@ class WishlistViewModel: ObservableObject {
     @Published var showToast = false
     @Published var toastMessage = ""
     @Published var toastType: ToastType = .info
-    @Published var isUndoAvailable = false
+    @Published var toastAction: ToastAction?
 
     private let repository: WishlistRepositoryProtocol
     private var currentPage = 0
     private var isLastPage = false
     private var pendingRemoval: PendingRemoval?
+    private var failedRemovalItems: [RemovedItem] = []
     private let undoWindowNanoseconds: UInt64 = 3_000_000_000
 
     init(repository: WishlistRepositoryProtocol = WishlistRepository()) {
@@ -261,73 +266,130 @@ class WishlistViewModel: ObservableObject {
         count == 1 ? "item" : "items"
     }
 
+    var toastActionTitle: String? {
+        switch toastAction {
+        case .undoPendingRemoval:
+            return "Undo"
+        case .retryFailedRemovals:
+            return "Retry"
+        case .none:
+            return nil
+        }
+    }
+
+    private func resetToastActionState() {
+        toastAction = nil
+        failedRemovalItems.removeAll()
+    }
+
+    private func failedItemsDescription(_ items: [RemovedItem]) -> String {
+        let names = items.map { $0.product.name }
+        if names.count <= 2 {
+            return names.joined(separator: ", ")
+        }
+        let shown = names.prefix(2).joined(separator: ", ")
+        return "\(shown) +\(names.count - 2) more"
+    }
+
     private func showSuccessToast(_ message: String) {
-        isUndoAvailable = false
+        resetToastActionState()
         toastMessage = message
         toastType = .success
         showToast = true
     }
 
     private func showErrorToast(_ message: String) {
-        isUndoAvailable = false
+        resetToastActionState()
         toastMessage = message
         toastType = .error
         showToast = true
     }
 
     private func showWarningToast(_ message: String) {
-        isUndoAvailable = false
+        resetToastActionState()
         toastMessage = message
         toastType = .warning
         showToast = true
     }
 
     private func showUndoToast(_ message: String) {
-        isUndoAvailable = true
+        toastAction = .undoPendingRemoval
         toastMessage = message
         toastType = .success
         showToast = true
     }
 
+    private func showRetryToast(_ message: String, type: ToastType, failedItems: [RemovedItem]) {
+        toastAction = .retryFailedRemovals
+        failedRemovalItems = failedItems
+        toastMessage = message
+        toastType = type
+        showToast = true
+    }
+
+    func handleToastAction() {
+        switch toastAction {
+        case .undoPendingRemoval:
+            undoPendingRemoval()
+        case .retryFailedRemovals:
+            Task { await retryFailedRemovals() }
+        case .none:
+            break
+        }
+    }
+
     private func clearPendingRemoval() {
         pendingRemoval?.commitTask.cancel()
         pendingRemoval = nil
-        isUndoAvailable = false
+        if toastAction == .undoPendingRemoval {
+            toastAction = nil
+        }
     }
 
-    private func commitRemovalToServer(productIds: [Int], showSuccessOnComplete: Bool = true) async {
+    private func commitRemovalToServer(items: [RemovedItem], showSuccessOnComplete: Bool = true) async {
         var removedCount = 0
-        var failedCount = 0
+        var failedItems: [RemovedItem] = []
 
-        for id in productIds {
+        for item in items {
             do {
-                try await repository.toggleWishlist(productId: id)
+                try await repository.toggleWishlist(productId: item.product.id)
                 removedCount += 1
             } catch {
-                failedCount += 1
+                failedItems.append(item)
             }
         }
 
-        if failedCount > 0 {
+        if !failedItems.isEmpty {
             await loadWishlist()
         }
 
-        if failedCount == 0 {
+        if failedItems.isEmpty {
             guard showSuccessOnComplete else { return }
             showSuccessToast("Removed \(removedCount) \(itemWord(removedCount)) from wishlist")
-        } else if removedCount == 0 {
-            showErrorToast("Failed to remove selected \(itemWord(failedCount))")
         } else {
-            showWarningToast("Removed \(removedCount) \(itemWord(removedCount)); \(failedCount) failed")
+            let failedNames = failedItemsDescription(failedItems)
+            if removedCount == 0 {
+                showRetryToast(
+                    "Failed to remove \(failedItems.count) \(itemWord(failedItems.count)): \(failedNames)",
+                    type: .error,
+                    failedItems: failedItems
+                )
+            } else {
+                showRetryToast(
+                    "Removed \(removedCount) \(itemWord(removedCount)); failed: \(failedNames)",
+                    type: .warning,
+                    failedItems: failedItems
+                )
+            }
         }
     }
 
     private func commitPendingRemovalIfNeeded() async {
         guard let pendingRemoval else { return }
         self.pendingRemoval = nil
-        isUndoAvailable = false
         pendingRemoval.commitTask.cancel()
-        await commitRemovalToServer(productIds: pendingRemoval.productIds, showSuccessOnComplete: false)
+        toastAction = nil
+        await commitRemovalToServer(items: pendingRemoval.items, showSuccessOnComplete: false)
     }
 
     private func scheduleRemoval(productIds: [Int]) async {
@@ -353,7 +415,6 @@ class WishlistViewModel: ObservableObject {
         pendingRemoval = PendingRemoval(
             id: pendingId,
             items: removedItems,
-            productIds: idsToRemove,
             commitTask: commitTask
         )
     }
@@ -361,8 +422,15 @@ class WishlistViewModel: ObservableObject {
     private func commitPendingRemovalIfMatching(id: UUID) async {
         guard let pendingRemoval, pendingRemoval.id == id else { return }
         self.pendingRemoval = nil
-        isUndoAvailable = false
-        await commitRemovalToServer(productIds: pendingRemoval.productIds, showSuccessOnComplete: false)
+        toastAction = nil
+        await commitRemovalToServer(items: pendingRemoval.items, showSuccessOnComplete: false)
+    }
+
+    private func retryFailedRemovals() async {
+        guard !failedRemovalItems.isEmpty else { return }
+        let itemsToRetry = failedRemovalItems
+        resetToastActionState()
+        await commitRemovalToServer(items: itemsToRetry, showSuccessOnComplete: true)
     }
 
     func undoPendingRemoval() {
