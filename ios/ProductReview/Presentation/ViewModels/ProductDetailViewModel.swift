@@ -16,6 +16,9 @@ class ProductDetailViewModel: ObservableObject {
     @Published var isLoadingReviews = false
     @Published var isInWishlist = false
     @Published var error: String?
+    @Published var showToast = false
+    @Published var toastMessage = ""
+    @Published var toastType: ToastType = .error
 
     private let productId: Int
     private let productRepository: ProductRepositoryProtocol
@@ -42,11 +45,26 @@ class ProductDetailViewModel: ObservableObject {
         do {
             product = try await productRepository.getProduct(id: productId)
             isInWishlist = await wishlistRepository.isInWishlist(productId: productId)
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
 
         isLoading = false
+    }
+
+    private func showError(_ message: String) {
+        toastMessage = message
+        toastType = .error
+        showToast = true
+    }
+
+    private func showSuccess(_ message: String) {
+        toastMessage = message
+        toastType = .success
+        showToast = true
     }
 
     func loadReviews() async {
@@ -68,8 +86,11 @@ class ProductDetailViewModel: ObservableObject {
             reviews = result.reviews
             isLastPage = result.isLast
             currentPage = 0
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
 
         isLoadingReviews = false
@@ -91,8 +112,11 @@ class ProductDetailViewModel: ObservableObject {
             reviews.append(contentsOf: result.reviews)
             isLastPage = result.isLast
             currentPage += 1
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
 
         isLoadingReviews = false
@@ -119,8 +143,13 @@ class ProductDetailViewModel: ObservableObject {
 
             // Reload product to get updated stats
             await loadProduct()
+
+            showSuccess("Review submitted successfully")
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
     }
 
@@ -139,8 +168,11 @@ class ProductDetailViewModel: ObservableObject {
             if let index = reviews.firstIndex(where: { $0.id == reviewId }) {
                 reviews[index] = updatedReview
             }
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
     }
 
@@ -148,8 +180,14 @@ class ProductDetailViewModel: ObservableObject {
         do {
             try await wishlistRepository.toggleWishlist(productId: productId)
             isInWishlist.toggle()
+
+            let message = isInWishlist ? "Added to wishlist" : "Removed from wishlist"
+            showSuccess(message)
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
     }
 }

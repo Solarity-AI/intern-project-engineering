@@ -13,6 +13,9 @@ class ProductListViewModel: ObservableObject {
     @Published var globalStats: GlobalStats?
     @Published var isLoading = false
     @Published var error: String?
+    @Published var showToast = false
+    @Published var toastMessage = ""
+    @Published var toastType: ToastType = .error
 
     private let repository: ProductRepositoryProtocol
     private var currentPage = 0
@@ -48,11 +51,20 @@ class ProductListViewModel: ObservableObject {
             totalPages = result.totalPages
             isLast = result.isLast
             currentPage = 0
+        } catch is CancellationError {
+            // Ignore cancellation errors - they happen when user navigates away or refreshes
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
 
         isLoading = false
+    }
+
+    private func showError(_ message: String) {
+        toastMessage = message
+        toastType = .error
+        showToast = true
     }
 
     func loadMore() async {
@@ -72,8 +84,11 @@ class ProductListViewModel: ObservableObject {
             totalPages = result.totalPages
             isLast = result.isLast
             currentPage += 1
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
 
         isLoading = false
