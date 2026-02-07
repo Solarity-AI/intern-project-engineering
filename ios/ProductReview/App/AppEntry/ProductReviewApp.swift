@@ -43,12 +43,15 @@ private enum NotificationDeepLinkStore {
 struct ProductReviewApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var appState = AppState()
+    @StateObject private var themeManager = ThemeManager.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
-                .preferredColorScheme(appState.colorScheme)
+                .environmentObject(themeManager)
+                .preferredColorScheme(themeManager.currentTheme.colorScheme)
+                .tint(Color("AccentColor"))
         }
     }
 }
@@ -56,17 +59,12 @@ struct ProductReviewApp: App {
 // MARK: - App State
 @MainActor
 class AppState: ObservableObject {
-    @Published var colorScheme: ColorScheme? = nil
     @Published var isOnline: Bool = true
+    @Published var selectedTab: AppTab = .products
     @Published var pendingProductId: Int? = nil
     @Published var notificationBadgeCount: Int = 0
 
     init() {
-        // Load saved theme preference
-        if let savedTheme = UserDefaults.standard.string(forKey: "theme") {
-            colorScheme = savedTheme == "dark" ? .dark : .light
-        }
-
         // Setup notification observers
         setupNotificationObservers()
 
@@ -80,16 +78,6 @@ class AppState: ObservableObject {
         // Bootstrap unread count so tab bar badge is available at launch.
         Task { [weak self] in
             await self?.refreshNotificationBadgeCount()
-        }
-    }
-
-    func toggleTheme() {
-        if colorScheme == .dark {
-            colorScheme = .light
-            UserDefaults.standard.set("light", forKey: "theme")
-        } else {
-            colorScheme = .dark
-            UserDefaults.standard.set("dark", forKey: "theme")
         }
     }
 

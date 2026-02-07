@@ -66,7 +66,7 @@ class ThemeManager: ObservableObject {
 
 // MARK: - Theme Toggle View
 struct ThemeToggleView: View {
-    @ObservedObject var themeManager = ThemeManager.shared
+    @EnvironmentObject private var themeManager: ThemeManager
 
     var body: some View {
         Menu {
@@ -87,4 +87,5 @@ struct ThemeToggleView: View {
 
 #Preview {
     ThemeToggleView()
+        .environmentObject(ThemeManager.shared)
 }
