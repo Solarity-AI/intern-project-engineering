@@ -12,11 +12,15 @@ struct WishlistView: View {
     @StateObject private var viewModel = WishlistViewModel()
     @State private var selectedIds: Set<Int> = []
     @State private var isSelectionMode = false
+    @State private var showBulkDeleteAlert = false
 
     private let columns = [
         GridItem(.flexible()),
         GridItem(.flexible())
     ]
+    private var selectedItemWord: String {
+        selectedIds.count == 1 ? "item" : "items"
+    }
 
     var body: some View {
         Group {
@@ -25,69 +29,93 @@ struct WishlistView: View {
                     navigationRouter.popToRoot()
                 }
             } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(viewModel.products) { product in
-                            WishlistProductCard(
-                                product: product,
-                                isSelected: selectedIds.contains(product.id),
-                                isSelectionMode: isSelectionMode,
-                                onTap: {
-                                    if isSelectionMode {
-                                        toggleSelection(product.id)
-                                    } else {
-                                        navigationRouter.navigate(to: .productDetail(productId: product.id))
-                                    }
-                                },
-                                onRemove: {
-                                    Task { await viewModel.removeFromWishlist(productId: product.id) }
+                VStack(spacing: 0) {
+                    if !viewModel.products.isEmpty {
+                        HStack {
+                            if isSelectionMode {
+                                Text("\(selectedIds.count) selected")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            Button(isSelectionMode ? "Done" : "Select") {
+                                isSelectionMode.toggle()
+                                if !isSelectionMode {
+                                    selectedIds.removeAll()
                                 }
-                            )
-                            .onAppear {
-                                if product.id == viewModel.products.last?.id {
-                                    Task { await viewModel.loadMore() }
+                            }
+                            .fontWeight(.semibold)
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                    }
+
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 16) {
+                            ForEach(viewModel.products) { product in
+                                WishlistProductCard(
+                                    product: product,
+                                    isSelected: selectedIds.contains(product.id),
+                                    isSelectionMode: isSelectionMode,
+                                    onTap: {
+                                        if isSelectionMode {
+                                            toggleSelection(product.id)
+                                        } else {
+                                            navigationRouter.navigate(to: .productDetail(productId: product.id))
+                                        }
+                                    },
+                                    onRemove: {
+                                        Task { await viewModel.removeFromWishlist(productId: product.id) }
+                                    }
+                                )
+                                .onAppear {
+                                    if product.id == viewModel.products.last?.id {
+                                        Task { await viewModel.loadMore() }
+                                    }
                                 }
                             }
                         }
-                    }
-                    .padding()
+                        .padding()
 
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .padding()
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .padding()
+                        }
                     }
                 }
             }
         }
         .navigationTitle("Wishlist")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                if !viewModel.products.isEmpty {
-                    Button(isSelectionMode ? "Done" : "Select") {
-                        isSelectionMode.toggle()
-                        if !isSelectionMode {
-                            selectedIds.removeAll()
-                        }
-                    }
-                }
-            }
-        }
-        .overlay(alignment: .bottom) {
+        .safeAreaInset(edge: .bottom) {
             if isSelectionMode && !selectedIds.isEmpty {
                 Button(role: .destructive) {
-                    Task {
-                        await viewModel.removeMultiple(productIds: Array(selectedIds))
-                        selectedIds.removeAll()
-                        isSelectionMode = false
-                    }
+                    showBulkDeleteAlert = true
                 } label: {
-                    Label("Remove \(selectedIds.count) items", systemImage: "trash")
-                        .frame(maxWidth: .infinity)
+                    Label("Remove \(selectedIds.count) \(selectedItemWord)", systemImage: "trash")
+                        .frame(maxWidth: .infinity, minHeight: 32)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.red)
-                .padding()
+                .padding(.horizontal)
+                .padding(.vertical, 8)
                 .background(.ultraThinMaterial)
+                .alert("Remove selected \(selectedItemWord)?", isPresented: $showBulkDeleteAlert) {
+                    Button("Cancel", role: .cancel) {}
+                    Button("Remove", role: .destructive) {
+                        guard !selectedIds.isEmpty else { return }
+
+                        let idsToRemove = Array(selectedIds)
+                        Task {
+                            await viewModel.removeMultiple(productIds: idsToRemove)
+                            selectedIds.removeAll()
+                            isSelectionMode = false
+                        }
+                    }
+                } message: {
+                    Text("This will remove \(selectedIds.count) selected \(selectedItemWord) from your wishlist.")
+                }
             }
         }
         .refreshable {

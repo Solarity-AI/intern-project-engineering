@@ -13,6 +13,7 @@ import UserNotifications
 extension Notification.Name {
     static let navigateToProduct = Notification.Name("navigateToProduct")
     static let updateBadgeCount = Notification.Name("updateBadgeCount")
+    static let wishlistChanged = Notification.Name("wishlistChanged")
 }
 
 private enum NotificationDeepLinkStore {

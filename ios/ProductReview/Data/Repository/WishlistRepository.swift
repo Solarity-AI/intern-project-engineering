@@ -8,6 +8,11 @@
 import Foundation
 
 final class WishlistRepository: WishlistRepositoryProtocol {
+    private enum UserInfoKey {
+        static let productId = "productId"
+        static let isInWishlist = "isInWishlist"
+    }
+
     private let apiClient: APIClient
     private var cachedIds: Set<Int> = []
     private let cacheKey = AppConstants.StorageKeys.wishlist
@@ -66,16 +71,33 @@ final class WishlistRepository: WishlistRepositoryProtocol {
             method: .post
         )
 
-        // Update local cache
-        if cachedIds.contains(productId) {
-            cachedIds.remove(productId)
-        } else {
-            cachedIds.insert(productId)
+        // Re-sync from server to avoid stale cache drift across repository instances.
+        do {
+            let ids: [Int] = try await apiClient.request(endpoint: "/api/user/wishlist")
+            cachedIds = Set(ids)
+        } catch {
+            // Fall back to local toggle if server refresh fails after a successful toggle call.
+            if cachedIds.contains(productId) {
+                cachedIds.remove(productId)
+            } else {
+                cachedIds.insert(productId)
+            }
         }
+
         saveCachedIds()
+
+        NotificationCenter.default.post(
+            name: .wishlistChanged,
+            object: nil,
+            userInfo: [
+                UserInfoKey.productId: productId,
+                UserInfoKey.isInWishlist: cachedIds.contains(productId)
+            ]
+        )
     }
 
     func isInWishlist(productId: Int) async -> Bool {
+        loadCachedIds()
         return cachedIds.contains(productId)
     }
 }

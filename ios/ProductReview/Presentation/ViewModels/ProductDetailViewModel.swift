@@ -27,6 +27,7 @@ class ProductDetailViewModel: ObservableObject {
     private var currentPage = 0
     private var isLastPage = false
     private var currentRatingFilter: Int?
+    private var wishlistObserver: NSObjectProtocol?
 
     init(
         productId: Int,
@@ -36,6 +37,13 @@ class ProductDetailViewModel: ObservableObject {
         self.productId = productId
         self.productRepository = productRepository
         self.wishlistRepository = wishlistRepository
+        setupWishlistObserver()
+    }
+
+    deinit {
+        if let wishlistObserver {
+            NotificationCenter.default.removeObserver(wishlistObserver)
+        }
     }
 
     func loadProduct() async {
@@ -68,6 +76,22 @@ class ProductDetailViewModel: ObservableObject {
         toastMessage = message
         toastType = .success
         showToast = true
+    }
+
+    private func setupWishlistObserver() {
+        wishlistObserver = NotificationCenter.default.addObserver(
+            forName: .wishlistChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            guard let changedProductId = notification.userInfo?["productId"] as? Int else { return }
+            guard changedProductId == self.productId else { return }
+
+            if let isInWishlist = notification.userInfo?["isInWishlist"] as? Bool {
+                self.isInWishlist = isInWishlist
+            }
+        }
     }
 
     func loadReviews() async {
@@ -182,7 +206,7 @@ class ProductDetailViewModel: ObservableObject {
     func toggleWishlist() async {
         do {
             try await wishlistRepository.toggleWishlist(productId: productId)
-            isInWishlist.toggle()
+            isInWishlist = await wishlistRepository.isInWishlist(productId: productId)
 
             let message = isInWishlist ? "Added to wishlist" : "Removed from wishlist"
             showSuccess(message)
