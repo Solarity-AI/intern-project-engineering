@@ -22,34 +22,51 @@ struct ProductListView: View {
     ]
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                // Global Stats Header
-                if let stats = viewModel.globalStats {
-                    StatsHeaderView(stats: stats)
+        Group {
+            if viewModel.products.isEmpty && !viewModel.isLoading && viewModel.error != nil {
+                // Error state
+                EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
+                    Task { await viewModel.loadProducts() }
                 }
+            } else {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // Global Stats Header
+                        if let stats = viewModel.globalStats {
+                            StatsHeaderView(stats: stats)
+                        }
 
-                // Products Grid
-                LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(viewModel.products) { product in
-                        ProductCardView(product: product)
-                            .onTapGesture {
-                                navigationRouter.navigate(to: .productDetail(productId: product.id))
-                            }
-                            .onAppear {
-                                // Load more when reaching end
-                                if product.id == viewModel.products.last?.id {
-                                    Task { await viewModel.loadMore() }
+                        // Products Grid or Skeleton Loading
+                        LazyVGrid(columns: columns, spacing: 16) {
+                            if viewModel.products.isEmpty && viewModel.isLoading {
+                                // Show shimmer skeletons during initial load
+                                ForEach(0..<6, id: \.self) { _ in
+                                    ProductCardSkeleton()
+                                }
+                            } else {
+                                // Show actual products
+                                ForEach(viewModel.products) { product in
+                                    ProductCardView(product: product)
+                                        .onTapGesture {
+                                            navigationRouter.navigate(to: .productDetail(productId: product.id))
+                                        }
+                                        .onAppear {
+                                            // Load more when reaching end
+                                            if product.id == viewModel.products.last?.id {
+                                                Task { await viewModel.loadMore() }
+                                            }
+                                        }
                                 }
                             }
-                    }
-                }
-                .padding(.horizontal)
+                        }
+                        .padding(.horizontal)
 
-                // Loading indicator
-                if viewModel.isLoading {
-                    ProgressView()
-                        .padding()
+                        // Loading indicator for pagination (load more)
+                        if viewModel.isLoading && !viewModel.products.isEmpty {
+                            ProgressView()
+                                .padding()
+                        }
+                    }
                 }
             }
         }
@@ -104,14 +121,12 @@ struct ProductListView: View {
         .task {
             await viewModel.loadProducts()
         }
-        .alert("Error", isPresented: Binding<Bool>(
-            get: { viewModel.error != nil },
-            set: { if !$0 { viewModel.error = nil } }
-        )) {
-            Button("OK") { viewModel.error = nil }
-        } message: {
-            Text(viewModel.error ?? "")
-        }
+        .toast(
+            isPresented: $viewModel.showToast,
+            message: viewModel.toastMessage,
+            type: viewModel.toastType,
+            duration: 3.0
+        )
     }
 }
 
