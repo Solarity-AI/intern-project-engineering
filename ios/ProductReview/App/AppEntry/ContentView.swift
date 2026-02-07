@@ -56,15 +56,18 @@ struct ContentView: View {
             }
         }
         .environmentObject(navigationRouter)
-        .onChange(of: appState.pendingProductId) { oldValue, newValue in
-            // Handle deep link navigation
-            if let productId = newValue {
-                selectedTab = .products
-                navigationRouter.navigate(to: .productDetail(productId: productId))
-                // Clear pending product after navigation
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    appState.pendingProductId = nil
-                }
+        .task(id: appState.pendingProductId) {
+            guard let productId = appState.pendingProductId else { return }
+
+            // Always route deep links from a clean navigation stack.
+            selectedTab = .products
+            navigationRouter.popToRoot()
+            navigationRouter.navigate(to: .productDetail(productId: productId))
+
+            // Clear pending product after navigation completes.
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            if appState.pendingProductId == productId {
+                appState.pendingProductId = nil
             }
         }
     }

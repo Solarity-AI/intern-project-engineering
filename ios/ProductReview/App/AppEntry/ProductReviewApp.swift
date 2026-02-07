@@ -15,6 +15,29 @@ extension Notification.Name {
     static let updateBadgeCount = Notification.Name("updateBadgeCount")
 }
 
+private enum NotificationDeepLinkStore {
+    private static let pendingProductIdKey = "pendingNotificationProductId"
+
+    static func save(productId: Int) {
+        UserDefaults.standard.set(productId, forKey: pendingProductIdKey)
+    }
+
+    static func consume() -> Int? {
+        defer { clear() }
+        if let rawInt = UserDefaults.standard.object(forKey: pendingProductIdKey) as? Int {
+            return rawInt
+        }
+        if let rawString = UserDefaults.standard.string(forKey: pendingProductIdKey) {
+            return Int(rawString)
+        }
+        return nil
+    }
+
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: pendingProductIdKey)
+    }
+}
+
 @main
 struct ProductReviewApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -46,6 +69,13 @@ class AppState: ObservableObject {
         // Setup notification observers
         setupNotificationObservers()
 
+        // Consume deep link captured before observers were ready (terminated/cold start tap).
+        if let startupProductId = NotificationDeepLinkStore.consume() {
+            Task { @MainActor [weak self] in
+                self?.pendingProductId = startupProductId
+            }
+        }
+
         // Bootstrap unread count so tab bar badge is available at launch.
         Task { [weak self] in
             await self?.refreshNotificationBadgeCount()
@@ -73,6 +103,7 @@ class AppState: ObservableObject {
         ) { [weak self] notification in
             guard let self = self else { return }
             if let productId = notification.userInfo?["productId"] as? Int {
+                NotificationDeepLinkStore.clear()
                 Task { @MainActor in
                     self.pendingProductId = productId
                 }
@@ -127,6 +158,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
         // Register notification categories
         registerNotificationCategories()
+
+        if let launchOptions {
+            handleNotificationLaunchOptions(launchOptions)
+        }
 
         return true
     }
@@ -212,23 +247,43 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     // Handle notification tap
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse) async {
+        let supportedActionIdentifiers: Set<String> = [
+            UNNotificationDefaultActionIdentifier,
+            "VIEW_PRODUCT"
+        ]
+
+        guard supportedActionIdentifiers.contains(response.actionIdentifier) else {
+            return
+        }
+
         let userInfo = response.notification.request.content.userInfo
         await handleNotificationPayload(userInfo)
     }
 
-    @MainActor
-    private func handleNotificationPayload(_ userInfo: [AnyHashable: Any]) {
-        // Extract productId from notification payload (supports both String and Int).
-        let productId: Int?
-        if let rawInt = userInfo["productId"] as? Int {
-            productId = rawInt
-        } else if let rawString = userInfo["productId"] as? String {
-            productId = Int(rawString)
-        } else {
-            productId = nil
+    private func handleNotificationLaunchOptions(_ launchOptions: [UIApplication.LaunchOptionsKey: Any]) {
+        guard let remoteNotificationPayload = launchOptions[.remoteNotification] as? [AnyHashable: Any] else {
+            return
         }
 
-        if let productId = productId {
+        if let productId = extractProductId(from: remoteNotificationPayload) {
+            NotificationDeepLinkStore.save(productId: productId)
+        }
+    }
+
+    private func extractProductId(from userInfo: [AnyHashable: Any]) -> Int? {
+        if let rawInt = userInfo["productId"] as? Int {
+            return rawInt
+        }
+        if let rawString = userInfo["productId"] as? String {
+            return Int(rawString)
+        }
+        return nil
+    }
+
+    @MainActor
+    private func handleNotificationPayload(_ userInfo: [AnyHashable: Any]) {
+        if let productId = extractProductId(from: userInfo) {
+            NotificationDeepLinkStore.save(productId: productId)
             // Post notification for deep linking
             NotificationCenter.default.post(
                 name: .navigateToProduct,

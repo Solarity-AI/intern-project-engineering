@@ -112,8 +112,8 @@ struct ProductDetailView: View {
                                 )
                             }
                             .padding()
-                        } else if viewModel.isLoading {
-                            // Show shimmer skeleton during loading
+                        } else {
+                            // Show skeleton for initial load and transient states.
                             ProductDetailSkeleton()
                         }
                     }
@@ -153,19 +153,21 @@ struct ProductDetailView: View {
             )
         }
         .overlay(alignment: .bottomTrailing) {
-            Button {
-                showAddReview = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .frame(width: 56, height: 56)
-                    .background(Color.blue)
-                    .clipShape(Circle())
-                    .shadow(radius: 4)
+            if viewModel.product != nil {
+                Button {
+                    showAddReview = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .frame(width: 56, height: 56)
+                        .background(Color.blue)
+                        .clipShape(Circle())
+                        .shadow(radius: 4)
+                }
+                .padding()
             }
-            .padding()
         }
         .task {
             await viewModel.loadProduct()

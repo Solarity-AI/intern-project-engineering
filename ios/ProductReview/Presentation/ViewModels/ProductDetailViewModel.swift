@@ -47,6 +47,7 @@ class ProductDetailViewModel: ObservableObject {
             isInWishlist = await wishlistRepository.isInWishlist(productId: productId)
         } catch is CancellationError {
             // Ignore cancellation errors
+            isLoading = false
             return
         } catch {
             showError(error.localizedDescription)
@@ -56,12 +57,14 @@ class ProductDetailViewModel: ObservableObject {
     }
 
     private func showError(_ message: String) {
+        error = message
         toastMessage = message
         toastType = .error
         showToast = true
     }
 
     private func showSuccess(_ message: String) {
+        error = nil
         toastMessage = message
         toastType = .success
         showToast = true
