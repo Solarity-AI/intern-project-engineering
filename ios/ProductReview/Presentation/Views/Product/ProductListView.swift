@@ -19,10 +19,17 @@ struct ProductListView: View {
     @FocusState private var isSearchFieldFocused: Bool
 
     private let categories = ["All", "Electronics", "Smartphones", "Laptops", "Tablets", "Gaming", "Wearables", "Audio", "Accessories"]
-    private let columns = [
-        GridItem(.flexible()),
-        GridItem(.flexible())
-    ]
+    private let cardWidth: CGFloat = 140
+    private let cardHeight: CGFloat = 260
+    private let gridHorizontalSpacing: CGFloat = 40
+    private let gridVerticalSpacing: CGFloat = 12
+    private let gridHorizontalPadding: CGFloat = 0
+    private var columns: [GridItem] {
+        [
+            GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing),
+            GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing)
+        ]
+    }
 
     private var recentSearchSuggestions: [String] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -144,16 +151,18 @@ struct ProductListView: View {
                     }
 
                     // Products Grid or Skeleton Loading
-                    LazyVGrid(columns: columns, spacing: 16) {
+                    LazyVGrid(columns: columns, spacing: gridVerticalSpacing) {
                         if viewModel.products.isEmpty && viewModel.isLoading {
                             // Show shimmer skeletons during initial load
                             ForEach(0..<6, id: \.self) { _ in
                                 ProductCardSkeleton()
+                                    .frame(width: cardWidth, height: cardHeight)
                             }
                         } else {
                             // Show actual products
                             ForEach(viewModel.products) { product in
                                 ProductCardView(product: product)
+                                    .frame(width: cardWidth, height: cardHeight)
                                     .onTapGesture {
                                         saveCurrentSearchToHistory()
                                         navigationRouter.navigate(to: .productDetail(productId: product.id))
@@ -167,7 +176,8 @@ struct ProductListView: View {
                             }
                         }
                     }
-                    .padding(.horizontal)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, gridHorizontalPadding)
 
                     // Loading indicator for pagination (load more)
                     if viewModel.isLoading && !viewModel.products.isEmpty {
@@ -290,8 +300,7 @@ struct ProductCardView: View {
     let product: Product
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Image placeholder
+        VStack(alignment: .leading, spacing: 6) {
             AsyncImage(url: URL(string: product.imageUrl ?? "")) { image in
                 image
                     .resizable()
@@ -304,20 +313,21 @@ struct ProductCardView: View {
                             .foregroundColor(.gray)
                     }
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 120)
+            .frame(width: 140, height: 140)
             .clipped()
             .contentShape(Rectangle())
             .cornerRadius(8)
             .accessibilityHidden(true)
 
-            // Product info
             Text(product.name)
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
 
-            HStack {
+            Spacer(minLength: 0)
+
+            HStack(spacing: 2) {
                 Image(systemName: "star.fill")
                     .foregroundColor(.yellow)
                     .font(.caption)
@@ -336,10 +346,14 @@ struct ProductCardView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.blue)
         }
-        .padding(12)
+        .padding(10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(.systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color(.separator), lineWidth: 1)
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(product.name), \(product.formattedPrice), \(product.formattedRating) stars")
         .accessibilityHint("Double tap to view details")

@@ -33,13 +33,11 @@ struct ShimmerView: View {
 // MARK: - Product Card Skeleton
 struct ProductCardSkeleton: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Image skeleton
+        VStack(alignment: .leading, spacing: 6) {
             ShimmerView()
-                .frame(height: 120)
+                .frame(width: 140, height: 140)
                 .cornerRadius(8)
 
-            // Title skeleton
             ShimmerView()
                 .frame(height: 16)
                 .cornerRadius(4)
@@ -48,20 +46,24 @@ struct ProductCardSkeleton: View {
                 .frame(width: 100, height: 16)
                 .cornerRadius(4)
 
-            // Rating skeleton
+            Spacer(minLength: 0)
+
             ShimmerView()
                 .frame(width: 80, height: 12)
                 .cornerRadius(4)
 
-            // Price skeleton
             ShimmerView()
                 .frame(width: 60, height: 16)
                 .cornerRadius(4)
         }
-        .padding(12)
+        .padding(10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color(.separator), lineWidth: 1)
+        }
     }
 }
 

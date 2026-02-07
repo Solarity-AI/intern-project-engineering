@@ -9,15 +9,21 @@ import SwiftUI
 
 struct WishlistView: View {
     @EnvironmentObject var navigationRouter: NavigationRouter
+    @EnvironmentObject var appState: AppState
     @StateObject private var viewModel = WishlistViewModel()
     @State private var selectedIds: Set<Int> = []
     @State private var isSelectionMode = false
     @State private var showBulkDeleteAlert = false
 
-    private let columns = [
-        GridItem(.flexible()),
-        GridItem(.flexible())
-    ]
+    private let cardWidth: CGFloat = 140
+    private let gridSpacing: CGFloat = 16
+    private let gridHorizontalPadding: CGFloat = 12
+    private var columns: [GridItem] {
+        [
+            GridItem(.fixed(cardWidth), spacing: gridSpacing),
+            GridItem(.fixed(cardWidth), spacing: gridSpacing)
+        ]
+    }
     private var selectedItemWord: String {
         selectedIds.count == 1 ? "item" : "items"
     }
@@ -30,6 +36,7 @@ struct WishlistView: View {
                 }
             } else if viewModel.products.isEmpty && !viewModel.isLoading {
                 EmptyStateView.wishlist {
+                    appState.selectedTab = .products
                     navigationRouter.popToRoot()
                 }
             } else {
@@ -57,7 +64,7 @@ struct WishlistView: View {
                     }
 
                     ScrollView {
-                        LazyVGrid(columns: columns, spacing: 16) {
+                        LazyVGrid(columns: columns, spacing: gridSpacing) {
                             ForEach(viewModel.products) { product in
                                 WishlistProductCard(
                                     product: product,
@@ -74,6 +81,7 @@ struct WishlistView: View {
                                         Task { await viewModel.removeFromWishlist(productId: product.id) }
                                     }
                                 )
+                                .frame(width: cardWidth)
                                 .onAppear {
                                     if product.id == viewModel.products.last?.id {
                                         Task { await viewModel.loadMore() }
@@ -81,7 +89,9 @@ struct WishlistView: View {
                                 }
                             }
                         }
-                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, gridHorizontalPadding)
+                        .padding(.vertical, 12)
 
                         if viewModel.isLoading {
                             ProgressView()
@@ -168,7 +178,6 @@ struct WishlistProductCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ZStack(alignment: .topTrailing) {
-                // Image
                 AsyncImage(url: URL(string: product.imageUrl ?? "")) { image in
                     image
                         .resizable()
@@ -183,14 +192,12 @@ struct WishlistProductCard: View {
                 .contentShape(Rectangle())
                 .cornerRadius(8)
 
-                // Selection indicator
                 if isSelectionMode {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                         .foregroundColor(isSelected ? .blue : .white)
                         .background(Circle().fill(isSelected ? .white : .black.opacity(0.3)))
                         .padding(8)
                 } else {
-                    // Remove button
                     Button {
                         onRemove()
                     } label: {
