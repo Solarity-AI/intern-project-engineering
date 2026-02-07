@@ -13,6 +13,7 @@
 - **ORM:** Spring Data JPA
 - **AI:** OpenAI GPT-4o-mini via simple-openai
 - **Caching:** Caffeine
+- **Rate Limiting:** Bucket4j
 - **Build:** Maven
 
 ### Frontend (React Native/Expo)
@@ -37,8 +38,10 @@
 │   │   ├── service/            # Business logic
 │   │   ├── model/              # JPA entities
 │   │   ├── repository/         # Data access
-│   │   └── dto/                # Data transfer objects
-│   └── src/main/resources/     # Configuration
+│   │   ├── dto/                # Data transfer objects
+│   │   ├── config/             # CORS, caching, rate limiting
+│   │   └── exception/          # Custom exceptions & global handler
+│   └── src/main/resources/     # Configuration (+ application-prod.properties)
 │
 ├── mobile/                     # React Native app
 │   ├── src/
@@ -112,7 +115,12 @@ cd mobile && eas build --platform android
 - `backend/src/main/java/.../controller/ProductController.java` - Main API
 - `backend/src/main/java/.../service/ProductServiceImpl.java` - Business logic
 - `backend/src/main/java/.../service/AISummaryService.java` - OpenAI integration
+- `backend/src/main/java/.../config/CorsConfig.java` - Centralized CORS (environment-based origins)
+- `backend/src/main/java/.../config/RateLimitingFilter.java` - Bucket4j rate limiting (per client)
+- `backend/src/main/java/.../exception/GlobalExceptionHandler.java` - Error handling with proper HTTP status codes
+- `backend/src/main/java/.../dto/ErrorResponse.java` - Structured error responses
 - `backend/src/main/resources/application.properties` - Configuration
+- `backend/src/main/resources/application-prod.properties` - Production overrides
 
 ### Frontend
 - `mobile/src/services/api.ts` - API client
@@ -127,7 +135,9 @@ cd mobile && eas build --platform android
 - DTOs for API responses, entities for persistence
 - Service interfaces with Impl classes
 - Custom JPA queries in repositories
-- Global exception handler for consistent errors
+- Custom exception classes (ResourceNotFoundException, ValidationException, UnauthorizedException)
+- Global exception handler with structured ErrorResponse (timestamp, code, message, details)
+- Centralized CORS config via `CorsConfig.java` (no `@CrossOrigin` on controllers)
 
 ### TypeScript (Frontend)
 - Functional components with hooks
@@ -141,6 +151,9 @@ cd mobile && eas build --platform android
 ### Backend
 - `PORT` - Server port (default: 8080)
 - `OPENAI_API_KEY` - OpenAI API key for AI features
+- `cors.allowed-origins` - Comma-separated allowed CORS origins (default: localhost dev ports)
+- `rate-limit.requests-per-minute` - Rate limit per client (default: 60)
+- `spring.profiles.active=prod` - Activate production profile (disables H2 console, restricts actuator)
 
 ### Frontend
 - API base URL configured in `mobile/src/services/api.ts`
@@ -165,3 +178,6 @@ cd backend && ./mvnw test
 - AI summaries are cached for 1 hour (Caffeine)
 - User persistence via device ID (X-User-ID header)
 - Frontend supports dark/light mode with system preference detection
+- H2 console is disabled in production profile (`application-prod.properties`)
+- Rate limiting: 60 requests/minute per client (keyed by X-User-ID or IP)
+- CORS: configured via properties, not controller annotations
