@@ -38,9 +38,10 @@ final class ProductRepository: ProductRepositoryProtocol {
             params["sort"] = sort
         }
 
-        let response: PageResponse<ProductDTO> = try await apiClient.request(
+        let response: PageResponse<ProductDTO> = try await apiClient.requestWithRetry(
             endpoint: "/api/products",
-            queryParams: params
+            queryParams: params,
+            maxRetries: AppConstants.API.maxRetries
         )
 
         let products = ProductMapper.map(response.content)
@@ -48,7 +49,10 @@ final class ProductRepository: ProductRepositoryProtocol {
     }
 
     func getProduct(id: Int) async throws -> Product {
-        let dto: ProductDTO = try await apiClient.request(endpoint: "/api/products/\(id)")
+        let dto: ProductDTO = try await apiClient.requestWithRetry(
+            endpoint: "/api/products/\(id)",
+            maxRetries: AppConstants.API.maxRetries
+        )
         return ProductMapper.map(dto)
     }
 
@@ -61,9 +65,10 @@ final class ProductRepository: ProductRepositoryProtocol {
             params["search"] = search
         }
 
-        let dto: GlobalStatsDTO = try await apiClient.request(
+        let dto: GlobalStatsDTO = try await apiClient.requestWithRetry(
             endpoint: "/api/products/stats",
-            queryParams: params.isEmpty ? nil : params
+            queryParams: params.isEmpty ? nil : params,
+            maxRetries: AppConstants.API.maxRetries
         )
 
         return GlobalStats(
@@ -94,9 +99,10 @@ final class ProductRepository: ProductRepositoryProtocol {
             params["sort"] = sort
         }
 
-        let response: PageResponse<ReviewDTO> = try await apiClient.request(
+        let response: PageResponse<ReviewDTO> = try await apiClient.requestWithRetry(
             endpoint: "/api/products/\(productId)/reviews",
-            queryParams: params
+            queryParams: params,
+            maxRetries: AppConstants.API.maxRetries
         )
 
         let reviews = ReviewMapper.map(response.content)
@@ -131,7 +137,10 @@ final class ProductRepository: ProductRepositoryProtocol {
     }
 
     func getUserVotedReviewIds() async throws -> [Int] {
-        let ids: [Int] = try await apiClient.request(endpoint: "/api/products/reviews/voted")
+        let ids: [Int] = try await apiClient.requestWithRetry(
+            endpoint: "/api/products/reviews/voted",
+            maxRetries: AppConstants.API.maxRetries
+        )
         return ids
     }
 
