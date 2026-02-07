@@ -24,7 +24,11 @@ struct WishlistView: View {
 
     var body: some View {
         Group {
-            if viewModel.products.isEmpty && !viewModel.isLoading {
+            if viewModel.products.isEmpty && !viewModel.isLoading && viewModel.error != nil {
+                EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
+                    Task { await viewModel.loadWishlist() }
+                }
+            } else if viewModel.products.isEmpty && !viewModel.isLoading {
                 EmptyStateView.wishlist {
                     navigationRouter.popToRoot()
                 }
@@ -124,6 +128,16 @@ struct WishlistView: View {
         .task {
             await viewModel.loadWishlist()
         }
+        .toast(
+            isPresented: $viewModel.showToast,
+            message: viewModel.toastMessage,
+            type: viewModel.toastType,
+            duration: 3.0,
+            actionTitle: viewModel.isUndoAvailable ? "Undo" : nil,
+            onAction: {
+                viewModel.undoPendingRemoval()
+            }
+        )
         .alert("Error", isPresented: Binding(
             get: { viewModel.error != nil },
             set: { if !$0 { viewModel.error = nil } }
@@ -213,16 +227,154 @@ struct WishlistProductCard: View {
 // MARK: - ViewModel
 @MainActor
 class WishlistViewModel: ObservableObject {
+    private struct RemovedItem {
+        let product: Product
+        let index: Int
+    }
+
+    private struct PendingRemoval {
+        let id: UUID
+        let items: [RemovedItem]
+        let productIds: [Int]
+        let commitTask: Task<Void, Never>
+    }
+
     @Published var products: [Product] = []
     @Published var isLoading = false
     @Published var error: String?
+    @Published var showToast = false
+    @Published var toastMessage = ""
+    @Published var toastType: ToastType = .info
+    @Published var isUndoAvailable = false
 
     private let repository: WishlistRepositoryProtocol
     private var currentPage = 0
     private var isLastPage = false
+    private var pendingRemoval: PendingRemoval?
+    private let undoWindowNanoseconds: UInt64 = 3_000_000_000
 
     init(repository: WishlistRepositoryProtocol = WishlistRepository()) {
         self.repository = repository
+    }
+
+    private func itemWord(_ count: Int) -> String {
+        count == 1 ? "item" : "items"
+    }
+
+    private func showSuccessToast(_ message: String) {
+        isUndoAvailable = false
+        toastMessage = message
+        toastType = .success
+        showToast = true
+    }
+
+    private func showErrorToast(_ message: String) {
+        isUndoAvailable = false
+        toastMessage = message
+        toastType = .error
+        showToast = true
+    }
+
+    private func showWarningToast(_ message: String) {
+        isUndoAvailable = false
+        toastMessage = message
+        toastType = .warning
+        showToast = true
+    }
+
+    private func showUndoToast(_ message: String) {
+        isUndoAvailable = true
+        toastMessage = message
+        toastType = .success
+        showToast = true
+    }
+
+    private func clearPendingRemoval() {
+        pendingRemoval?.commitTask.cancel()
+        pendingRemoval = nil
+        isUndoAvailable = false
+    }
+
+    private func commitRemovalToServer(productIds: [Int], showSuccessOnComplete: Bool = true) async {
+        var removedCount = 0
+        var failedCount = 0
+
+        for id in productIds {
+            do {
+                try await repository.toggleWishlist(productId: id)
+                removedCount += 1
+            } catch {
+                failedCount += 1
+            }
+        }
+
+        if failedCount > 0 {
+            await loadWishlist()
+        }
+
+        if failedCount == 0 {
+            guard showSuccessOnComplete else { return }
+            showSuccessToast("Removed \(removedCount) \(itemWord(removedCount)) from wishlist")
+        } else if removedCount == 0 {
+            showErrorToast("Failed to remove selected \(itemWord(failedCount))")
+        } else {
+            showWarningToast("Removed \(removedCount) \(itemWord(removedCount)); \(failedCount) failed")
+        }
+    }
+
+    private func commitPendingRemovalIfNeeded() async {
+        guard let pendingRemoval else { return }
+        self.pendingRemoval = nil
+        isUndoAvailable = false
+        pendingRemoval.commitTask.cancel()
+        await commitRemovalToServer(productIds: pendingRemoval.productIds, showSuccessOnComplete: false)
+    }
+
+    private func scheduleRemoval(productIds: [Int]) async {
+        await commitPendingRemovalIfNeeded()
+
+        let indexedMatches = products.enumerated().filter { entry in
+            productIds.contains(entry.element.id)
+        }
+        guard !indexedMatches.isEmpty else { return }
+
+        let removedItems = indexedMatches.map { RemovedItem(product: $0.element, index: $0.offset) }
+        let idsToRemove = removedItems.map { $0.product.id }
+
+        products.removeAll { idsToRemove.contains($0.id) }
+        showUndoToast("Removed \(idsToRemove.count) \(itemWord(idsToRemove.count))")
+
+        let pendingId = UUID()
+        let commitTask = Task {
+            try? await Task.sleep(nanoseconds: undoWindowNanoseconds)
+            await commitPendingRemovalIfMatching(id: pendingId)
+        }
+
+        pendingRemoval = PendingRemoval(
+            id: pendingId,
+            items: removedItems,
+            productIds: idsToRemove,
+            commitTask: commitTask
+        )
+    }
+
+    private func commitPendingRemovalIfMatching(id: UUID) async {
+        guard let pendingRemoval, pendingRemoval.id == id else { return }
+        self.pendingRemoval = nil
+        isUndoAvailable = false
+        await commitRemovalToServer(productIds: pendingRemoval.productIds, showSuccessOnComplete: false)
+    }
+
+    func undoPendingRemoval() {
+        guard let pendingRemoval else { return }
+        clearPendingRemoval()
+
+        for item in pendingRemoval.items.sorted(by: { $0.index < $1.index }) {
+            let insertIndex = min(item.index, products.count)
+            products.insert(item.product, at: insertIndex)
+        }
+
+        showSuccessToast("Restored \(pendingRemoval.items.count) \(itemWord(pendingRemoval.items.count))")
     }
 
     func loadWishlist() async {
@@ -264,35 +416,11 @@ class WishlistViewModel: ObservableObject {
     }
 
     func removeFromWishlist(productId: Int) async {
-        // Optimistic update
-        products.removeAll { $0.id == productId }
-
-        do {
-            try await repository.toggleWishlist(productId: productId)
-        } catch {
-            // Reload on error
-            await loadWishlist()
-            self.error = error.localizedDescription
-        }
+        await scheduleRemoval(productIds: [productId])
     }
 
     func removeMultiple(productIds: [Int]) async {
-        // Optimistic update
-        products.removeAll { productIds.contains($0.id) }
-
-        var hasFailed = false
-        for id in productIds {
-            do {
-                try await repository.toggleWishlist(productId: id)
-            } catch {
-                hasFailed = true
-                self.error = error.localizedDescription
-            }
-        }
-
-        if hasFailed {
-            await loadWishlist()
-        }
+        await scheduleRemoval(productIds: productIds)
     }
 }
 
