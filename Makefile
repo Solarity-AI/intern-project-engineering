@@ -1,4 +1,4 @@
-JAVA_HOME ?= /opt/homebrew/Cellar/openjdk@17/17.0.18/libexec/openjdk.jdk/Contents/Home
+JAVA_HOME ?= $(shell /usr/libexec/java_home 2>/dev/null || dirname $(shell dirname $(shell readlink -f $(shell which java) 2>/dev/null || echo /usr/bin/java)))
 export JAVA_HOME
 
 # ── Backend ──────────────────────────────────────────────
