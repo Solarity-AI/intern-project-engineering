@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ProductListView: View {
     @EnvironmentObject var navigationRouter: NavigationRouter
+    @EnvironmentObject var appState: AppState
     @StateObject private var viewModel = ProductListViewModel()
 
     @State private var searchText = ""
@@ -108,10 +109,24 @@ struct ProductListView: View {
                     Button {
                         navigationRouter.navigate(to: .notifications)
                     } label: {
-                        Image(systemName: "bell")
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: "bell")
+
+                            if appState.notificationBadgeCount > 0 {
+                                Text("\(appState.notificationBadgeCount)")
+                                    .font(.caption2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(Color.red)
+                                    .clipShape(Capsule())
+                                    .offset(x: 10, y: -8)
+                            }
+                        }
                     }
                     .accessibilityLabel("Notifications")
-                    .accessibilityHint("View your notifications")
+                    .accessibilityHint("View your notifications. \(appState.notificationBadgeCount) unread")
                 }
             }
         }

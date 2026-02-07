@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Foundation
 
 struct NotificationsView: View {
     @EnvironmentObject var navigationRouter: NavigationRouter
@@ -175,6 +176,14 @@ class NotificationsViewModel: ObservableObject {
         self.repository = repository
     }
 
+    private func pushBadgeUpdate() {
+        NotificationCenter.default.post(
+            name: .updateBadgeCount,
+            object: nil,
+            userInfo: ["count": unreadCount]
+        )
+    }
+
     func loadNotifications() async {
         isLoading = true
         error = nil
@@ -182,6 +191,10 @@ class NotificationsViewModel: ObservableObject {
         do {
             notifications = try await repository.getNotifications()
             unreadCount = try await repository.getUnreadCount()
+            pushBadgeUpdate()
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
             self.error = error.localizedDescription
         }
@@ -194,10 +207,14 @@ class NotificationsViewModel: ObservableObject {
         if let index = notifications.firstIndex(where: { $0.id == notificationId }) {
             notifications[index].isRead = true
             unreadCount = max(0, unreadCount - 1)
+            pushBadgeUpdate()
         }
 
         do {
             try await repository.markAsRead(notificationId: notificationId)
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
             await loadNotifications()
             self.error = error.localizedDescription
@@ -210,9 +227,13 @@ class NotificationsViewModel: ObservableObject {
             notifications[i].isRead = true
         }
         unreadCount = 0
+        pushBadgeUpdate()
 
         do {
             try await repository.markAllAsRead()
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
             await loadNotifications()
             self.error = error.localizedDescription
@@ -223,10 +244,16 @@ class NotificationsViewModel: ObservableObject {
         // Optimistic update
         let wasUnread = notifications.first(where: { $0.id == notificationId })?.isRead == false
         notifications.removeAll { $0.id == notificationId }
-        if wasUnread { unreadCount = max(0, unreadCount - 1) }
+        if wasUnread {
+            unreadCount = max(0, unreadCount - 1)
+            pushBadgeUpdate()
+        }
 
         do {
             try await repository.deleteNotification(notificationId: notificationId)
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
             await loadNotifications()
             self.error = error.localizedDescription
@@ -237,14 +264,19 @@ class NotificationsViewModel: ObservableObject {
         // Optimistic update
         notifications.removeAll()
         unreadCount = 0
+        pushBadgeUpdate()
 
         do {
             try await repository.deleteAllNotifications()
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
             await loadNotifications()
             self.error = error.localizedDescription
         }
     }
+
 }
 
 #Preview {
