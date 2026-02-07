@@ -11,10 +11,12 @@ struct ProductListView: View {
     @EnvironmentObject var navigationRouter: NavigationRouter
     @EnvironmentObject var appState: AppState
     @StateObject private var viewModel = ProductListViewModel()
+    @ObservedObject private var searchHistoryManager = SearchHistoryManager.shared
 
     @State private var searchText = ""
     @State private var selectedCategory: String? = nil
     @State private var showCategoryPicker = false
+    @FocusState private var isSearchFieldFocused: Bool
 
     private let categories = ["All", "Electronics", "Smartphones", "Laptops", "Tablets", "Gaming", "Wearables", "Audio", "Accessories"]
     private let columns = [
@@ -22,57 +24,160 @@ struct ProductListView: View {
         GridItem(.flexible())
     ]
 
-    var body: some View {
-        Group {
-            if viewModel.products.isEmpty && !viewModel.isLoading && viewModel.error != nil {
-                // Error state
-                EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
-                    Task { await viewModel.loadProducts() }
-                }
-            } else {
-                ScrollView {
-                    VStack(spacing: 16) {
-                        // Global Stats Header
-                        if let stats = viewModel.globalStats {
-                            StatsHeaderView(stats: stats)
-                        }
+    private var recentSearchSuggestions: [String] {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
 
-                        // Products Grid or Skeleton Loading
-                        LazyVGrid(columns: columns, spacing: 16) {
-                            if viewModel.products.isEmpty && viewModel.isLoading {
-                                // Show shimmer skeletons during initial load
-                                ForEach(0..<6, id: \.self) { _ in
-                                    ProductCardSkeleton()
+        if trimmed.isEmpty {
+            return searchHistoryManager.recentSearches
+        }
+
+        return searchHistoryManager.recentSearches.filter {
+            $0.localizedCaseInsensitiveContains(trimmed)
+        }
+    }
+
+    private func saveCurrentSearchToHistory() {
+        searchHistoryManager.addSearch(searchText)
+    }
+
+    @ViewBuilder
+    private var searchSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+
+                TextField("Search products...", text: $searchText)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                    .submitLabel(.search)
+                    .focused($isSearchFieldFocused)
+                    .onSubmit {
+                        saveCurrentSearchToHistory()
+                    }
+
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            if isSearchFieldFocused && !searchHistoryManager.recentSearches.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        Text("Recent Searches")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        Spacer()
+
+                        Button("Clear") {
+                            searchHistoryManager.clearHistory()
+                        }
+                        .font(.caption)
+                        .accessibilityLabel("Clear search history")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
+
+                    if recentSearchSuggestions.isEmpty {
+                        Text("No matching recent searches")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 8)
+                    } else {
+                        ForEach(recentSearchSuggestions, id: \.self) { query in
+                            Button {
+                                searchText = query
+                                isSearchFieldFocused = false
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "clock.arrow.circlepath")
+                                        .foregroundColor(.secondary)
+                                    Text(query)
+                                        .lineLimit(1)
+                                    Spacer()
                                 }
-                            } else {
-                                // Show actual products
-                                ForEach(viewModel.products) { product in
-                                    ProductCardView(product: product)
-                                        .onTapGesture {
-                                            navigationRouter.navigate(to: .productDetail(productId: product.id))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .background(Color(.systemBackground))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color(.separator).opacity(0.2))
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                searchSection
+
+                if viewModel.products.isEmpty && !viewModel.isLoading && viewModel.error != nil {
+                    EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
+                        Task { await viewModel.loadProducts() }
+                    }
+                    .padding(.horizontal)
+                } else {
+                    // Global Stats Header
+                    if let stats = viewModel.globalStats {
+                        StatsHeaderView(stats: stats)
+                    }
+
+                    // Products Grid or Skeleton Loading
+                    LazyVGrid(columns: columns, spacing: 16) {
+                        if viewModel.products.isEmpty && viewModel.isLoading {
+                            // Show shimmer skeletons during initial load
+                            ForEach(0..<6, id: \.self) { _ in
+                                ProductCardSkeleton()
+                            }
+                        } else {
+                            // Show actual products
+                            ForEach(viewModel.products) { product in
+                                ProductCardView(product: product)
+                                    .onTapGesture {
+                                        saveCurrentSearchToHistory()
+                                        navigationRouter.navigate(to: .productDetail(productId: product.id))
+                                    }
+                                    .onAppear {
+                                        // Load more when reaching end
+                                        if product.id == viewModel.products.last?.id {
+                                            Task { await viewModel.loadMore() }
                                         }
-                                        .onAppear {
-                                            // Load more when reaching end
-                                            if product.id == viewModel.products.last?.id {
-                                                Task { await viewModel.loadMore() }
-                                            }
-                                        }
-                                }
+                                    }
                             }
                         }
-                        .padding(.horizontal)
+                    }
+                    .padding(.horizontal)
 
-                        // Loading indicator for pagination (load more)
-                        if viewModel.isLoading && !viewModel.products.isEmpty {
-                            ProgressView()
-                                .padding()
-                        }
+                    // Loading indicator for pagination (load more)
+                    if viewModel.isLoading && !viewModel.products.isEmpty {
+                        ProgressView()
+                            .padding()
                     }
                 }
             }
         }
         .navigationTitle("Products")
-        .searchable(text: $searchText, prompt: "Search products...")
         .onChange(of: searchText) { _, newValue in
             Task {
                 await viewModel.search(query: newValue)
