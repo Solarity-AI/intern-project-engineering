@@ -11,29 +11,6 @@
 
 ---
 
-## Backend Developer Tasks (Backend + React Native)
-
-### Category 1: Security & Stability (U1-U10) - Critical (~8.5h)
-
-**Current Issues:**
-- `@CrossOrigin(origins = "*")` allows all origins (`ProductController.java:21`, `UserController.java:18`)
-- H2 console enabled in production (`application.properties:19`)
-- No rate limiting
-- `GlobalExceptionHandler.java:20` returns HTTP 404 for all `RuntimeException`
-- No custom exception classes
-
-**Tasks:** U1-U10 (details in Quick Reference)
-
-**Files to modify:**
-- `backend/src/main/java/com/example/productreview/config/CorsConfig.java` (create)
-- `backend/src/main/java/com/example/productreview/controller/*.java`
-- `backend/src/main/java/com/example/productreview/exception/` (create multiple)
-- `backend/src/main/java/com/example/productreview/dto/ErrorResponse.java` (create)
-- `backend/src/main/resources/application.properties`
-- `backend/src/main/resources/application-prod.properties` (create)
-
----
-
 ### Category 2: OpenAI Integration (U11-U17) - High (~9h)
 
 **Current Issues:**
@@ -355,7 +332,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 ### Backend Developer (61 tasks → ~69h)
 
 | Category | Tasks | Priority | Hours |
-|----------|-------|----------|-------|
+|----------|-------|----------|-------
 | Security & Stability | U1-U10 | Critical | ~8.5h |
 | OpenAI Integration | U11-U17 | High | ~9h |
 | Frontend Error Handling | U18-U23 | High | ~8h |
@@ -393,18 +370,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 ### Week 1
 
 **Backend Developer (20h):**
-| Task | Description | Hours |
-|------|-------------|-------|
-| U1 | Create CorsConfig.java (environment-based origins) | 1h |
-| U2 | Remove @CrossOrigin annotations from controllers | 0.5h |
-| U3 | Disable H2 console for production | 0.5h |
-| U4 | Add rate limiting filter (Bucket4j) | 1.5h |
-| U5 | Write CORS tests | 0.5h |
-| U6 | Create custom exception classes | 1h |
-| U7 | Update GlobalExceptionHandler (proper HTTP codes) | 1h |
-| U8 | Create ErrorResponse DTO | 0.5h |
-| U9 | Update services to throw proper exceptions | 1.5h |
-| U10 | Write exception handling unit tests | 1h |
 | U11 | Implement OpenAI client (simple-openai) | 2h |
 | U12 | Add request/response logging | 1h |
 | U13 | Add OpenAI API rate limiting | 1h |
@@ -554,20 +519,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 ## Quick Reference - Task Checklist
 
 ### Backend Developer
-
-#### Security & Stability (Critical)
-| # | Task | Hours |
-|---|------|-------|
-| U1 | Create CorsConfig.java (environment-based origins) | 1h |
-| U2 | Remove @CrossOrigin annotations from controllers | 0.5h |
-| U3 | Disable H2 console for production profile | 0.5h |
-| U4 | Add rate limiting filter (Bucket4j) | 1.5h |
-| U5 | Write CORS tests | 0.5h |
-| U6 | Create custom exception classes (ResourceNotFound, Validation, Unauthorized) | 1h |
-| U7 | Update GlobalExceptionHandler (proper HTTP status codes) | 1h |
-| U8 | Create ErrorResponse DTO (timestamp, code, message, details) | 0.5h |
-| U9 | Update services to throw appropriate exceptions | 1.5h |
-| U10 | Write exception handling unit tests | 1h |
 
 #### OpenAI Integration (High)
 | # | Task | Hours |
