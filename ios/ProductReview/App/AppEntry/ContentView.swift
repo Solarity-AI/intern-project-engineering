@@ -14,9 +14,45 @@ enum AppTab: Hashable {
     case settings
 }
 
+struct BrandTopBarTitle: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image("TopBarLogo")
+                .resizable()
+                .scaledToFill()
+                .frame(width: 24, height: 24)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color(.separator), lineWidth: 0.5)
+                }
+                .accessibilityHidden(true)
+
+            Text(title)
+                .font(.headline)
+                .lineLimit(1)
+        }
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var navigationRouter = NavigationRouter()
+
+    private var currentTabTitle: String {
+        switch appState.selectedTab {
+        case .products:
+            return "Products"
+        case .wishlist:
+            return "Wishlist"
+        case .notifications:
+            return "Notifications"
+        case .settings:
+            return "Settings"
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -50,6 +86,23 @@ struct ContentView: View {
                         }
                         .tag(AppTab.settings)
                 }
+                .navigationTitle(currentTabTitle)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    if navigationRouter.path.isEmpty {
+                        ToolbarItem(placement: .principal) {
+                            if appState.selectedTab == .products {
+                                BrandTopBarTitle(title: AppConstants.UI.appDisplayName)
+                            } else {
+                                Text(currentTabTitle)
+                                    .font(.headline)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+                .toolbar(.visible, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in
                     switch route {
                     case .productDetail(let productId):
@@ -87,8 +140,15 @@ struct ContentView: View {
 private struct SettingsView: View {
     @EnvironmentObject private var themeManager: ThemeManager
 
+    private var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
+        return "\(version) (\(build))"
+    }
+
     var body: some View {
         Form {
+            // MARK: - Appearance
             Section("Appearance") {
                 Picker("Theme", selection: $themeManager.currentTheme) {
                     ForEach(AppTheme.allCases, id: \.self) { theme in
@@ -97,6 +157,47 @@ private struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.menu)
+                .listRowBackground(Color("CardBackground"))
+            }
+
+            // MARK: - About
+            Section("About") {
+                // App Version
+                HStack {
+                    Label("Version", systemImage: "info.circle")
+                    Spacer()
+                    Text(appVersion)
+                        .foregroundStyle(.secondary)
+                }
+                .listRowBackground(Color("CardBackground"))
+
+                // Feedback
+                Link(destination: URL(string: "https://github.com/anthropics/claude-code/issues")!) {
+                    HStack {
+                        Label("Send Feedback", systemImage: "envelope")
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .listRowBackground(Color("CardBackground"))
+
+                // Rate App
+                Button {
+                    if let url = URL(string: "https://apps.apple.com/app/id123456789?action=write-review") {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    HStack {
+                        Label("Rate on App Store", systemImage: "star")
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .foregroundStyle(.primary)
                 .listRowBackground(Color("CardBackground"))
             }
         }
