@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { StarRating } from './StarRating';
 import { RootStackParamList } from '../types';
-import { Spacing, BorderRadius, Shadow, FontWeight } from '../constants/theme';
+import { Spacing, BorderRadius, Shadow, FontWeight, Glass } from '../constants/theme';
 import { ApiProduct } from '../services/api';
 import { useWishlist } from '../context/WishlistContext';
 import { useTheme } from '../context/ThemeContext';
@@ -66,10 +66,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, numColumns = 
     } as any);
   };
 
-  const wishlistButtonBg = inWishlist 
-    ? colors.primary 
-    : colorScheme === 'dark' 
-      ? 'rgba(28, 25, 23, 0.9)' 
+  const wishlistButtonBg = inWishlist
+    ? colors.primary
+    : colorScheme === 'dark'
+      ? 'rgba(15, 23, 42, 0.8)'
       : 'rgba(255, 255, 255, 0.9)';
   
   const wishlistIconColor = inWishlist 
@@ -88,7 +88,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, numColumns = 
   return (
     <TouchableOpacity
       activeOpacity={0.9}
-      style={[styles.container, { backgroundColor: colors.card }]}
+      style={[styles.container, colorScheme === 'dark' ? Glass.card : Glass.cardLight]}
       onPress={handlePress}
     >
       <View style={[

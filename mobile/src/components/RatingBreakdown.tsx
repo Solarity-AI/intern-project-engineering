@@ -4,7 +4,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Spacing, FontSize, BorderRadius, FontWeight } from '../constants/theme';
+import { Spacing, FontSize, BorderRadius, FontWeight, Gradients } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 interface RatingBreakdownProps {
@@ -78,7 +78,7 @@ export const RatingBreakdown: React.FC<RatingBreakdownProps> = ({
 
             <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
               <LinearGradient
-                colors={[colors.primary, colors.accent]}
+                colors={Gradients.brand}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={[

@@ -19,7 +19,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { StarRating } from './StarRating';
 import { Button } from './Button';
-import { Colors, Spacing, FontSize, BorderRadius, FontWeight, Shadow } from '../constants/theme';
+import { Colors, Spacing, FontSize, BorderRadius, FontWeight, Shadow, Glass } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 // ✅ IMPORTANT: ToastProvider MUST be inside <Modal> to render in the same native layer.
@@ -45,7 +45,7 @@ const AddReviewModalContent: React.FC<Omit<AddReviewModalProps, 'visible'> & { o
   onSubmit,
   onBackdropPress,
 }) => {
-  const { colors } = useTheme();
+  const { colors, colorScheme } = useTheme();
   const { showToast } = useToast();
   const { width } = useWindowDimensions();
   
@@ -148,11 +148,11 @@ const AddReviewModalContent: React.FC<Omit<AddReviewModalProps, 'visible'> & { o
         style={styles.webBackdrop} 
         onPress={onBackdropPress}
       >
-        <Pressable 
+        <Pressable
           style={[
-            styles.webCard, 
-            { 
-              backgroundColor: colors.card,
+            styles.webCard,
+            colorScheme === 'dark' ? Glass.card : Glass.cardLight,
+            {
               maxWidth: maxFormWidth,
               width: isNarrow ? '95%' : '90%',
             }
@@ -340,7 +340,7 @@ export const AddReviewModal: React.FC<AddReviewModalProps> = ({
       <ToastProvider>
         <View style={[
           styles.modalContainer,
-          isWeb && { backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+          isWeb && { backgroundColor: 'rgba(11, 17, 32, 0.85)' },
           !isWeb && { backgroundColor: colors.background },
         ]}>
           <AddReviewModalContent 
@@ -368,16 +368,16 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   webCard: {
-    borderRadius: BorderRadius.xl,
+    borderRadius: BorderRadius['2xl'],
     maxHeight: '90%',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.35,
+    shadowRadius: 32,
     elevation: 20,
   },
   webScrollContent: {
-    padding: Spacing.xl,
+    padding: Spacing['2xl'],
   },
   formWeb: {
     gap: Spacing.lg,
@@ -435,6 +435,8 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     paddingHorizontal: Spacing.lg,
     fontSize: FontSize.base,
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.12)',
   },
   textArea: {
     height: 120,
@@ -442,6 +444,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
     fontSize: FontSize.base,
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.12)',
   },
   charCount: { 
     fontSize: FontSize.xs, 

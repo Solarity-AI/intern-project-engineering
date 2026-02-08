@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Spacing, FontSize, BorderRadius, FontWeight, Shadow } from '../constants/theme';
+import { Spacing, FontSize, BorderRadius, FontWeight, Shadow, Gradients, Glass } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 interface Message {
@@ -39,7 +39,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
   productId,
   reviews,
 }) => {
-  const { colors } = useTheme();
+  const { colors, colorScheme } = useTheme();
   const scrollViewRef = useRef<ScrollView>(null);
   
   const [messages, setMessages] = useState<Message[]>([
@@ -271,8 +271,8 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
               style={[
                 styles.messageBubble,
                 message.role === 'user'
-                  ? [styles.userBubble, { backgroundColor: colors.primary }]
-                  : [styles.assistantBubble, { backgroundColor: colors.secondary }],
+                  ? [styles.userBubble, { backgroundColor: '#10B981' }]
+                  : [styles.assistantBubble, colorScheme === 'dark' ? Glass.card : Glass.cardLight],
               ]}
             >
               {message.role === 'assistant' && (
@@ -382,9 +382,9 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({
             ]}
           >
             <LinearGradient
-              colors={inputText.trim() && !isLoading 
-                ? ['#8B5CF6', '#6366F1'] 
-                : ['#ccc', '#999']
+              colors={inputText.trim() && !isLoading
+                ? Gradients.ai
+                : [colors.muted, colors.muted]
               }
               style={styles.sendButtonGradient}
             >
