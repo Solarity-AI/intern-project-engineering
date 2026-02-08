@@ -12,7 +12,7 @@ enum AppConstants {
     enum API {
         // Toggle for local development vs production
         #if DEBUG
-        static let useLocalServer = true
+        static let useLocalServer = false
         #else
         static let useLocalServer = false
         #endif
@@ -40,6 +40,7 @@ enum AppConstants {
 
     // MARK: - UI
     enum UI {
+        static let appDisplayName = "Product Review"
         static let animationDuration: Double = 0.3
         static let cornerRadius: CGFloat = 12
         static let shadowRadius: CGFloat = 4
