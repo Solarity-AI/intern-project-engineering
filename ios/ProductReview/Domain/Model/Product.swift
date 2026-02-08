@@ -36,6 +36,33 @@ struct Product: Identifiable, Hashable {
     var formattedRating: String {
         String(format: "%.1f", averageRating)
     }
+
+    var resolvedImageURL: URL? {
+        guard var value = imageUrl?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !value.isEmpty else {
+            return nil
+        }
+
+        if value.hasPrefix("//") {
+            value = "https:\(value)"
+        } else if value.hasPrefix("/") {
+            value = AppConstants.API.baseURL + value
+        }
+
+        if let directURL = URL(string: value), directURL.scheme != nil {
+            return directURL
+        }
+
+        guard let encodedValue = value.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed) else {
+            return nil
+        }
+
+        guard let encodedURL = URL(string: encodedValue), encodedURL.scheme != nil else {
+            return nil
+        }
+
+        return encodedURL
+    }
 }
 
 // MARK: - Mock Data
