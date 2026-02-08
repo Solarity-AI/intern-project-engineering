@@ -4,6 +4,7 @@ import {
   Text,
   Image,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   Animated,
   Easing,
@@ -190,15 +191,15 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
         />
 
         {/* Wishlist button — top right, glass circle */}
+        {/* Using Pressable instead of TouchableOpacity to avoid nested button issue on web */}
         {!isSelectionMode && showWishlistButton && (
-          <TouchableOpacity
+          <Pressable
             style={[
               styles.wishlistButton,
               colorScheme === 'dark' ? Glass.strong : { backgroundColor: 'rgba(255,255,255,0.9)' },
               numColumns >= 3 && styles.wishlistButtonCompact,
             ]}
             onPress={handleWishlistToggle}
-            activeOpacity={0.8}
             accessibilityLabel={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
             accessibilityRole="button"
           >
@@ -209,7 +210,7 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
                 color={inWishlist ? '#F87171' : '#fff'}
               />
             </Animated.View>
-          </TouchableOpacity>
+          </Pressable>
         )}
 
         {/* Selection indicator */}

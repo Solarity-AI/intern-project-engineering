@@ -4,6 +4,7 @@ import {
   Text,
   Image,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   Animated,
   Easing,
@@ -156,15 +157,15 @@ function SelectableWishlistCardComponent({
           )}
 
           {/* Quick delete button — top right */}
+          {/* Using Pressable instead of TouchableOpacity to avoid nested button issue on web */}
           {!isSelectionMode && (
-            <TouchableOpacity
+            <Pressable
               style={[
                 styles.deleteButton,
                 colorScheme === 'dark' ? Glass.strong : { backgroundColor: 'rgba(255,255,255,0.9)' },
                 isCompact && styles.deleteButtonCompact,
               ]}
               onPress={() => onRemove(item.id)}
-              activeOpacity={0.8}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               accessibilityLabel="Remove from wishlist"
               accessibilityRole="button"
@@ -174,7 +175,7 @@ function SelectableWishlistCardComponent({
                 size={isCompact ? 14 : 18}
                 color="#fff"
               />
-            </TouchableOpacity>
+            </Pressable>
           )}
 
           {/* Selection indicator */}

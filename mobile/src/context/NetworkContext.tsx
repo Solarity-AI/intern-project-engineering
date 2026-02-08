@@ -13,35 +13,24 @@ interface NetworkContextType {
 const NetworkContext = createContext<NetworkContextType | undefined>(undefined);
 
 // Simple connectivity check using fetch
+// On web, use our own backend health endpoint to avoid CORS issues
 const checkInternetConnection = async (): Promise<boolean> => {
   try {
-    // Use a reliable endpoint with short timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    const response = await fetch('https://www.google.com/generate_204', {
-      method: 'HEAD',
+
+    // Use our backend's actuator health endpoint (CORS-enabled)
+    // For local development:
+    // http://localhost:8080/actuator/health
+    const response = await fetch('https://product-review-app-ybmf.onrender.com/actuator/health', {
+      method: 'GET',
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
-    return response.ok || response.status === 204;
-  } catch (error) {
-    // Try backup endpoint
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
-      const response = await fetch('https://httpbin.org/get', {
-        method: 'HEAD',
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return response.ok;
+  } catch {
+    return false;
   }
 };
 
