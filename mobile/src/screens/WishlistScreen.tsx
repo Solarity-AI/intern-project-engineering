@@ -1,3 +1,5 @@
+// WishlistScreen — v3 Radical Redesign
+// Page title, bento stats (2+1 layout), image-overlay cards
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -6,10 +8,10 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   useWindowDimensions,
   Platform,
   TouchableWithoutFeedback,
+  RefreshControl,
 } from 'react-native';
 
 import { useNavigation } from '@react-navigation/native';
@@ -19,14 +21,18 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { SelectableWishlistCard } from '../components/SelectableWishlistCard';
-import { LoadMoreCard } from '../components/LoadMoreCard'; // ✨ Added LoadMoreCard
+import { LoadMoreCard } from '../components/LoadMoreCard';
+import { OfflineBanner } from '../components/OfflineBanner';
+import { GradientDivider } from '../components/GradientDivider';
+import { ProductCardSkeleton } from '../components/ProductCardSkeleton';
 
 import { useWishlist } from '../context/WishlistContext';
 import { useTheme } from '../context/ThemeContext';
-import { getWishlistProducts, ApiProduct } from '../services/api'; // ✨ Added API call
+import { useNetwork } from '../context/NetworkContext';
+import { getWishlistProducts, ApiProduct, getUserMessage } from '../services/api';
 
 import { RootStackParamList } from '../types';
-import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
+import { BorderRadius, FontSize, FontWeight, Spacing, Gradients, Glass, Shadow, Glow } from '../constants/theme';
 
 type WishlistNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Wishlist'>;
 
@@ -36,6 +42,9 @@ export const WishlistScreen = () => {
   const navigation = useNavigation<WishlistNavigationProp>();
   const { colors, colorScheme, toggleTheme } = useTheme();
   const { removeFromWishlist, removeMultipleFromWishlist, clearWishlist, wishlistCount } = useWishlist();
+  const { isConnected, isInternetReachable } = useNetwork();
+
+  const isOffline = !isConnected || isInternetReachable === false;
 
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
@@ -49,9 +58,9 @@ export const WishlistScreen = () => {
 
   const gridTouchedRef = useRef(false);
 
-  // ✨ Pagination states
   const [pagedWishlist, setPagedWishlist] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -62,6 +71,7 @@ export const WishlistScreen = () => {
     try {
       if (!append) setLoading(true);
       else setLoadingMore(true);
+      setError(null);
 
       const page = await getWishlistProducts({ page: pageNum, size: 10 });
 
@@ -75,8 +85,9 @@ export const WishlistScreen = () => {
       setTotalPages(page.totalPages);
       setHasMore(!page.last);
       setTotalItems(page.totalElements);
-    } catch (error) {
-      console.error('Error fetching wishlist products:', error);
+    } catch (err) {
+      console.error('Error fetching wishlist products:', err);
+      setError(getUserMessage(err));
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -93,7 +104,13 @@ export const WishlistScreen = () => {
     }
   };
 
-  // Web auto-grid
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchWishlist(0, false);
+    setRefreshing(false);
+  }, [fetchWishlist]);
+
   useEffect(() => {
     if (!isWeb) return;
     if (gridTouchedRef.current) return;
@@ -142,7 +159,6 @@ export const WishlistScreen = () => {
   const [selectionTick, setSelectionTick] = useState(0);
   const bumpSelectionTick = useCallback(() => setSelectionTick(t => t + 1), []);
 
-
   const handleCancelSelection = () => {
     setIsSelectionMode(false);
     setSelectedItems(new Set());
@@ -180,32 +196,24 @@ export const WishlistScreen = () => {
     const idsToRemove = Array.from(selectedItems);
     if (idsToRemove.length === 0) return;
 
-    // ✨ Optimistic update: Remove immediately from UI
     setPagedWishlist(prev => {
       const idsSet = new Set(idsToRemove);
       return prev.filter(item => !idsSet.has(String(item.id)));
     });
     setTotalItems(prev => Math.max(0, prev - idsToRemove.length));
 
-    // Exit selection mode first
     handleCancelSelection();
-
-    // Then sync with backend/context (batch operation)
     removeMultipleFromWishlist(idsToRemove);
   }, [selectedItems, removeMultipleFromWishlist]);
 
-  // ✨ Wrapped in useCallback to prevent unnecessary re-renders
   const handleRemoveSingle = useCallback((id: string) => {
     console.log('Removing item:', id);
-    // ✨ Optimistic update: Remove immediately from UI
     setPagedWishlist(prev => {
       const filtered = prev.filter(item => String(item.id) !== String(id));
       console.log('Previous length:', prev.length, 'New length:', filtered.length);
       return filtered;
     });
     setTotalItems(prev => Math.max(0, prev - 1));
-
-    // Then sync with backend/context
     removeFromWishlist(id);
   }, [removeFromWishlist]);
 
@@ -247,7 +255,7 @@ export const WishlistScreen = () => {
         ]}
       >
         <SelectableWishlistCard
-          key={forceKey} // ✅ (Android only remount)
+          key={forceKey}
           item={item as any}
           numColumns={numColumns}
           isSelectionMode={isSelectionMode}
@@ -289,6 +297,8 @@ export const WishlistScreen = () => {
         }}
       >
         <View style={{ flex: 1 }}>
+          {isOffline && <OfflineBanner onRetry={() => fetchWishlist(0, false)} />}
+
           {/* Header */}
           <View style={isWeb ? styles.webPageContainer : undefined}>
             <View style={[styles.header, { backgroundColor: colors.background }, isWeb && styles.headerWeb]}>
@@ -297,10 +307,11 @@ export const WishlistScreen = () => {
                 onPress={() => navigation.navigate('ProductList')}
                 activeOpacity={0.85}
               >
-                <LinearGradient colors={[colors.primary, colors.accent]} style={styles.brandIcon}>
-                  <Ionicons name="star" size={16} color={colors.primaryForeground} />
+                <LinearGradient colors={Gradients.brandVivid as [string, string, ...string[]]} style={styles.brandIcon}>
+                  <Ionicons name="flash" size={18} color="#fff" />
                 </LinearGradient>
-                <Text style={[styles.brandText, { color: colors.foreground }]}>ProductReview</Text>
+                <Text style={[styles.brandText, { color: colors.foreground }]}>Solarity</Text>
+                <Text style={[styles.brandTextAccent, { color: colors.primary }]}>Review</Text>
               </TouchableOpacity>
 
               <View style={styles.headerActions}>
@@ -308,7 +319,7 @@ export const WishlistScreen = () => {
                   style={[
                     styles.headerButton,
                     isWeb && styles.headerButtonWeb,
-                    { backgroundColor: colors.secondary },
+                    colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
                   ]}
                   onPress={toggleTheme}
                   activeOpacity={0.85}
@@ -324,7 +335,7 @@ export const WishlistScreen = () => {
                   style={[
                     styles.headerButton,
                     isWeb && styles.headerButtonWeb,
-                    { backgroundColor: colors.secondary },
+                    colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
                   ]}
                   onPress={toggleGridMode}
                   activeOpacity={0.85}
@@ -340,7 +351,7 @@ export const WishlistScreen = () => {
                   style={[
                     styles.headerButton,
                     isWeb && styles.headerButtonWeb,
-                    { backgroundColor: colors.secondary },
+                    colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
                   ]}
                   onPress={async () => {
                     await clearWishlist();
@@ -354,51 +365,88 @@ export const WishlistScreen = () => {
               </View>
             </View>
 
-            {/* Stats */}
+            {/* Page title */}
+            <Text style={[styles.pageTitle, { color: colors.foreground }, isWeb && styles.pageTitleWeb]}>
+              My Wishlist
+            </Text>
+
+            {/* Bento Stats — 2+1 layout */}
             {totalItems > 0 && (
-              <View style={[styles.statsSection, { backgroundColor: colors.secondary }, isWeb && styles.statsSectionWeb]}>
-                <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
-                    <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
-                      <Ionicons name="heart" size={20} color={colors.primaryForeground} />
-                    </LinearGradient>
-                    <View>
-                      <Text style={[styles.statValue, { color: colors.foreground }]}>{stats.itemCount}</Text>
-                      <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Items</Text>
-                    </View>
+              <View style={[styles.bentoContainer, isWeb && styles.bentoContainerWeb]}>
+                <View style={styles.bentoTopRow}>
+                  <View style={[
+                    styles.bentoCard,
+                    colorScheme === 'dark' ? Glass.elevated : { backgroundColor: colors.card, ...Shadow.soft },
+                  ]}>
+                    <Ionicons name="heart" size={20} color="#F87171" />
+                    <Text style={[styles.bentoValue, { color: colors.foreground }]}>{stats.itemCount}</Text>
+                    <Text style={styles.bentoLabel}>Items</Text>
                   </View>
 
-                  <View style={styles.statItem}>
-                    <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
-                      <Ionicons name="star" size={20} color={colors.primaryForeground} />
-                    </LinearGradient>
-                    <View>
-                      <Text style={[styles.statValue, { color: colors.foreground }]}>{stats.avgRating.toFixed(1)}</Text>
-                      <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Avg Rating</Text>
-                    </View>
+                  <View style={[
+                    styles.bentoCard,
+                    colorScheme === 'dark' ? Glass.elevated : { backgroundColor: colors.card, ...Shadow.soft },
+                  ]}>
+                    <Ionicons name="star" size={20} color="#FBBF24" />
+                    <Text style={[styles.bentoValue, { color: colors.foreground }]}>{stats.avgRating.toFixed(1)}</Text>
+                    <Text style={styles.bentoLabel}>Avg Rating</Text>
                   </View>
+                </View>
 
-                  <View style={styles.statItem}>
-                    <LinearGradient colors={[colors.primary, colors.accent]} style={styles.statIcon}>
-                      <Ionicons name="cash" size={20} color={colors.primaryForeground} />
-                    </LinearGradient>
-                    <View>
-                      <Text style={[styles.statValue, { color: colors.foreground }]}>
-                        ${stats.totalPrice.toFixed(0)}
-                      </Text>
-                      <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Total</Text>
-                    </View>
-                  </View>
+                <View style={[
+                  styles.bentoCardFull,
+                  colorScheme === 'dark' ? Glass.elevated : { backgroundColor: colors.card, ...Shadow.soft },
+                ]}>
+                  <Ionicons name="cash" size={20} color="#10B981" />
+                  <Text style={[styles.bentoValue, { color: colors.foreground }]}>
+                    ${stats.totalPrice.toFixed(0)}
+                  </Text>
+                  <Text style={styles.bentoLabel}>Total Value</Text>
                 </View>
               </View>
             )}
+
+            <GradientDivider />
           </View>
 
           {/* Content */}
           {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading wishlist...</Text>
+            <View style={[
+              styles.skeletonGrid,
+              numColumns > 1 && styles.skeletonGridMultiCol,
+              isWeb ? styles.webListContent : { paddingHorizontal: Spacing.lg },
+            ]}>
+              {Array.from({ length: numColumns === 1 ? 3 : 4 }).map((_, i) => (
+                <View
+                  key={`wskel-${i}`}
+                  style={[
+                    numColumns > 1 && {
+                      width: `${100 / numColumns}%` as any,
+                      paddingRight: i % numColumns === numColumns - 1 ? 0 : Spacing.sm / 2,
+                      paddingLeft: i % numColumns === 0 ? 0 : Spacing.sm / 2,
+                      marginBottom: Spacing.sm,
+                    },
+                    numColumns === 1 && {
+                      width: '100%',
+                      marginBottom: Spacing.sm,
+                    },
+                  ]}
+                >
+                  <ProductCardSkeleton numColumns={numColumns} />
+                </View>
+              ))}
+            </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle-outline" size={48} color={colors.destructive} />
+              <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
+              <TouchableOpacity
+                style={[styles.emptyButton, { backgroundColor: colors.primary }]}
+                onPress={() => fetchWishlist(0, false)}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.emptyButtonText, { color: colors.primaryForeground }]}>Retry</Text>
+              </TouchableOpacity>
             </View>
           ) : pagedWishlist.length === 0 ? (
             emptyState
@@ -414,6 +462,16 @@ export const WishlistScreen = () => {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
+              windowSize={5}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={colors.primary}
+                  colors={['#10B981']}
+                  progressBackgroundColor={colorScheme === 'dark' ? '#1E293B' : '#FFFFFF'}
+                />
+              }
               contentContainerStyle={[
                 styles.listContent,
                 isWeb && styles.webListContent,
@@ -436,7 +494,7 @@ export const WishlistScreen = () => {
 
           {/* Floating bottom bar for selection mode */}
           {isSelectionMode && selectedItems.size > 0 && (
-            <View style={[styles.floatingBar, { backgroundColor: colors.card }]}>
+            <View style={[styles.floatingBar, colorScheme === 'dark' ? Glass.card : { backgroundColor: colors.card }]}>
               <View style={isWeb ? styles.floatingBarInnerWeb : undefined}>
                 <TouchableOpacity
                   style={[styles.floatingButton, { backgroundColor: colors.destructive }]}
@@ -468,35 +526,30 @@ const styles = StyleSheet.create({
 
   header: {
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.md,
+    paddingBottom: Spacing.sm,
     paddingHorizontal: Spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-
   headerWeb: {
     paddingHorizontal: 0,
   },
 
   brand: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-
-  brandWeb: {
-    paddingVertical: 4,
-  },
-
+  brandWeb: { paddingVertical: 4 },
   brandIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: BorderRadius.md,
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Shadow.soft,
   },
-
-  brandText: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  brandText: { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
+  brandTextAccent: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginLeft: -2 },
 
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-
   headerButton: {
     width: 40,
     height: 40,
@@ -504,47 +557,66 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   headerButtonWeb: {
     width: 46,
     height: 46,
   },
 
-  statsSection: {
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
+  /* Page title */
+  pageTitle: {
+    fontSize: FontSize['3xl'],
+    fontWeight: FontWeight.bold,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  pageTitleWeb: {
+    paddingHorizontal: 0,
   },
 
-  statsSectionWeb: {
-    marginHorizontal: 0,
+  /* Bento stats */
+  bentoContainer: {
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
   },
-
-  statsRow: {
+  bentoContainerWeb: {
+    paddingHorizontal: 0,
+  },
+  bentoTopRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    flexWrap: 'wrap',
+    gap: Spacing.sm,
   },
-
-  statItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-
-  statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.full,
+  bentoCard: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.xl,
   },
-
-  statValue: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-
-  statLabel: { fontSize: FontSize.sm },
+  bentoCardFull: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.xl,
+  },
+  bentoValue: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+  },
+  bentoLabel: {
+    fontSize: 11,
+    color: 'rgba(148,163,184,0.7)',
+    fontWeight: FontWeight.medium,
+  },
 
   listContent: {
     paddingBottom: Spacing['5xl'] + Spacing.xl,
   },
-
   webListContent: {
     width: '100%',
     maxWidth: 1200,
@@ -552,38 +624,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing['5xl'] + Spacing.xl,
   },
-
   columnWrapper: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
   },
-
   gridItemWrapper: {
   },
 
-  listItemWrapper: {
-    paddingVertical: Spacing.sm / 2,
+  skeletonGrid: {
+    paddingTop: Spacing.md,
   },
-
-  loadingContainer: {
+  skeletonGridMultiCol: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  errorContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: Spacing['2xl'],
+    gap: Spacing.md,
   },
-
-  loadingText: {
-    marginTop: Spacing.md,
+  errorText: {
     fontSize: FontSize.base,
+    textAlign: 'center',
   },
-
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: Spacing['2xl'],
   },
-
   emptyIcon: {
     width: 96,
     height: 96,
@@ -592,21 +663,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: Spacing.lg,
   },
-
   emptyTitle: {
     fontSize: FontSize.xl,
     fontWeight: FontWeight.bold,
     marginBottom: Spacing.sm,
     textAlign: 'center',
   },
-
   emptySubtitle: {
     fontSize: FontSize.base,
     textAlign: 'center',
     marginBottom: Spacing.xl,
     paddingHorizontal: Spacing.lg,
   },
-
   emptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -615,7 +683,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.lg,
   },
-
   emptyButtonText: {
     fontSize: FontSize.base,
     fontWeight: FontWeight.semibold,
@@ -627,19 +694,18 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     padding: Spacing.lg,
-    borderTopLeftRadius: BorderRadius.xl,
-    borderTopRightRadius: BorderRadius.xl,
+    borderTopLeftRadius: BorderRadius['2xl'],
+    borderTopRightRadius: BorderRadius['2xl'],
+    ...Shadow.medium,
   },
-
   floatingButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.sm,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.xl,
   },
-
   floatingButtonText: {
     fontSize: FontSize.base,
     fontWeight: FontWeight.semibold,
@@ -650,5 +716,4 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: Spacing.lg,
   },
-
 });
