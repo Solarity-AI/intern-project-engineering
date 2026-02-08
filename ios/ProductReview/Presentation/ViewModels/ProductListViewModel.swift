@@ -30,15 +30,26 @@ class ProductListViewModel: ObservableObject {
     }
 
     func loadProducts() async {
-        guard !isLoading else { return }
+        guard !isLoading else {
+            print("⏭️ Already loading, skipping...")
+            return
+        }
+
+        print("🔄 Starting to load products...")
+        print("   Category: \(currentCategory ?? "All")")
+        print("   Search: \(currentSearch ?? "None")")
+
         isLoading = true
         error = nil
 
         do {
             // Load stats
+            print("📊 Loading global stats...")
             globalStats = try await repository.getGlobalStats(category: currentCategory, search: currentSearch)
+            print("✅ Stats loaded: \(globalStats?.totalProducts ?? 0) products")
 
             // Load products
+            print("📦 Loading products (page 0)...")
             let result = try await repository.getProducts(
                 page: 0,
                 size: AppConstants.Pagination.defaultPageSize,
@@ -51,14 +62,23 @@ class ProductListViewModel: ObservableObject {
             totalPages = result.totalPages
             isLast = result.isLast
             currentPage = 0
+
+            print("✅ Products loaded successfully:")
+            print("   Count: \(products.count)")
+            print("   Total Pages: \(totalPages)")
+            print("   Is Last: \(isLast)")
         } catch is CancellationError {
+            print("⚠️ Load cancelled by user")
             // Ignore cancellation errors - they happen when user navigates away or refreshes
             return
         } catch {
+            print("❌ Load failed: \(error.localizedDescription)")
+            print("   Error details: \(error)")
             showError(error.localizedDescription)
         }
 
         isLoading = false
+        print("🏁 Loading completed. isLoading = false")
     }
 
     private func showError(_ message: String) {

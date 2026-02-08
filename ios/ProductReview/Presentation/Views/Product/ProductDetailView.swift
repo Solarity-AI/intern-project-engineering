@@ -18,31 +18,58 @@ struct ProductDetailView: View {
         _viewModel = StateObject(wrappedValue: ProductDetailViewModel(productId: productId))
     }
 
+    @ViewBuilder
+    private var imageFallbackView: some View {
+        ZStack {
+            Color("CardBackground")
+            VStack(spacing: 8) {
+                Image(systemName: "photo.fill")
+                    .foregroundColor(.secondary)
+                    .font(.largeTitle)
+                Text("No Image")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func productImageView(for product: Product) -> some View {
+        if let imageURL = product.resolvedImageURL {
+            CachedAsyncImage(url: imageURL) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } placeholder: {
+                imageFallbackView
+                    .overlay {
+                        ProgressView()
+                    }
+            } failure: {
+                imageFallbackView
+            }
+        } else {
+            imageFallbackView
+        }
+    }
+
     var body: some View {
-        Group {
-            if viewModel.product == nil && !viewModel.isLoading && viewModel.error != nil {
-                // Error state
-                EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
-                    Task { await viewModel.loadProduct() }
-                }
-            } else {
-                ScrollView {
+        ZStack {
+            Color("AppBackground")
+                .ignoresSafeArea()
+
+            Group {
+                if viewModel.product == nil && !viewModel.isLoading && viewModel.error != nil {
+                    // Error state
+                    EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
+                        Task { await viewModel.loadProduct() }
+                    }
+                } else {
+                    ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         if let product = viewModel.product {
                             // Product Image
-                            AsyncImage(url: URL(string: product.imageUrl ?? "")) { image in
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                            } placeholder: {
-                                Rectangle()
-                                    .fill(Color.gray.opacity(0.2))
-                                    .overlay {
-                                        Image(systemName: "photo")
-                                            .foregroundColor(.gray)
-                                            .font(.largeTitle)
-                                    }
-                            }
+                            productImageView(for: product)
                             .frame(height: 250)
                             .clipped()
 
@@ -119,6 +146,7 @@ struct ProductDetailView: View {
                     }
                 }
             }
+        }
         }
         .navigationTitle("Product Details")
         .navigationBarTitleDisplayMode(.inline)

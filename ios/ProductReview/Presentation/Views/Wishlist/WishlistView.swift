@@ -16,12 +16,14 @@ struct WishlistView: View {
     @State private var showBulkDeleteAlert = false
 
     private let cardWidth: CGFloat = 140
-    private let gridSpacing: CGFloat = 16
-    private let gridHorizontalPadding: CGFloat = 12
+    private let cardHeight: CGFloat = 260
+    private let gridHorizontalSpacing: CGFloat = 40
+    private let gridVerticalSpacing: CGFloat = 12
+    private let gridHorizontalPadding: CGFloat = 0
     private var columns: [GridItem] {
         [
-            GridItem(.fixed(cardWidth), spacing: gridSpacing),
-            GridItem(.fixed(cardWidth), spacing: gridSpacing)
+            GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing),
+            GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing)
         ]
     }
     private var selectedItemWord: String {
@@ -29,79 +31,94 @@ struct WishlistView: View {
     }
 
     var body: some View {
-        Group {
-            if viewModel.products.isEmpty && !viewModel.isLoading && viewModel.error != nil {
-                EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
-                    Task { await viewModel.loadWishlist() }
-                }
-            } else if viewModel.products.isEmpty && !viewModel.isLoading {
-                EmptyStateView.wishlist {
-                    appState.selectedTab = .products
-                    navigationRouter.popToRoot()
-                }
-            } else {
-                VStack(spacing: 0) {
-                    if !viewModel.products.isEmpty {
-                        HStack {
-                            if isSelectionMode {
-                                Text("\(selectedIds.count) selected")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
+        ZStack {
+            Color("AppBackground")
+                .ignoresSafeArea()
 
-                            Spacer()
-
-                            Button(isSelectionMode ? "Done" : "Select") {
-                                isSelectionMode.toggle()
-                                if !isSelectionMode {
-                                    selectedIds.removeAll()
-                                }
-                            }
-                            .fontWeight(.semibold)
-                        }
-                        .padding(.horizontal)
-                        .padding(.top, 8)
+            Group {
+                if viewModel.products.isEmpty && !viewModel.isLoading && viewModel.error != nil {
+                    EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
+                        Task { await viewModel.loadWishlist() }
                     }
-
+                } else if viewModel.products.isEmpty && !viewModel.isLoading {
+                    EmptyStateView.wishlist {
+                        appState.selectedTab = .products
+                        navigationRouter.popToRoot()
+                    }
+                } else {
+                VStack(spacing: 0) {
                     ScrollView {
-                        LazyVGrid(columns: columns, spacing: gridSpacing) {
-                            ForEach(viewModel.products) { product in
-                                WishlistProductCard(
-                                    product: product,
-                                    isSelected: selectedIds.contains(product.id),
-                                    isSelectionMode: isSelectionMode,
-                                    onTap: {
-                                        if isSelectionMode {
-                                            toggleSelection(product.id)
-                                        } else {
-                                            navigationRouter.navigate(to: .productDetail(productId: product.id))
+                        VStack(spacing: 0) {
+                            LazyVGrid(columns: columns, spacing: gridVerticalSpacing) {
+                                ForEach(viewModel.products) { product in
+                                    WishlistProductCard(
+                                        product: product,
+                                        isSelected: selectedIds.contains(product.id),
+                                        isSelectionMode: isSelectionMode,
+                                        onTap: {
+                                            if isSelectionMode {
+                                                toggleSelection(product.id)
+                                            } else {
+                                                navigationRouter.navigate(to: .productDetail(productId: product.id))
+                                            }
+                                        },
+                                        onLongPress: {
+                                            enterSelectionMode(with: product.id)
+                                        },
+                                        onRemove: {
+                                            Task { await viewModel.removeFromWishlist(productId: product.id) }
                                         }
-                                    },
-                                    onRemove: {
-                                        Task { await viewModel.removeFromWishlist(productId: product.id) }
-                                    }
-                                )
-                                .frame(width: cardWidth)
-                                .onAppear {
-                                    if product.id == viewModel.products.last?.id {
-                                        Task { await viewModel.loadMore() }
+                                    )
+                                    .frame(width: cardWidth, height: cardHeight)
+                                    .onAppear {
+                                        if product.id == viewModel.products.last?.id {
+                                            Task { await viewModel.loadMore() }
+                                        }
                                     }
                                 }
+                            }
+
+                            if viewModel.isLoading {
+                                ProgressView()
+                                    .padding()
                             }
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.horizontal, gridHorizontalPadding)
-                        .padding(.vertical, 12)
-
-                        if viewModel.isLoading {
-                            ProgressView()
-                                .padding()
-                        }
+                        .contentShape(Rectangle())
+                        .gesture(
+                            TapGesture().onEnded {
+                                if isSelectionMode && selectedIds.isEmpty {
+                                    isSelectionMode = false
+                                }
+                            },
+                            including: .gesture
+                        )
                     }
+                    .background(Color("AppBackground"))
                 }
             }
         }
+        }
         .navigationTitle("Wishlist")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isSelectionMode {
+                ToolbarItem(placement: .topBarLeading) {
+                    Text("\(selectedIds.count) selected")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        isSelectionMode = false
+                        selectedIds.removeAll()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             if isSelectionMode && !selectedIds.isEmpty {
                 Button(role: .destructive) {
@@ -165,6 +182,17 @@ struct WishlistView: View {
             selectedIds.insert(id)
         }
     }
+
+    private func enterSelectionMode(with id: Int) {
+        if isSelectionMode {
+            toggleSelection(id)
+            return
+        }
+
+        isSelectionMode = true
+        selectedIds = [id]
+        HapticManager.selection()
+    }
 }
 
 // MARK: - Wishlist Product Card
@@ -173,24 +201,60 @@ struct WishlistProductCard: View {
     let isSelected: Bool
     let isSelectionMode: Bool
     let onTap: () -> Void
+    let onLongPress: () -> Void
     let onRemove: () -> Void
+    private let imageSize: CGFloat = 140
+
+    private var resolvedImageURL: URL? {
+        product.resolvedImageURL
+    }
+
+    @ViewBuilder
+    private var imageFallbackView: some View {
+        ZStack {
+            Color("CardBackground")
+            VStack(spacing: 8) {
+                Image(systemName: "photo.fill")
+                    .font(.title)
+                    .foregroundColor(.secondary)
+                Text("No Image")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var productImageView: some View {
+        if let resolvedImageURL {
+            CachedAsyncImage(url: resolvedImageURL) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: imageSize, height: imageSize)
+                    .clipped()
+            } placeholder: {
+                ProgressView()
+                    .frame(width: imageSize, height: imageSize)
+                    .background(Color("CardBackground"))
+            } failure: {
+                imageFallbackView
+                    .frame(width: imageSize, height: imageSize)
+            }
+        } else {
+            imageFallbackView
+                .frame(width: imageSize, height: imageSize)
+        }
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .topTrailing) {
-                AsyncImage(url: URL(string: product.imageUrl ?? "")) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 120)
-                .clipped()
+                productImageView
+                .frame(width: imageSize, height: imageSize)
                 .contentShape(Rectangle())
                 .cornerRadius(8)
+                .accessibilityHidden(true)
 
                 if isSelectionMode {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
@@ -213,20 +277,44 @@ struct WishlistProductCard: View {
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 2) {
+                Image(systemName: "star.fill")
+                    .foregroundColor(.yellow)
+                    .font(.caption)
+                    .accessibilityHidden(true)
+                Text(product.formattedRating)
+                    .font(.caption)
+                Text("(\(product.reviewCount))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(product.formattedRating) stars, \(product.reviewCount) reviews")
 
             Text(product.formattedPrice)
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .foregroundColor(.blue)
         }
-        .padding(12)
-        .background(isSelected ? Color.blue.opacity(0.1) : Color(.systemBackground))
+        .padding(10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(isSelected ? Color.blue.opacity(0.1) : Color("CardBackground"))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color(.separator), lineWidth: 1)
+        }
         .onTapGesture { onTap() }
+        .onLongPressGesture(minimumDuration: 0.35) {
+            onLongPress()
+        }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(product.name), \(product.formattedPrice)\(isSelected ? ", selected" : "")")
-        .accessibilityHint(isSelectionMode ? "Double tap to toggle selection" : "Double tap to view details")
+        .accessibilityLabel("\(product.name), \(product.formattedPrice), \(product.formattedRating) stars\(isSelected ? ", selected" : "")")
+        .accessibilityHint(isSelectionMode ? "Double tap to toggle selection" : "Double tap to view details. Long press to start selection")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

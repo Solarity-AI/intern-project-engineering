@@ -13,46 +13,54 @@ struct NotificationsView: View {
     @StateObject private var viewModel = NotificationsViewModel()
 
     var body: some View {
-        Group {
-            if viewModel.notifications.isEmpty && !viewModel.isLoading {
-                // Empty state
-                VStack(spacing: 16) {
-                    Image(systemName: "bell.slash")
-                        .font(.system(size: 60))
-                        .foregroundColor(.secondary)
-                    Text("No notifications")
-                        .font(.title2)
-                        .fontWeight(.medium)
-                    Text("You're all caught up!")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                }
-                .padding()
-            } else {
-                List {
-                    ForEach(viewModel.notifications) { notification in
-                        NotificationRow(notification: notification)
-                            .onTapGesture {
-                                Task {
-                                    await viewModel.markAsRead(notificationId: notification.id)
-                                }
-                                navigationRouter.navigate(to: .notificationDetail(notification: notification))
-                            }
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    Task {
-                                        await viewModel.deleteNotification(notificationId: notification.id)
-                                    }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
+        ZStack {
+            Color("AppBackground")
+                .ignoresSafeArea()
+
+            Group {
+                if viewModel.notifications.isEmpty && !viewModel.isLoading {
+                    // Empty state
+                    VStack(spacing: 16) {
+                        Image(systemName: "bell.slash")
+                            .font(.system(size: 60))
+                            .foregroundColor(.secondary)
+                        Text("No notifications")
+                            .font(.title2)
+                            .fontWeight(.medium)
+                        Text("You're all caught up!")
+                            .font(.body)
+                            .foregroundColor(.secondary)
                     }
+                    .padding()
+                } else {
+                    List {
+                        ForEach(viewModel.notifications) { notification in
+                            NotificationRow(notification: notification)
+                                .listRowBackground(Color("CardBackground"))
+                                .onTapGesture {
+                                    Task {
+                                        await viewModel.markAsRead(notificationId: notification.id)
+                                    }
+                                    navigationRouter.navigate(to: .notificationDetail(notification: notification))
+                                }
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        Task {
+                                            await viewModel.deleteNotification(notificationId: notification.id)
+                                        }
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                        }
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
-                .listStyle(.plain)
             }
         }
         .navigationTitle("Notifications")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {

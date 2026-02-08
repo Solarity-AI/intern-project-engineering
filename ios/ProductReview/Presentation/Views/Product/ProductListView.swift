@@ -75,7 +75,7 @@ struct ProductListView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(Color(.secondarySystemBackground))
+            .background(Color("CardBackground"))
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
             if isSearchFieldFocused && !searchHistoryManager.recentSearches.isEmpty {
@@ -123,7 +123,7 @@ struct ProductListView: View {
                         }
                     }
                 }
-                .background(Color(.systemBackground))
+                .background(Color("CardBackground"))
                 .overlay {
                     RoundedRectangle(cornerRadius: 10)
                         .stroke(Color(.separator).opacity(0.2))
@@ -140,10 +140,31 @@ struct ProductListView: View {
                 searchSection
 
                 if viewModel.products.isEmpty && !viewModel.isLoading && viewModel.error != nil {
+                    // Error state
                     EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
                         Task { await viewModel.loadProducts() }
                     }
                     .padding(.horizontal)
+                } else if viewModel.products.isEmpty && !viewModel.isLoading {
+                    // Empty state (no results)
+                    VStack(spacing: 16) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 60))
+                            .foregroundColor(.secondary)
+                        Text("No products found")
+                            .font(.title2)
+                            .fontWeight(.medium)
+                        if searchText.isEmpty && selectedCategory == nil {
+                            Text("Try refreshing the page")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("Try adjusting your search or filter")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding()
                 } else {
                     // Global Stats Header
                     if let stats = viewModel.globalStats {
@@ -187,7 +208,9 @@ struct ProductListView: View {
                 }
             }
         }
+        .background(Color("AppBackground"))
         .navigationTitle("Products")
+        .navigationBarTitleDisplayMode(.inline)
         .onChange(of: searchText) { _, newValue in
             Task {
                 await viewModel.search(query: newValue)
@@ -298,23 +321,54 @@ struct StatItemView: View {
 // MARK: - Product Card View
 struct ProductCardView: View {
     let product: Product
+    private let imageSize: CGFloat = 140
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            AsyncImage(url: URL(string: product.imageUrl ?? "")) { image in
+    private var resolvedImageURL: URL? {
+        product.resolvedImageURL
+    }
+
+    @ViewBuilder
+    private var imageFallbackView: some View {
+        ZStack {
+            Color("CardBackground")
+            VStack(spacing: 8) {
+                Image(systemName: "photo.fill")
+                    .font(.title)
+                    .foregroundColor(.secondary)
+                Text("No Image")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var productImageView: some View {
+        if let resolvedImageURL {
+            CachedAsyncImage(url: resolvedImageURL) { image in
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fill)
+                    .frame(width: imageSize, height: imageSize)
+                    .clipped()
             } placeholder: {
-                Rectangle()
-                    .fill(Color.gray.opacity(0.2))
-                    .overlay {
-                        Image(systemName: "photo")
-                            .foregroundColor(.gray)
-                    }
+                ProgressView()
+                    .frame(width: imageSize, height: imageSize)
+                    .background(Color("CardBackground"))
+            } failure: {
+                imageFallbackView
+                    .frame(width: imageSize, height: imageSize)
             }
-            .frame(width: 140, height: 140)
-            .clipped()
+        } else {
+            imageFallbackView
+                .frame(width: imageSize, height: imageSize)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            productImageView
+            .frame(width: imageSize, height: imageSize)
             .contentShape(Rectangle())
             .cornerRadius(8)
             .accessibilityHidden(true)
@@ -348,7 +402,7 @@ struct ProductCardView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color(.systemBackground))
+        .background(Color("CardBackground"))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)

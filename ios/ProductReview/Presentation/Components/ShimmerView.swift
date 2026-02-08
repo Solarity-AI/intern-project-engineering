@@ -8,14 +8,19 @@
 import SwiftUI
 
 struct ShimmerView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var phase: CGFloat = 0
+
+    private var baseColor: Color {
+        colorScheme == .dark ? Color.white : Color.gray
+    }
 
     var body: some View {
         LinearGradient(
             gradient: Gradient(colors: [
-                Color.gray.opacity(0.2),
-                Color.gray.opacity(0.4),
-                Color.gray.opacity(0.2)
+                baseColor.opacity(0.1),
+                baseColor.opacity(0.2),
+                baseColor.opacity(0.1)
             ]),
             startPoint: .leading,
             endPoint: .trailing
@@ -58,7 +63,7 @@ struct ProductCardSkeleton: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color(.systemBackground))
+        .background(Color("CardBackground"))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
@@ -161,7 +166,7 @@ struct ReviewCardSkeleton: View {
                 .cornerRadius(4)
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(Color("CardBackground"))
         .cornerRadius(12)
     }
 }
