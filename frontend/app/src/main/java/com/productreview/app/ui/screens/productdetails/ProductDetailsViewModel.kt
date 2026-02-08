@@ -50,10 +50,10 @@ class ProductDetailsViewModel @Inject constructor(
 
     val wishlistIds: StateFlow<Set<String>> = wishlistRepository.wishlistIds
 
-    private var productId: Long = 0
+    private var productId: String = ""
 
     fun loadProduct(id: String) {
-        productId = id.toLongOrNull() ?: return
+        productId = id
         
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -92,7 +92,7 @@ class ProductDetailsViewModel @Inject constructor(
 
             logger.log(
                 LogEvent.debug(LogCategory.PAGINATION, "load_reviews")
-                    .metadata(LogKey.PRODUCT_ID, productId.toString())
+                    .metadata(LogKey.PRODUCT_ID, productId)
                     .metadata(LogKey.PAGE, page)
                     .build()
             )
@@ -105,7 +105,7 @@ class ProductDetailsViewModel @Inject constructor(
             )) {
                 is FWResult.Success -> {
                     val pageData = result.value
-                    val newReviews = pageData.items.map { it.toDomain(productId.toString()) }
+                    val newReviews = pageData.items.map { it.toDomain(productId) }
                     _uiState.update { state ->
                         state.copy(
                             reviews = if (append) state.reviews + newReviews else newReviews,
@@ -197,7 +197,7 @@ class ProductDetailsViewModel @Inject constructor(
             
             logger.log(
                 LogEvent.info(LogCategory.DATA, "submit_review")
-                    .metadata(LogKey.PRODUCT_ID, productId.toString())
+                    .metadata(LogKey.PRODUCT_ID, productId)
                     .build()
             )
 
@@ -215,17 +215,17 @@ class ProductDetailsViewModel @Inject constructor(
                         type = NotificationType.REVIEW,
                         title = "Review Posted",
                         body = "Your review for $productName has been published.",
-                        productId = productId.toString(),
+                        productId = productId,
                         productName = productName
                     )
                     
                     logger.log(
                         LogEvent.info(LogCategory.DATA, "review_submitted")
-                            .metadata(LogKey.PRODUCT_ID, productId.toString())
+                            .metadata(LogKey.PRODUCT_ID, productId)
                             .build()
                     )
                     
-                    loadProduct(productId.toString())
+                    loadProduct(productId)
                     onSuccess()
                 }
                 is FWResult.Failure -> {
@@ -248,7 +248,7 @@ class ProductDetailsViewModel @Inject constructor(
         _uiState.update { it.copy(submitError = null) }
     }
 
-    fun isInWishlist(): Boolean = wishlistRepository.isInWishlist(productId.toString())
+    fun isInWishlist(): Boolean = wishlistRepository.isInWishlist(productId)
 
     fun toggleWishlist() {
         val product = _uiState.value.product ?: return

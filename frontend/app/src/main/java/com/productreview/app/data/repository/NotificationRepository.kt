@@ -126,7 +126,7 @@ class NotificationRepository @Inject constructor(
                 NotificationCreateRequest(
                     title = title,
                     message = body,
-                    productId = productId?.toLongOrNull()
+                    productId = productId
                 )
             )
             loadNotifications()

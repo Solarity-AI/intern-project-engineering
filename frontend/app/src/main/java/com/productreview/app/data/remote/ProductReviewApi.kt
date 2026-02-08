@@ -17,7 +17,7 @@ interface ProductReviewApi {
     ): PageResponse<ApiProduct>
 
     @GET("api/products/{id}")
-    suspend fun getProduct(@Path("id") id: Long): ApiProduct
+    suspend fun getProduct(@Path("id") id: String): ApiProduct
 
     @GET("api/products/stats")
     suspend fun getGlobalStats(
@@ -29,7 +29,7 @@ interface ProductReviewApi {
 
     @GET("api/products/{productId}/reviews")
     suspend fun getReviews(
-        @Path("productId") productId: Long,
+        @Path("productId") productId: String,
         @Query("page") page: Int = 0,
         @Query("size") size: Int = 10,
         @Query("sort") sort: String = "createdAt,desc",
@@ -38,7 +38,7 @@ interface ProductReviewApi {
 
     @POST("api/products/{productId}/reviews")
     suspend fun postReview(
-        @Path("productId") productId: Long,
+        @Path("productId") productId: String,
         @Body review: ReviewRequest
     ): ApiReview
 
@@ -52,14 +52,14 @@ interface ProductReviewApi {
 
     @POST("api/products/{productId}/chat")
     suspend fun chatWithAI(
-        @Path("productId") productId: Long,
+        @Path("productId") productId: String,
         @Body request: ChatRequest
     ): ChatResponse
 
     // ==================== WISHLIST ====================
 
     @GET("api/user/wishlist")
-    suspend fun getWishlist(): List<Long>
+    suspend fun getWishlist(): List<String>
 
     @GET("api/user/wishlist/products")
     suspend fun getWishlistProducts(
@@ -69,7 +69,7 @@ interface ProductReviewApi {
     ): PageResponse<ApiProduct>
 
     @POST("api/user/wishlist/{productId}")
-    suspend fun toggleWishlist(@Path("productId") productId: Long)
+    suspend fun toggleWishlist(@Path("productId") productId: String)
 
     // ==================== NOTIFICATIONS ====================
 

@@ -53,11 +53,11 @@ class AIAssistantViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AIAssistantUiState())
     val uiState: StateFlow<AIAssistantUiState> = _uiState.asStateFlow()
 
-    private var productId: Long = 0
+    private var productId: String = ""
     private var productName: String = ""
 
     fun initialize(productId: String, productName: String) {
-        this.productId = productId.toLongOrNull() ?: 0
+        this.productId = productId
         this.productName = productName
 
         val welcomeId = System.currentTimeMillis().toString()

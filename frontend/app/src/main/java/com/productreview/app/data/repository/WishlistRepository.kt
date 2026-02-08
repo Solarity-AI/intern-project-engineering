@@ -46,7 +46,7 @@ class WishlistRepository @Inject constructor(
 
         return safeApiCall {
             val ids = api.getWishlist()
-            _wishlistIds.value = ids.map { it.toString() }.toSet()
+            _wishlistIds.value = ids.toSet()
             logger.log(LogEvent(
                 category = LogCategory.DATA,
                 name = "wishlist_loaded",
@@ -128,14 +128,11 @@ class WishlistRepository @Inject constructor(
     suspend fun removeFromWishlist(productId: String): FWResult<Unit> {
         if (!_wishlistIds.value.contains(productId)) return FWResult.success(Unit)
 
-        val numericId = productId.toLongOrNull()
-            ?: return FWResult.failure(FWError.invalidArgument("Invalid product ID: $productId"))
-
         val oldItems = _wishlistItems.value
         _wishlistIds.value = _wishlistIds.value - productId
         _wishlistItems.value = _wishlistItems.value.filter { it.id != productId }
 
-        val result = safeApiCall { api.toggleWishlist(numericId) }
+        val result = safeApiCall { api.toggleWishlist(productId) }
         if (result.isFailure) {
             _wishlistIds.value = _wishlistIds.value + productId
             _wishlistItems.value = oldItems
@@ -176,11 +173,7 @@ class WishlistRepository @Inject constructor(
         _wishlistItems.value = _wishlistItems.value.filter { it.id !in toRemove }
 
         return try {
-            toRemove.forEach {
-                val numericId = it.toLongOrNull()
-                    ?: return FWResult.failure(FWError.invalidArgument("Invalid product ID: $it"))
-                api.toggleWishlist(numericId)
-            }
+            toRemove.forEach { api.toggleWishlist(it) }
             FWResult.success(Unit)
         } catch (e: Exception) {
             _wishlistIds.value = oldIds
@@ -206,11 +199,7 @@ class WishlistRepository @Inject constructor(
         ))
 
         return try {
-            currentIds.forEach {
-                val numericId = it.toLongOrNull()
-                    ?: return FWResult.failure(FWError.invalidArgument("Invalid product ID: $it"))
-                api.toggleWishlist(numericId)
-            }
+            currentIds.forEach { api.toggleWishlist(it) }
             FWResult.success(Unit)
         } catch (e: Exception) {
             _wishlistIds.value = oldIds
@@ -231,7 +220,7 @@ class WishlistRepository @Inject constructor(
 }
 
 private fun ApiProduct.toWishlistItem(): WishlistItem = WishlistItem(
-    id = id.toString(),
+    id = id,
     name = name,
     price = price,
     imageUrl = imageUrl,

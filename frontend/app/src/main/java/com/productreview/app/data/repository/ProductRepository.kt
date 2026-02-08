@@ -74,12 +74,12 @@ class ProductRepository @Inject constructor(
         return getProducts(page, size, sort, category, search)
     }
 
-    suspend fun getProduct(id: Long): FWResult<ApiProduct> {
+    suspend fun getProduct(id: String): FWResult<ApiProduct> {
         logger.log(LogEvent(
             category = LogCategory.NETWORK,
             name = "get_product",
             level = LogLevel.DEBUG,
-            metadata = mapOf("productId" to id.toString())
+            metadata = mapOf("productId" to id)
         ))
 
         return safeApiCall { api.getProduct(id) }
@@ -100,7 +100,7 @@ class ProductRepository @Inject constructor(
     // ==================== REVIEWS ====================
 
     suspend fun getReviews(
-        productId: Long,
+        productId: String,
         page: Int = 0,
         size: Int = 10,
         sort: String = "createdAt,desc",
@@ -111,7 +111,7 @@ class ProductRepository @Inject constructor(
             name = "get_reviews",
             level = LogLevel.DEBUG,
             metadata = mapOf(
-                "productId" to productId.toString(),
+                "productId" to productId,
                 "page" to page.toString()
             )
         ))
@@ -123,7 +123,7 @@ class ProductRepository @Inject constructor(
     }
 
     suspend fun getReviewsPage(
-        productId: Long,
+        productId: String,
         cursor: PageCursor?,
         size: Int = 10,
         rating: Int? = null
@@ -133,7 +133,7 @@ class ProductRepository @Inject constructor(
     }
 
     suspend fun postReview(
-        productId: Long,
+        productId: String,
         reviewerName: String?,
         rating: Int,
         comment: String
@@ -142,7 +142,7 @@ class ProductRepository @Inject constructor(
             category = LogCategory.DATA,
             name = "post_review",
             level = LogLevel.INFO,
-            metadata = mapOf("productId" to productId.toString())
+            metadata = mapOf("productId" to productId)
         ))
 
         return safeApiCall {
@@ -167,12 +167,12 @@ class ProductRepository @Inject constructor(
 
     // ==================== AI CHAT ====================
 
-    suspend fun chatWithAI(productId: Long, question: String): FWResult<ChatResponse> {
+    suspend fun chatWithAI(productId: String, question: String): FWResult<ChatResponse> {
         logger.log(LogEvent(
             category = LogCategory.DATA,
             name = "ai_chat",
             level = LogLevel.INFO,
-            metadata = mapOf("productId" to productId.toString())
+            metadata = mapOf("productId" to productId)
         ))
 
         return safeApiCall { api.chatWithAI(productId, ChatRequest(question)) }

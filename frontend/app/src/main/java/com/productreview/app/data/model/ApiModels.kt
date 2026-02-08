@@ -17,7 +17,7 @@ data class PageResponse<T>(
 // Product DTO
 @Serializable
 data class ApiProduct(
-    val id: Long,
+    val id: String,
     val name: String,
     val description: String? = null,
     val categories: List<String> = emptyList(),
@@ -58,7 +58,7 @@ data class ApiNotification(
     @SerialName("read")
     val isRead: Boolean = false,
     val createdAt: String,
-    val productId: Long? = null
+    val productId: String? = null
 )
 
 // Global Stats DTO
@@ -91,5 +91,5 @@ data class UnreadCountResponse(
 data class NotificationCreateRequest(
     val title: String,
     val message: String,
-    val productId: Long? = null
+    val productId: String? = null
 )
