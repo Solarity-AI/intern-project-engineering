@@ -7,7 +7,9 @@ import com.productreview.app.core.RetryPolicy
 import com.productreview.app.core.logging.DefaultLogger
 import com.productreview.app.core.logging.LogLevel
 import com.productreview.app.core.logging.Logger
+import com.productreview.app.data.remote.AuthApi
 import com.productreview.app.data.remote.ProductReviewApi
+import com.productreview.app.data.remote.TokenAuthenticator
 import com.productreview.app.data.remote.UserIdInterceptor
 import dagger.Module
 import dagger.Provides
@@ -20,6 +22,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -50,10 +53,59 @@ object NetworkModule {
         coerceInputValues = true
     }
 
+    /**
+     * Plain OkHttpClient for auth endpoints (no auth interceptor / authenticator).
+     * Avoids circular dependency: AuthTokenManager -> AuthApi -> OkHttpClient -> AuthTokenManager.
+     */
+    @Provides
+    @Singleton
+    @Named("auth")
+    fun provideAuthOkHttpClient(): OkHttpClient {
+        val logging = HttpLoggingInterceptor().apply {
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BODY
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
+        }
+
+        return OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("auth")
+    fun provideAuthRetrofit(
+        @Named("auth") okHttpClient: OkHttpClient,
+        json: Json
+    ): Retrofit {
+        val contentType = "application/json".toMediaType()
+        return Retrofit.Builder()
+            .baseUrl(BuildConfig.BASE_URL + "/")
+            .client(okHttpClient)
+            .addConverterFactory(json.asConverterFactory(contentType))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthApi(@Named("auth") retrofit: Retrofit): AuthApi {
+        return retrofit.create(AuthApi::class.java)
+    }
+
+    /**
+     * Main OkHttpClient with auth interceptor and 401 retry authenticator.
+     */
     @Provides
     @Singleton
     fun provideOkHttpClient(
-        userIdInterceptor: UserIdInterceptor
+        userIdInterceptor: UserIdInterceptor,
+        tokenAuthenticator: TokenAuthenticator
     ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) {
@@ -66,6 +118,7 @@ object NetworkModule {
         return OkHttpClient.Builder()
             .addInterceptor(userIdInterceptor)
             .addInterceptor(logging)
+            .authenticator(tokenAuthenticator)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
@@ -79,7 +132,7 @@ object NetworkModule {
         json: Json
     ): Retrofit {
         val contentType = "application/json".toMediaType()
-        
+
         return Retrofit.Builder()
             .baseUrl(BuildConfig.BASE_URL + "/")
             .client(okHttpClient)

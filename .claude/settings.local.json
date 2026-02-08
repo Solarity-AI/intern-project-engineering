@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(javap:*)",
+      "Bash(jar tf:*)",
+      "Bash(git -C \"c:/Users/ERENCAN/Solary/ProductReviewApp-Kotlin-FW\" log --all --full-history -- \"backend/src/main/java/com/solarityai/productreview/config/SecurityConfig.java\")",
+      "Bash(git -C \"c:/Users/ERENCAN/Solary/ProductReviewApp-Kotlin-FW\" show HEAD:backend/src/main/java/com/solarityai/productreview/config/SecurityConfig.java)",
+      "Bash(./gradlew assembleDebug:*)"
+    ]
+  }
+}

@@ -22,6 +22,8 @@ class UserPreferencesManager @Inject constructor(
 
     companion object {
         private val USER_ID_KEY = stringPreferencesKey("user_id")
+        private val ACCESS_TOKEN_KEY = stringPreferencesKey("access_token")
+        private val REFRESH_TOKEN_KEY = stringPreferencesKey("refresh_token")
         private val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
         private val SORT_PREFERENCE_KEY = stringPreferencesKey("sort_preference")
         private val GRID_MODE_KEY = intPreferencesKey("grid_mode")
@@ -36,6 +38,32 @@ class UserPreferencesManager @Inject constructor(
             val newUserId = UUID.randomUUID().toString()
             dataStore.edit { it[USER_ID_KEY] = newUserId }
             newUserId
+        }
+    }
+
+    // ==================== AUTH TOKENS ====================
+
+    suspend fun getAccessToken(): String? {
+        val preferences = dataStore.data.first()
+        return preferences[ACCESS_TOKEN_KEY]
+    }
+
+    suspend fun getRefreshToken(): String? {
+        val preferences = dataStore.data.first()
+        return preferences[REFRESH_TOKEN_KEY]
+    }
+
+    suspend fun saveTokens(accessToken: String, refreshToken: String) {
+        dataStore.edit { preferences ->
+            preferences[ACCESS_TOKEN_KEY] = accessToken
+            preferences[REFRESH_TOKEN_KEY] = refreshToken
+        }
+    }
+
+    suspend fun clearTokens() {
+        dataStore.edit { preferences ->
+            preferences.remove(ACCESS_TOKEN_KEY)
+            preferences.remove(REFRESH_TOKEN_KEY)
         }
     }
 

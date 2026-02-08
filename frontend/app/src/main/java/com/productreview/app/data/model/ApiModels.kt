@@ -93,3 +93,27 @@ data class NotificationCreateRequest(
     val message: String,
     val productId: String? = null
 )
+
+// Auth Request (login)
+@Serializable
+data class AuthRequest(
+    val username: String,
+    val password: String
+)
+
+// Auth Response (login / refresh)
+@Serializable
+data class AuthResponse(
+    val accessToken: String,
+    val refreshToken: String,
+    val tokenType: String = "Bearer",
+    val expiresIn: Long = 3600,
+    val username: String? = null,
+    val userId: String? = null
+)
+
+// Refresh Token Request
+@Serializable
+data class RefreshRequest(
+    val refreshToken: String
+)
