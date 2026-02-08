@@ -150,18 +150,18 @@ class ProductRepository @Inject constructor(
         }
     }
 
-    suspend fun markReviewAsHelpful(reviewId: Long): FWResult<ApiReview> {
+    suspend fun markReviewAsHelpful(reviewId: String): FWResult<ApiReview> {
         logger.log(LogEvent(
             category = LogCategory.DATA,
             name = "mark_helpful",
             level = LogLevel.INFO,
-            metadata = mapOf("reviewId" to reviewId.toString())
+            metadata = mapOf("reviewId" to reviewId)
         ))
 
         return safeApiCall { api.markReviewAsHelpful(reviewId) }
     }
 
-    suspend fun getUserVotedReviews(): FWResult<List<Long>> {
+    suspend fun getUserVotedReviews(): FWResult<List<String>> {
         return safeApiCall { api.getUserVotedReviews() }
     }
 
@@ -224,7 +224,7 @@ fun <T> PageResponse<T>.toPage(): Page<T> {
 
 
 fun ApiReview.toDomain(productId: String): Review = Review(
-    id = (id ?: System.currentTimeMillis()).toString(),
+    id = id ?: System.currentTimeMillis().toString(),
     productId = productId,
     userName = reviewerName ?: "Anonymous",
     rating = rating,

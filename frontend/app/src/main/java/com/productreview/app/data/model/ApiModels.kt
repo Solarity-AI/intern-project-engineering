@@ -33,7 +33,7 @@ data class ApiProduct(
 // Review DTO
 @Serializable
 data class ApiReview(
-    val id: Long? = null,
+    val id: String? = null,
     val reviewerName: String? = null,
     val rating: Int,
     val comment: String,

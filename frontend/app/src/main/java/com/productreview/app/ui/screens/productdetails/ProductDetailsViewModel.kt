@@ -132,7 +132,7 @@ class ProductDetailsViewModel @Inject constructor(
         viewModelScope.launch {
             productRepository.getUserVotedReviews().onSuccess { votes ->
                 _uiState.update {
-                    it.copy(helpfulReviewIds = votes.map { v -> v.toString() }.toSet())
+                    it.copy(helpfulReviewIds = votes.toSet())
                 }
             }
         }
@@ -179,7 +179,7 @@ class ProductDetailsViewModel @Inject constructor(
                     .build()
             )
 
-            productRepository.markReviewAsHelpful(reviewId.toLong())
+            productRepository.markReviewAsHelpful(reviewId)
         }
     }
 
@@ -257,7 +257,7 @@ class ProductDetailsViewModel @Inject constructor(
 }
 
 private fun ApiReview.toDomain(productId: String): Review = Review(
-    id = (id ?: System.currentTimeMillis()).toString(),
+    id = id ?: System.currentTimeMillis().toString(),
     productId = productId,
     userName = reviewerName ?: "Anonymous",
     rating = rating,

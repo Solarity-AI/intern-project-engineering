@@ -43,10 +43,10 @@ interface ProductReviewApi {
     ): ApiReview
 
     @PUT("api/products/reviews/{reviewId}/helpful")
-    suspend fun markReviewAsHelpful(@Path("reviewId") reviewId: Long): ApiReview
+    suspend fun markReviewAsHelpful(@Path("reviewId") reviewId: String): ApiReview
 
     @GET("api/products/reviews/voted")
-    suspend fun getUserVotedReviews(): List<Long>
+    suspend fun getUserVotedReviews(): List<String>
 
     // ==================== AI CHAT ====================
 
