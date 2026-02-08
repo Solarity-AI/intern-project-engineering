@@ -220,18 +220,8 @@ fun <T> PageResponse<T>.toPage(): Page<T> {
     )
 }
 
-fun ApiProduct.toDomain(): Product = Product(
-    id = id.toString(),
-    name = name,
-    description = description,
-    categories = categories,
-    price = price,
-    imageUrl = imageUrl,
-    averageRating = averageRating ?: 0.0,
-    reviewCount = reviewCount ?: 0,
-    ratingBreakdown = ratingBreakdown,
-    aiSummary = aiSummary
-)
+
+
 
 fun ApiReview.toDomain(productId: String): Review = Review(
     id = (id ?: System.currentTimeMillis()).toString(),

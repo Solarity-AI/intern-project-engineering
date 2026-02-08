@@ -19,15 +19,16 @@ data class PageResponse<T>(
 data class ApiProduct(
     val id: Long,
     val name: String,
-    val description: String = "",
+    val description: String? = null,
     val categories: List<String> = emptyList(),
     val price: Double = 0.0,
     val averageRating: Double? = null,
     val reviewCount: Int? = null,
-    val ratingBreakdown: Map<Int, Int>? = null,
+    val ratingBreakdown: Map<Int, Long>? = null,
     val imageUrl: String? = null,
     val aiSummary: String? = null
 )
+
 
 // Review DTO
 @Serializable

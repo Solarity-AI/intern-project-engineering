@@ -128,11 +128,14 @@ class WishlistRepository @Inject constructor(
     suspend fun removeFromWishlist(productId: String): FWResult<Unit> {
         if (!_wishlistIds.value.contains(productId)) return FWResult.success(Unit)
 
+        val numericId = productId.toLongOrNull()
+            ?: return FWResult.failure(FWError.invalidArgument("Invalid product ID: $productId"))
+
         val oldItems = _wishlistItems.value
         _wishlistIds.value = _wishlistIds.value - productId
         _wishlistItems.value = _wishlistItems.value.filter { it.id != productId }
 
-        val result = safeApiCall { api.toggleWishlist(productId.toLong()) }
+        val result = safeApiCall { api.toggleWishlist(numericId) }
         if (result.isFailure) {
             _wishlistIds.value = _wishlistIds.value + productId
             _wishlistItems.value = oldItems
@@ -173,7 +176,11 @@ class WishlistRepository @Inject constructor(
         _wishlistItems.value = _wishlistItems.value.filter { it.id !in toRemove }
 
         return try {
-            toRemove.forEach { api.toggleWishlist(it.toLong()) }
+            toRemove.forEach {
+                val numericId = it.toLongOrNull()
+                    ?: return FWResult.failure(FWError.invalidArgument("Invalid product ID: $it"))
+                api.toggleWishlist(numericId)
+            }
             FWResult.success(Unit)
         } catch (e: Exception) {
             _wishlistIds.value = oldIds
@@ -199,7 +206,11 @@ class WishlistRepository @Inject constructor(
         ))
 
         return try {
-            currentIds.forEach { api.toggleWishlist(it.toLong()) }
+            currentIds.forEach {
+                val numericId = it.toLongOrNull()
+                    ?: return FWResult.failure(FWError.invalidArgument("Invalid product ID: $it"))
+                api.toggleWishlist(numericId)
+            }
             FWResult.success(Unit)
         } catch (e: Exception) {
             _wishlistIds.value = oldIds

@@ -241,9 +241,9 @@ fun ProductDetailsScreen(
                             }
 
                             // Description
-                            if (product.description.isNotBlank()) {
+                            if (product.description?.isNotBlank() == true) {
                                 Text(
-                                    text = product.description,
+                                    text = product.description ?: "",
                                     fontSize = 16.sp,
                                     lineHeight = 26.sp,
                                     color = colors.foreground,
@@ -276,7 +276,7 @@ fun ProductDetailsScreen(
                                 color = colors.foreground
                             )
                             RatingBreakdown(
-                                breakdown = product.ratingBreakdown,
+                                breakdown = product.ratingBreakdown?.mapValues { it.value.toInt() },
                                 totalCount = product.reviewCount ?: 0,
                                 selectedRating = uiState.selectedRatingFilter,
                                 onSelectRating = { viewModel.setRatingFilter(it) }
