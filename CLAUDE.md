@@ -123,10 +123,10 @@ cd mobile && eas build --platform android
 - `backend/src/main/resources/application-prod.properties` - Production overrides
 
 ### Frontend
-- `mobile/src/services/api.ts` - API client
+- `mobile/src/services/api.ts` - API client (retry, cache, dedup, structured errors)
 - `mobile/src/context/` - State management (Theme, Wishlist, Notifications)
 - `mobile/src/screens/ProductListScreen.tsx` - Main product list
-- `mobile/src/constants/theme.ts` - Color palette & design tokens
+- `mobile/src/constants/theme.ts` - Theme tokens (Colors, Gradients, Glass, Glow, Shadow)
 
 ## Coding Conventions
 
@@ -177,7 +177,7 @@ cd backend && ./mvnw test
 - Backend uses in-memory H2 database (data resets on restart)
 - AI summaries are cached for 1 hour (Caffeine)
 - User persistence via device ID (X-User-ID header)
-- Frontend supports dark/light mode with system preference detection
+- Frontend defaults to dark mode with glassmorphism UI (Glass cards, Gradients, Glow effects)
 - H2 console is disabled in production profile (`application-prod.properties`)
 - Rate limiting: 60 requests/minute per client (keyed by X-User-ID or IP)
 - CORS: configured via properties, not controller annotations
