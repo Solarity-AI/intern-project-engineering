@@ -41,7 +41,7 @@ fun WishlistCard(
     modifier: Modifier = Modifier
 ) {
     val colors = AppTheme.colors
-    val isCompact = numColumns >= 2
+    val isCompact = numColumns >= 3
 
     // Shake animation for selection mode
     val infiniteTransition = rememberInfiniteTransition(label = "shake")
@@ -62,10 +62,10 @@ fun WishlistCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(16.dp))
             .then(
                 if (isSelectionMode) Modifier.rotate(rotation) else Modifier
             )
+            .shadow(4.dp, RoundedCornerShape(16.dp))
             .then(
                 if (isSelected) {
                     Modifier.border(2.dp, colors.primary, RoundedCornerShape(16.dp))
@@ -86,6 +86,7 @@ fun WishlistCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(if (isCompact) 1f else 16f / 9f)
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             ) {
                 AsyncImage(
                     model = imageUrl,
@@ -148,13 +149,13 @@ fun WishlistCard(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(8.dp)
+                        .padding(if (isCompact) 8.dp else 12.dp)
                         .background(colors.secondary, RoundedCornerShape(50))
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                        .padding(horizontal = if (isCompact) 6.dp else 8.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = product.categories.firstOrNull() ?: "Uncategorized",
-                        fontSize = if (isCompact) 9.sp else 11.sp,
+                        fontSize = if (isCompact) 9.sp else 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = colors.foreground,
                         maxLines = 1,
