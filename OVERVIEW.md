@@ -330,7 +330,7 @@ Presentation          Domain              Data
 | NotificationContext | Notification state with optimistic updates |
 | SearchContext | Search history persistence |
 | ToastContext | Animated toast notifications |
-| NetworkContext | Connectivity monitoring |
+| NetworkContext | Connectivity monitoring (shared BASE_URL) |
 
 ### 4.5 iOS Native Architecture
 
@@ -466,9 +466,9 @@ management.endpoints.web.exposure.include=health,info
 
 ### Frontend Configuration (React Native)
 
-**API Base URL:**
+**API Base URL (exported, shared by NetworkContext for health checks):**
 ```typescript
-const BASE_URL = 'https://product-review-app-ybmf.onrender.com';
+export const BASE_URL = 'https://product-review-app-ybmf.onrender.com';
 ```
 
 **User Identification:**
@@ -671,6 +671,7 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 |----------|----------------|
 | AbortController | Race condition protection in ProductList |
 | Debounced Search | 1-second delay before API calls |
+| Cache Invalidation | Automatic GET cache clearing after mutations |
 | Optimistic Updates | Immediate UI feedback, backend sync |
 | Memoization | useMemo/useCallback for expensive operations |
 | Batched Rendering | Android 10-item max, 50ms batch period |

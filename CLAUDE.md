@@ -123,8 +123,8 @@ cd mobile && eas build --platform android
 - `backend/src/main/resources/application-prod.properties` - Production overrides
 
 ### Frontend
-- `mobile/src/services/api.ts` - API client (retry, cache, dedup, structured errors)
-- `mobile/src/context/` - State management (Theme, Wishlist, Notifications)
+- `mobile/src/services/api.ts` - API client (retry, cache, dedup, structured errors, mutation cache invalidation)
+- `mobile/src/context/` - State management (Theme, Wishlist, Notifications, Network)
 - `mobile/src/screens/ProductListScreen.tsx` - Main product list
 - `mobile/src/constants/theme.ts` - Theme tokens (Colors, Gradients, Glass, Glow, Shadow)
 
@@ -156,7 +156,8 @@ cd mobile && eas build --platform android
 - `spring.profiles.active=prod` - Activate production profile (disables H2 console, restricts actuator)
 
 ### Frontend
-- API base URL configured in `mobile/src/services/api.ts`
+- API base URL exported from `mobile/src/services/api.ts` (`export const BASE_URL`)
+- Shared by `NetworkContext.tsx` for health checks
 - Currently: `https://product-review-app-ybmf.onrender.com`
 
 ## Testing
@@ -178,6 +179,7 @@ cd backend && ./mvnw test
 - AI summaries are cached for 1 hour (Caffeine)
 - User persistence via device ID (X-User-ID header)
 - Frontend defaults to dark mode with glassmorphism UI (Glass cards, Gradients, Glow effects)
+- GET cache is automatically invalidated after successful mutations (postReview, markReviewAsHelpful, toggleWishlist)
 - H2 console is disabled in production profile (`application-prod.properties`)
 - Rate limiting: 60 requests/minute per client (keyed by X-User-ID or IP)
 - CORS: configured via properties, not controller annotations
