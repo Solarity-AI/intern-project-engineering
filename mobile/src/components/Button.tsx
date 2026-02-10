@@ -149,7 +149,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   if (variant === 'premium') {
     return (
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <Animated.View style={[containerStyle, { transform: [{ scale: scaleAnim }] }]}>
         <TouchableOpacity
           onPress={onPress}
           onPressIn={handlePressIn}
@@ -157,12 +157,13 @@ export const Button: React.FC<ButtonProps> = ({
           disabled={disabled || loading}
           activeOpacity={0.8}
           accessibilityRole="button"
+          style={{ flex: 1 }}
         >
           <LinearGradient
             colors={Gradients.brand}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[containerStyle, Glow.primary]}
+            style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, borderRadius: BorderRadius.xl }, Glow.primary]}
           >
             {content}
           </LinearGradient>
@@ -172,7 +173,7 @@ export const Button: React.FC<ButtonProps> = ({
   }
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+    <Animated.View style={[containerStyle, { transform: [{ scale: scaleAnim }] }]}>
       <TouchableOpacity
         onPress={onPress}
         onPressIn={handlePressIn}
@@ -180,7 +181,7 @@ export const Button: React.FC<ButtonProps> = ({
         disabled={disabled || loading}
         activeOpacity={0.8}
         accessibilityRole="button"
-        style={containerStyle}
+        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm }}
       >
         {content}
       </TouchableOpacity>

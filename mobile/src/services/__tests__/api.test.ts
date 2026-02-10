@@ -1,4 +1,4 @@
-import { ApiError, getUserMessage } from '../api';
+import { ApiError, getUserMessage, clearApiCache } from '../api';
 
 // --- Mock fetch globally ---
 const mockFetch = jest.fn();
@@ -30,6 +30,7 @@ function mockResponse(status: number, body: any, statusText = 'OK'): Response {
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useRealTimers();
+  clearApiCache();
 });
 
 // ============================

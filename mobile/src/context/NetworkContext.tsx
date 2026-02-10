@@ -2,6 +2,7 @@
 // Uses fetch-based connectivity check instead of native module
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
+import { BASE_URL } from '../services/api';
 
 interface NetworkContextType {
   isConnected: boolean;
@@ -20,9 +21,7 @@ const checkInternetConnection = async (): Promise<boolean> => {
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     // Use our backend's actuator health endpoint (CORS-enabled)
-    // For local development:
-    // http://localhost:8080/actuator/health
-    const response = await fetch('https://product-review-app-ybmf.onrender.com/actuator/health', {
+    const response = await fetch(`${BASE_URL}/actuator/health`, {
       method: 'GET',
       signal: controller.signal,
     });

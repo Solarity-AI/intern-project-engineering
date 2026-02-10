@@ -173,7 +173,7 @@ function SelectableWishlistCardComponent({
               <Ionicons
                 name="close"
                 size={isCompact ? 14 : 18}
-                color="#fff"
+                color={colorScheme === 'dark' ? '#fff' : '#000'}
               />
             </Pressable>
           )}
@@ -211,7 +211,7 @@ function SelectableWishlistCardComponent({
               <View style={styles.ratingRow}>
                 <StarRating rating={item.averageRating} size="sm" compact={isCompact} />
                 <Text style={[styles.reviewCount, isCompact && styles.reviewCountCompact]}>
-                  ({(item as any).reviewCount ?? 0})
+                  ({item.reviewCount ?? 0})
                 </Text>
               </View>
             )}

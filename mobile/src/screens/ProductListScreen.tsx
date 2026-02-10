@@ -661,7 +661,7 @@ export const ProductListScreen = () => {
               </View>
               <View style={styles.featuredPriceRow}>
                 <Text style={styles.featuredPrice}>
-                  ${featuredProduct.price.toFixed(2)}
+                  ${featuredProduct.price?.toFixed(2) ?? 'N/A'}
                 </Text>
                 <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.5)" />
               </View>

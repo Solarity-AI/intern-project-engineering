@@ -431,7 +431,7 @@ const ProductDetailsContent: React.FC = () => {
                 )}
                 <Text style={styles.heroProductName}>{displayName}</Text>
                 <View style={styles.heroPriceRatingRow}>
-                  <Text style={styles.heroPrice}>${product.price?.toFixed(2)}</Text>
+                  <Text style={styles.heroPrice}>${(product.price ?? 0).toFixed(2)}</Text>
                   {product.averageRating !== undefined && (
                     <View style={styles.heroRatingChip}>
                       <Ionicons name="star" size={14} color="#FBBF24" />
@@ -476,7 +476,7 @@ const ProductDetailsContent: React.FC = () => {
               <View style={styles.infoBarItem}>
                 <Ionicons name="pricetag" size={18} color="#10B981" />
                 <Text style={[styles.infoBarValue, { color: colors.foreground }]}>
-                  ${product.price?.toFixed(0)}
+                  ${(product.price ?? 0).toFixed(0)}
                 </Text>
                 <Text style={styles.infoBarLabel}>Price</Text>
               </View>

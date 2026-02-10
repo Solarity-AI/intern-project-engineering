@@ -207,7 +207,7 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
               <Ionicons
                 name={inWishlist ? 'heart' : 'heart-outline'}
                 size={numColumns >= 3 ? 14 : 18}
-                color={inWishlist ? '#F87171' : '#fff'}
+                color={inWishlist ? '#F87171' : colorScheme === 'dark' ? '#fff' : '#111'}
               />
             </Animated.View>
           </Pressable>

@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
-const BASE_URL = "https://product-review-app-ybmf.onrender.com";
-// const BASE_URL = "http://localhost:8080"; // Local development
+export const BASE_URL = "https://product-review-app-ybmf.onrender.com";
+// export const BASE_URL = "http://localhost:8080"; // Local development
 
 const USER_ID_KEY = 'device_user_id';
 
@@ -23,6 +23,17 @@ const memoryCache = new Map<string, { data: any; expiresAt: number }>();
 
 export function clearApiCache() {
   memoryCache.clear();
+  inflightRequests.clear();
+}
+
+/** Remove cached entries and inflight requests whose keys contain any of the given substrings. */
+function invalidateCache(...patterns: string[]) {
+  for (const key of memoryCache.keys()) {
+    if (patterns.some(p => key.includes(p))) memoryCache.delete(key);
+  }
+  for (const key of inflightRequests.keys()) {
+    if (patterns.some(p => key.includes(p))) inflightRequests.delete(key);
+  }
 }
 
 function getCached<T>(key: string): T | undefined {
@@ -336,18 +347,22 @@ export function getReviews(productId: number | string, params?: { page?: number;
   return requestWithRetry<Page<ApiReview>>(`${BASE_URL}/api/products/${productId}/reviews?${q.toString()}`);
 }
 
-export function postReview(productId: number | string, body: ApiReview) {
-  return request<ApiReview>(`${BASE_URL}/api/products/${productId}/reviews`, {
+export async function postReview(productId: number | string, body: ApiReview) {
+  const result = await request<ApiReview>(`${BASE_URL}/api/products/${productId}/reviews`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  invalidateCache(`/api/products/${productId}`, '/api/products/stats');
+  return result;
 }
 
-export function markReviewAsHelpful(reviewId: number | string) {
-  return requestWithRetry<ApiReview>(`${BASE_URL}/api/products/reviews/${reviewId}/helpful`, {
+export async function markReviewAsHelpful(reviewId: number | string) {
+  const result = await requestWithRetry<ApiReview>(`${BASE_URL}/api/products/reviews/${reviewId}/helpful`, {
     method: "PUT",
   });
+  invalidateCache('/api/products/reviews');
+  return result;
 }
 
 export function getUserVotedReviews() {
@@ -380,10 +395,12 @@ export function getWishlistProducts(params?: { page?: number; size?: number; sor
   return requestWithRetry<Page<ApiProduct>>(`${BASE_URL}/api/user/wishlist/products?${q.toString()}`);
 }
 
-export function toggleWishlistApi(productId: number) {
-  return request<void>(`${BASE_URL}/api/user/wishlist/${productId}`, {
+export async function toggleWishlistApi(productId: number) {
+  const result = await request<void>(`${BASE_URL}/api/user/wishlist/${productId}`, {
     method: "POST",
   });
+  invalidateCache('/api/user/wishlist');
+  return result;
 }
 
 export function getNotifications() {
