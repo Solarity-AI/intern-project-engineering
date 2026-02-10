@@ -59,7 +59,7 @@ fun ProductListScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(uiState.gridMode),
             state = gridState,
