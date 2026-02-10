@@ -3,10 +3,14 @@ package com.solarityai.productreview.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Security configuration for the dev profile.
@@ -35,5 +39,15 @@ public class SecurityConfig {
                 headers.frameOptions(frame -> frame.sameOrigin()));
 
         return http.build();
+    }
+
+    /**
+     * Provides a default auditor for JPA @CreatedBy/@LastModifiedBy fields.
+     * Required because @EnableJpaAuditing is active but there is no
+     * authenticated principal in dev mode.
+     */
+    @Bean
+    public AuditorAware<UUID> auditorProvider() {
+        return () -> Optional.of(UUID.fromString("00000000-0000-0000-0000-000000000000"));
     }
 }
