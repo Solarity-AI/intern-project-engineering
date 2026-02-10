@@ -9,26 +9,31 @@ import SwiftUI
 
 struct ProductListView: View {
     @EnvironmentObject var navigationRouter: NavigationRouter
-    @EnvironmentObject var appState: AppState
     @StateObject private var viewModel = ProductListViewModel()
     @ObservedObject private var searchHistoryManager = SearchHistoryManager.shared
 
     @State private var searchText = ""
     @State private var selectedCategory: String? = nil
-    @State private var showCategoryPicker = false
     @FocusState private var isSearchFieldFocused: Bool
 
     private let categories = ["All", "Electronics", "Smartphones", "Laptops", "Tablets", "Gaming", "Wearables", "Audio", "Accessories"]
-    private let cardWidth: CGFloat = 140
+    private let contentHorizontalPadding: CGFloat = 16
+    private let gridHorizontalSpacing: CGFloat = 20
+    private let gridVerticalSpacing: CGFloat = 16
+    private var cardWidth: CGFloat {
+        let availableWidth = UIScreen.main.bounds.width - (contentHorizontalPadding * 2) - gridHorizontalSpacing
+        return max(140, floor(availableWidth / 2))
+    }
     private let cardHeight: CGFloat = 260
-    private let gridHorizontalSpacing: CGFloat = 40
-    private let gridVerticalSpacing: CGFloat = 12
-    private let gridHorizontalPadding: CGFloat = 0
     private var columns: [GridItem] {
         [
             GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing),
             GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing)
         ]
+    }
+
+    private var shouldShowSkeleton: Bool {
+        viewModel.products.isEmpty && viewModel.isLoading
     }
 
     private var recentSearchSuggestions: [String] {
@@ -45,6 +50,108 @@ struct ProductListView: View {
 
     private func saveCurrentSearchToHistory() {
         searchHistoryManager.addSearch(searchText)
+    }
+
+    private var selectedCategoryTitle: String {
+        selectedCategory ?? "All Categories"
+    }
+
+    @ViewBuilder
+    private var filterSortSection: some View {
+        HStack {
+            Menu {
+                ForEach(categories, id: \.self) { category in
+                    let categoryValue = category == "All" ? nil : category
+                    Button {
+                        selectedCategory = categoryValue
+                        Task {
+                            await viewModel.filterByCategory(categoryValue)
+                        }
+                    } label: {
+                        if selectedCategory == categoryValue {
+                            Label(category, systemImage: "checkmark")
+                        } else {
+                            Text(category)
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                    Text(selectedCategoryTitle)
+                        .lineLimit(1)
+                }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color("PrimaryText"))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color("CardBackground"), in: Capsule())
+                .overlay {
+                    Capsule()
+                        .stroke(Color("Border"), lineWidth: 1)
+                }
+            }
+            .accessibilityLabel("Filter by category")
+            .accessibilityHint("Select a category to filter products")
+
+            Spacer(minLength: 24)
+
+            HStack(spacing: 6) {
+                Menu {
+                    ForEach(ProductSortCriterion.allCases) { criterion in
+                        Button {
+                            Task {
+                                await viewModel.updateSortCriterion(criterion)
+                            }
+                        } label: {
+                            if viewModel.selectedSortCriterion == criterion {
+                                Label(criterion.label, systemImage: "checkmark")
+                            } else {
+                                Text(criterion.label)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.up.arrow.down.circle")
+                        Text(viewModel.selectedSortCriterion.label)
+                            .lineLimit(1)
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color("PrimaryText"))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color("CardBackground"), in: Capsule())
+                    .overlay {
+                        Capsule()
+                            .stroke(Color("Border"), lineWidth: 1)
+                    }
+                }
+                .accessibilityLabel("Sort products")
+                .accessibilityHint("Select sorting criterion for product list")
+
+                Button {
+                    Task {
+                        await viewModel.toggleSortDirection()
+                    }
+                } label: {
+                    Image(systemName: viewModel.sortDirection.icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.black)
+                        .animation(.easeInOut(duration: 0.2), value: viewModel.sortDirection)
+                        .frame(width: 34, height: 34)
+                        .background(Color("CardBackground"), in: Circle())
+                        .overlay {
+                            Circle()
+                                .stroke(Color("Border"), lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Sort direction: \(viewModel.sortDirection.label)")
+                .accessibilityHint("Double tap to toggle sort direction")
+            }
+        }
+        .padding(.horizontal, contentHorizontalPadding)
     }
 
     @ViewBuilder
@@ -131,7 +238,7 @@ struct ProductListView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
         }
-        .padding(.horizontal)
+        .padding(.horizontal, contentHorizontalPadding)
     }
 
     var body: some View {
@@ -171,9 +278,11 @@ struct ProductListView: View {
                         StatsHeaderView(stats: stats)
                     }
 
+                    filterSortSection
+
                     // Products Grid or Skeleton Loading
                     LazyVGrid(columns: columns, spacing: gridVerticalSpacing) {
-                        if viewModel.products.isEmpty && viewModel.isLoading {
+                        if shouldShowSkeleton {
                             // Show shimmer skeletons during initial load
                             ForEach(0..<6, id: \.self) { _ in
                                 ProductCardSkeleton()
@@ -182,12 +291,34 @@ struct ProductListView: View {
                         } else {
                             // Show actual products
                             ForEach(viewModel.products) { product in
-                                ProductCardView(product: product)
-                                    .frame(width: cardWidth, height: cardHeight)
-                                    .onTapGesture {
-                                        saveCurrentSearchToHistory()
-                                        navigationRouter.navigate(to: .productDetail(productId: product.id))
+                                ZStack(alignment: .topTrailing) {
+                                    ProductCardView(product: product, cardWidth: cardWidth)
+                                        .frame(width: cardWidth, height: cardHeight)
+                                        .onTapGesture {
+                                            saveCurrentSearchToHistory()
+                                            navigationRouter.navigate(to: .productDetail(productId: product.id))
+                                        }
+
+                                    Button {
+                                        Task {
+                                            await viewModel.toggleWishlist(productId: product.id)
+                                        }
+                                    } label: {
+                                        Image(systemName: viewModel.isInWishlist(productId: product.id) ? "heart.fill" : "heart")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(viewModel.isInWishlist(productId: product.id) ? .red : .primary)
+                                            .padding(8)
+                                            .background(.ultraThinMaterial, in: Circle())
                                     }
+                                    .buttonStyle(.plain)
+                                    .padding(.top, 8)
+                                    .padding(.trailing, 2)
+                                    .offset(x: -16, y: 6)
+                                    .opacity(0.75)
+                                    .accessibilityLabel(viewModel.isInWishlist(productId: product.id) ? "Remove from wishlist" : "Add to wishlist")
+                                    .accessibilityHint("Double tap to \(viewModel.isInWishlist(productId: product.id) ? "remove from" : "add to") wishlist")
+                                }
+                                .frame(width: cardWidth, height: cardHeight)
                                     .onAppear {
                                         // Load more when reaching end
                                         if product.id == viewModel.products.last?.id {
@@ -197,8 +328,9 @@ struct ProductListView: View {
                             }
                         }
                     }
+                    .id(shouldShowSkeleton ? "product-list-skeleton" : "product-list-cards-\(viewModel.products.count)")
                     .frame(maxWidth: .infinity)
-                    .padding(.horizontal, gridHorizontalPadding)
+                    .padding(.horizontal, contentHorizontalPadding)
 
                     // Loading indicator for pagination (load more)
                     if viewModel.isLoading && !viewModel.products.isEmpty {
@@ -214,58 +346,6 @@ struct ProductListView: View {
         .onChange(of: searchText) { _, newValue in
             Task {
                 await viewModel.search(query: newValue)
-            }
-        }
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Menu {
-                    ForEach(categories, id: \.self) { category in
-                        Button(category) {
-                            selectedCategory = category == "All" ? nil : category
-                            Task {
-                                await viewModel.filterByCategory(selectedCategory)
-                            }
-                        }
-                    }
-                } label: {
-                    Image(systemName: "line.3.horizontal.decrease.circle")
-                }
-                .accessibilityLabel("Filter by category")
-                .accessibilityHint("Select a category to filter products")
-            }
-
-            ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 16) {
-                    Button {
-                        navigationRouter.navigate(to: .wishlist)
-                    } label: {
-                        Image(systemName: "heart")
-                    }
-                    .accessibilityLabel("Wishlist")
-                    .accessibilityHint("View your saved products")
-
-                    Button {
-                        navigationRouter.navigate(to: .notifications)
-                    } label: {
-                        ZStack(alignment: .topTrailing) {
-                            Image(systemName: "bell")
-
-                            if appState.notificationBadgeCount > 0 {
-                                Text("\(appState.notificationBadgeCount)")
-                                    .font(.caption2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 2)
-                                    .background(Color.red)
-                                    .clipShape(Capsule())
-                                    .offset(x: 10, y: -8)
-                            }
-                        }
-                    }
-                    .accessibilityLabel("Notifications")
-                    .accessibilityHint("View your notifications. \(appState.notificationBadgeCount) unread")
-                }
             }
         }
         .refreshable {
@@ -287,41 +367,169 @@ struct ProductListView: View {
 struct StatsHeaderView: View {
     let stats: GlobalStats
 
+    private var statItems: [StatItemModel] {
+        [
+            StatItemModel(
+                id: "products",
+                value: stats.totalProducts.formatted(.number.notation(.compactName)),
+                label: "Products",
+                icon: "cube.fill",
+                iconColors: [Color("AccentColor"), Color("AccentColor").opacity(0.65)],
+                badgeText: "Catalog",
+                accessibilityLabel: "\(stats.totalProducts) products"
+            ),
+            StatItemModel(
+                id: "reviews",
+                value: stats.totalReviews.formatted(.number.notation(.compactName)),
+                label: "Reviews",
+                icon: "text.bubble.fill",
+                iconColors: [Color.indigo, Color.blue],
+                badgeText: "Voices",
+                accessibilityLabel: "\(stats.totalReviews) reviews"
+            ),
+            StatItemModel(
+                id: "avg-rating",
+                value: String(format: "%.1f", stats.averageRating),
+                label: "Avg Rating",
+                icon: "star.fill",
+                iconColors: [Color.orange, Color.yellow],
+                badgeText: "Out of 5",
+                accessibilityLabel: "Average rating \(String(format: "%.1f", stats.averageRating))"
+            )
+        ]
+    }
+
     var body: some View {
-        HStack(spacing: 20) {
-            StatItemView(value: "\(stats.totalProducts)", label: "Products")
-            StatItemView(value: "\(stats.totalReviews)", label: "Reviews")
-            StatItemView(value: String(format: "%.1f", stats.averageRating), label: "Avg Rating")
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                ForEach(statItems) { item in
+                    StatItemView(item: item)
+                }
+            }
+
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    StatItemView(item: statItems[0])
+                    StatItemView(item: statItems[1])
+                }
+                StatItemView(item: statItems[2])
+            }
         }
-        .padding()
-        .background(Color.blue.opacity(0.1))
-        .cornerRadius(12)
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Color("CardBackground"), Color("SurfaceMuted").opacity(0.7)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [Color("Border"), Color("AccentColor").opacity(0.35)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        }
+        .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
         .padding(.horizontal)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(stats.totalProducts) products, \(stats.totalReviews) reviews, average rating \(String(format: "%.1f", stats.averageRating))")
     }
 }
 
-struct StatItemView: View {
+struct StatItemModel: Identifiable {
+    let id: String
     let value: String
     let label: String
+    let icon: String
+    let iconColors: [Color]
+    let badgeText: String
+    let accessibilityLabel: String
+}
+
+struct StatItemView: View {
+    let item: StatItemModel
 
     var body: some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.title2)
-                .fontWeight(.bold)
-            Text(label)
-                .font(.caption)
-                .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: item.iconColors,
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    Image(systemName: item.icon)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 22, height: 22)
+
+                Spacer(minLength: 0)
+
+                Text(item.badgeText)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Color("SecondaryText"))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color("SurfaceMuted"), in: Capsule())
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                Text(item.value)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(Color("PrimaryText"))
+
+                Spacer(minLength: 6)
+
+                Text(item.label)
+                    .font(.caption2)
+                    .foregroundStyle(Color("SecondaryText"))
+                    .lineLimit(1)
+                    .multilineTextAlignment(.trailing)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, 6)
+        .padding(.trailing, 8)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color("CardBackground").opacity(0.85))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color("Border").opacity(0.9), lineWidth: 1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(item.accessibilityLabel)
     }
 }
 
 // MARK: - Product Card View
 struct ProductCardView: View {
     let product: Product
-    private let imageSize: CGFloat = 140
+    let cardWidth: CGFloat
+
+    private var cardInnerPadding: CGFloat {
+        max(10, floor(cardWidth * 0.07))
+    }
+
+    private var imageSize: CGFloat {
+        max(140, cardWidth - (cardInnerPadding * 2))
+    }
 
     private var resolvedImageURL: URL? {
         product.resolvedImageURL
@@ -400,7 +608,7 @@ struct ProductCardView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.blue)
         }
-        .padding(10)
+        .padding(cardInnerPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color("CardBackground"))
         .clipShape(RoundedRectangle(cornerRadius: 12))
