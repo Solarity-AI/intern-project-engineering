@@ -9,7 +9,6 @@ import com.productreview.app.core.logging.LogLevel
 import com.productreview.app.core.logging.Logger
 import com.productreview.app.data.remote.AuthApi
 import com.productreview.app.data.remote.ProductReviewApi
-import com.productreview.app.data.remote.TokenAuthenticator
 import com.productreview.app.data.remote.UserIdInterceptor
 import dagger.Module
 import dagger.Provides
@@ -99,13 +98,12 @@ object NetworkModule {
     }
 
     /**
-     * Main OkHttpClient with auth interceptor and 401 retry authenticator.
+     * Main OkHttpClient with X-User-ID interceptor.
      */
     @Provides
     @Singleton
     fun provideOkHttpClient(
-        userIdInterceptor: UserIdInterceptor,
-        tokenAuthenticator: TokenAuthenticator
+        userIdInterceptor: UserIdInterceptor
     ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) {
@@ -118,7 +116,6 @@ object NetworkModule {
         return OkHttpClient.Builder()
             .addInterceptor(userIdInterceptor)
             .addInterceptor(logging)
-            .authenticator(tokenAuthenticator)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)

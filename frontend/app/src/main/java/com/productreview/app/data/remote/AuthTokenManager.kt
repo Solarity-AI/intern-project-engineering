@@ -9,6 +9,9 @@ import javax.inject.Singleton
 /**
  * Manages JWT tokens: storage, retrieval, login, and refresh.
  * Uses a default test user for auto-login when no tokens are present.
+ *
+ * If the backend has no auth endpoints (dev mode), login fails once and
+ * is not retried until [resetBackoff] is called, avoiding per-request latency.
  */
 @Singleton
 class AuthTokenManager @Inject constructor(
@@ -18,13 +21,18 @@ class AuthTokenManager @Inject constructor(
     companion object {
         private const val DEFAULT_USERNAME = "alice"
         private const val DEFAULT_PASSWORD = "password123"
+        private const val BACKOFF_MS = 60_000L // retry login at most once per minute
     }
+
+    @Volatile
+    private var lastLoginFailure: Long = 0L
 
     /**
      * Returns a valid access token, performing login if needed.
+     * Returns null without a network call when a recent login already failed.
      */
     suspend fun getAccessToken(): String? {
-        return prefs.getAccessToken() ?: login()
+        return prefs.getAccessToken() ?: loginIfAllowed()
     }
 
     /**
@@ -32,7 +40,16 @@ class AuthTokenManager @Inject constructor(
      * Returns the new access token or null on failure.
      */
     suspend fun refreshOrLogin(): String? {
-        return tryRefresh() ?: login()
+        return tryRefresh() ?: loginIfAllowed()
+    }
+
+    fun resetBackoff() {
+        lastLoginFailure = 0L
+    }
+
+    private suspend fun loginIfAllowed(): String? {
+        if (System.currentTimeMillis() - lastLoginFailure < BACKOFF_MS) return null
+        return login()
     }
 
     private suspend fun tryRefresh(): String? {
@@ -52,9 +69,11 @@ class AuthTokenManager @Inject constructor(
             val response = authApi.login(
                 AuthRequest(DEFAULT_USERNAME, DEFAULT_PASSWORD)
             )
+            lastLoginFailure = 0L
             prefs.saveTokens(response.accessToken, response.refreshToken)
             response.accessToken
         } catch (_: Exception) {
+            lastLoginFailure = System.currentTimeMillis()
             null
         }
     }

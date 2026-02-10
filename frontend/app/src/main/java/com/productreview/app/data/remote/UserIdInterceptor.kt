@@ -9,28 +9,18 @@ import javax.inject.Singleton
 
 @Singleton
 class UserIdInterceptor @Inject constructor(
-    private val userPreferencesManager: UserPreferencesManager,
-    private val authTokenManager: AuthTokenManager
+    private val userPreferencesManager: UserPreferencesManager
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
 
-        val builder = original.newBuilder()
-
-        // Always add X-User-ID
         val userId = runBlocking { userPreferencesManager.getUserId() }
-        builder.addHeader("X-User-ID", userId)
 
-        // Add Bearer token for non-auth endpoints
-        val path = original.url.encodedPath
-        if (!path.startsWith("/api/auth/")) {
-            val token = runBlocking { authTokenManager.getAccessToken() }
-            if (token != null) {
-                builder.header("Authorization", "Bearer $token")
-            }
-        }
+        val request = original.newBuilder()
+            .addHeader("X-User-ID", userId)
+            .build()
 
-        return chain.proceed(builder.build())
+        return chain.proceed(request)
     }
 }
