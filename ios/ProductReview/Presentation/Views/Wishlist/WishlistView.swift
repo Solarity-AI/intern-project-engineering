@@ -11,23 +11,140 @@ struct WishlistView: View {
     @EnvironmentObject var navigationRouter: NavigationRouter
     @EnvironmentObject var appState: AppState
     @StateObject private var viewModel = WishlistViewModel()
-    @State private var selectedIds: Set<Int> = []
-    @State private var isSelectionMode = false
-    @State private var showBulkDeleteAlert = false
 
-    private let cardWidth: CGFloat = 140
+    private let categories = ["All", "Electronics", "Smartphones", "Laptops", "Tablets", "Gaming", "Wearables", "Audio", "Accessories"]
+    private let contentHorizontalPadding: CGFloat = 16
+    private let gridHorizontalSpacing: CGFloat = 20
+    private let gridVerticalSpacing: CGFloat = 16
+    private var cardWidth: CGFloat {
+        let availableWidth = UIScreen.main.bounds.width - (contentHorizontalPadding * 2) - gridHorizontalSpacing
+        return max(140, floor(availableWidth / 2))
+    }
     private let cardHeight: CGFloat = 260
-    private let gridHorizontalSpacing: CGFloat = 40
-    private let gridVerticalSpacing: CGFloat = 12
-    private let gridHorizontalPadding: CGFloat = 0
     private var columns: [GridItem] {
         [
             GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing),
             GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing)
         ]
     }
-    private var selectedItemWord: String {
-        selectedIds.count == 1 ? "item" : "items"
+
+    private var selectedCategoryTitle: String {
+        viewModel.selectedCategory ?? "All Categories"
+    }
+
+    @ViewBuilder
+    private var filterSortSection: some View {
+        HStack {
+            Menu {
+                ForEach(categories, id: \.self) { category in
+                    let categoryValue = category == "All" ? nil : category
+                    Button {
+                        Task {
+                            await viewModel.filterByCategory(categoryValue)
+                        }
+                    } label: {
+                        if viewModel.selectedCategory == categoryValue {
+                            Label(category, systemImage: "checkmark")
+                        } else {
+                            Text(category)
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                    Text(selectedCategoryTitle)
+                        .lineLimit(1)
+                }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color("PrimaryText"))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color("CardBackground"), in: Capsule())
+                .overlay {
+                    Capsule()
+                        .stroke(Color("Border"), lineWidth: 1)
+                }
+            }
+            .accessibilityLabel("Filter by category")
+            .accessibilityHint("Select a category to filter wishlist products")
+
+            Spacer(minLength: 24)
+
+            HStack(spacing: 6) {
+                Menu {
+                    ForEach(ProductSortCriterion.allCases) { criterion in
+                        Button {
+                            Task {
+                                await viewModel.updateSortCriterion(criterion)
+                            }
+                        } label: {
+                            if viewModel.selectedSortCriterion == criterion {
+                                Label(criterion.label, systemImage: "checkmark")
+                            } else {
+                                Text(criterion.label)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.up.arrow.down.circle")
+                        Text(viewModel.selectedSortCriterion.label)
+                            .lineLimit(1)
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color("PrimaryText"))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color("CardBackground"), in: Capsule())
+                    .overlay {
+                        Capsule()
+                            .stroke(Color("Border"), lineWidth: 1)
+                    }
+                }
+                .accessibilityLabel("Sort wishlist")
+                .accessibilityHint("Select sorting criterion for wishlist products")
+
+                Button {
+                    Task {
+                        await viewModel.toggleSortDirection()
+                    }
+                } label: {
+                    Image(systemName: viewModel.sortDirection.icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.black)
+                        .animation(.easeInOut(duration: 0.2), value: viewModel.sortDirection)
+                        .frame(width: 34, height: 34)
+                        .background(Color("CardBackground"), in: Circle())
+                        .overlay {
+                            Circle()
+                                .stroke(Color("Border"), lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Sort direction: \(viewModel.sortDirection.label)")
+                .accessibilityHint("Double tap to toggle sort direction")
+            }
+        }
+        .padding(.horizontal, contentHorizontalPadding)
+    }
+
+    @ViewBuilder
+    private var filteredEmptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "line.3.horizontal.decrease.circle")
+                .font(.system(size: 42))
+                .foregroundStyle(.secondary)
+            Text("No wishlist products match this category")
+                .font(.headline)
+                .multilineTextAlignment(.center)
+            Button("Clear Category Filter") {
+                Task { await viewModel.filterByCategory(nil) }
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(.horizontal, contentHorizontalPadding)
+        .padding(.top, 24)
     }
 
     var body: some View {
@@ -40,115 +157,74 @@ struct WishlistView: View {
                     EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
                         Task { await viewModel.loadWishlist() }
                     }
-                } else if viewModel.products.isEmpty && !viewModel.isLoading {
+                } else if viewModel.products.isEmpty && !viewModel.isLoading && viewModel.selectedCategory == nil {
                     EmptyStateView.wishlist {
                         appState.selectedTab = .products
                         navigationRouter.popToRoot()
                     }
                 } else {
-                VStack(spacing: 0) {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            LazyVGrid(columns: columns, spacing: gridVerticalSpacing) {
-                                ForEach(viewModel.products) { product in
-                                    WishlistProductCard(
-                                        product: product,
-                                        isSelected: selectedIds.contains(product.id),
-                                        isSelectionMode: isSelectionMode,
-                                        onTap: {
-                                            if isSelectionMode {
-                                                toggleSelection(product.id)
-                                            } else {
-                                                navigationRouter.navigate(to: .productDetail(productId: product.id))
+                    VStack(spacing: 12) {
+                        filterSortSection
+
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                if viewModel.products.isEmpty && !viewModel.isLoading {
+                                    filteredEmptyState
+                                } else {
+                                    LazyVGrid(columns: columns, spacing: gridVerticalSpacing) {
+                                        ForEach(viewModel.products) { product in
+                                            ZStack(alignment: .topTrailing) {
+                                                WishlistProductCard(
+                                                    product: product,
+                                                    cardWidth: cardWidth,
+                                                    onTap: {
+                                                        navigationRouter.navigate(to: .productDetail(productId: product.id))
+                                                    }
+                                                )
+                                                .frame(width: cardWidth, height: cardHeight)
+
+                                                Button {
+                                                    Task { await viewModel.removeFromWishlist(productId: product.id) }
+                                                } label: {
+                                                    Image(systemName: "heart.fill")
+                                                        .font(.system(size: 14, weight: .semibold))
+                                                        .foregroundColor(.red)
+                                                        .padding(8)
+                                                        .background(.ultraThinMaterial, in: Circle())
+                                                }
+                                                .buttonStyle(.plain)
+                                                .padding(.top, 8)
+                                                .padding(.trailing, 2)
+                                                .offset(x: -16, y: 6)
+                                                .opacity(0.75)
+                                                .accessibilityLabel("Remove from wishlist")
+                                                .accessibilityHint("Double tap to remove from wishlist")
                                             }
-                                        },
-                                        onLongPress: {
-                                            enterSelectionMode(with: product.id)
-                                        },
-                                        onRemove: {
-                                            Task { await viewModel.removeFromWishlist(productId: product.id) }
-                                        }
-                                    )
-                                    .frame(width: cardWidth, height: cardHeight)
-                                    .onAppear {
-                                        if product.id == viewModel.products.last?.id {
-                                            Task { await viewModel.loadMore() }
+                                            .frame(width: cardWidth, height: cardHeight)
+                                            .onAppear {
+                                                if product.id == viewModel.products.last?.id {
+                                                    Task { await viewModel.loadMore() }
+                                                }
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            if viewModel.isLoading {
-                                ProgressView()
-                                    .padding()
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, gridHorizontalPadding)
-                        .contentShape(Rectangle())
-                        .gesture(
-                            TapGesture().onEnded {
-                                if isSelectionMode && selectedIds.isEmpty {
-                                    isSelectionMode = false
+                                if viewModel.isLoading {
+                                    ProgressView()
+                                        .padding()
                                 }
-                            },
-                            including: .gesture
-                        )
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, contentHorizontalPadding)
+                        }
+                        .background(Color("AppBackground"))
                     }
-                    .background(Color("AppBackground"))
                 }
             }
-        }
         }
         .navigationTitle("Wishlist")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if isSelectionMode {
-                ToolbarItem(placement: .topBarLeading) {
-                    Text("\(selectedIds.count) selected")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        isSelectionMode = false
-                        selectedIds.removeAll()
-                    }
-                    .fontWeight(.semibold)
-                }
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            if isSelectionMode && !selectedIds.isEmpty {
-                Button(role: .destructive) {
-                    showBulkDeleteAlert = true
-                } label: {
-                    Label("Remove \(selectedIds.count) \(selectedItemWord)", systemImage: "trash")
-                        .frame(maxWidth: .infinity, minHeight: 32)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(.ultraThinMaterial)
-                .alert("Remove selected \(selectedItemWord)?", isPresented: $showBulkDeleteAlert) {
-                    Button("Cancel", role: .cancel) {}
-                    Button("Remove", role: .destructive) {
-                        guard !selectedIds.isEmpty else { return }
-
-                        let idsToRemove = Array(selectedIds)
-                        Task {
-                            await viewModel.removeMultiple(productIds: idsToRemove)
-                            selectedIds.removeAll()
-                            isSelectionMode = false
-                        }
-                    }
-                } message: {
-                    Text("This will remove \(selectedIds.count) selected \(selectedItemWord) from your wishlist.")
-                }
-            }
-        }
         .refreshable {
             await viewModel.refresh()
         }
@@ -175,35 +251,21 @@ struct WishlistView: View {
         }
     }
 
-    private func toggleSelection(_ id: Int) {
-        if selectedIds.contains(id) {
-            selectedIds.remove(id)
-        } else {
-            selectedIds.insert(id)
-        }
-    }
-
-    private func enterSelectionMode(with id: Int) {
-        if isSelectionMode {
-            toggleSelection(id)
-            return
-        }
-
-        isSelectionMode = true
-        selectedIds = [id]
-        HapticManager.selection()
-    }
 }
 
 // MARK: - Wishlist Product Card
 struct WishlistProductCard: View {
     let product: Product
-    let isSelected: Bool
-    let isSelectionMode: Bool
+    let cardWidth: CGFloat
     let onTap: () -> Void
-    let onLongPress: () -> Void
-    let onRemove: () -> Void
-    private let imageSize: CGFloat = 140
+
+    private var cardInnerPadding: CGFloat {
+        max(10, floor(cardWidth * 0.07))
+    }
+
+    private var imageSize: CGFloat {
+        max(140, cardWidth - (cardInnerPadding * 2))
+    }
 
     private var resolvedImageURL: URL? {
         product.resolvedImageURL
@@ -249,29 +311,11 @@ struct WishlistProductCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ZStack(alignment: .topTrailing) {
-                productImageView
-                .frame(width: imageSize, height: imageSize)
-                .contentShape(Rectangle())
-                .cornerRadius(8)
-                .accessibilityHidden(true)
-
-                if isSelectionMode {
-                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(isSelected ? .blue : .white)
-                        .background(Circle().fill(isSelected ? .white : .black.opacity(0.3)))
-                        .padding(8)
-                } else {
-                    Button {
-                        onRemove()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.white)
-                            .background(Circle().fill(.black.opacity(0.5)))
-                    }
-                    .padding(8)
-                }
-            }
+            productImageView
+            .frame(width: imageSize, height: imageSize)
+            .contentShape(Rectangle())
+            .cornerRadius(8)
+            .accessibilityHidden(true)
 
             Text(product.name)
                 .font(.subheadline)
@@ -300,22 +344,18 @@ struct WishlistProductCard: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.blue)
         }
-        .padding(10)
+        .padding(cardInnerPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(isSelected ? Color.blue.opacity(0.1) : Color("CardBackground"))
+        .background(Color("CardBackground"))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color(.separator), lineWidth: 1)
         }
         .onTapGesture { onTap() }
-        .onLongPressGesture(minimumDuration: 0.35) {
-            onLongPress()
-        }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(product.name), \(product.formattedPrice), \(product.formattedRating) stars\(isSelected ? ", selected" : "")")
-        .accessibilityHint(isSelectionMode ? "Double tap to toggle selection" : "Double tap to view details. Long press to start selection")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityLabel("\(product.name), \(product.formattedPrice), \(product.formattedRating) stars")
+        .accessibilityHint("Double tap to view details")
     }
 }
 
@@ -345,6 +385,9 @@ class WishlistViewModel: ObservableObject {
     @Published var toastMessage = ""
     @Published var toastType: ToastType = .info
     @Published var toastAction: ToastAction?
+    @Published var selectedCategory: String? = nil
+    @Published var selectedSortCriterion: ProductSortCriterion = .alphabetical
+    @Published var sortDirection: ProductSortDirection = .ascending
 
     private let repository: WishlistRepositoryProtocol
     private var currentPage = 0
@@ -355,6 +398,19 @@ class WishlistViewModel: ObservableObject {
 
     init(repository: WishlistRepositoryProtocol = WishlistRepository()) {
         self.repository = repository
+    }
+
+    private var sortQuery: String {
+        "\(selectedSortCriterion.field),\(sortDirection.queryValue)"
+    }
+
+    private func filterBySelectedCategory(_ incomingProducts: [Product]) -> [Product] {
+        guard let selectedCategory else { return incomingProducts }
+        return incomingProducts.filter { product in
+            product.categories.contains {
+                $0.caseInsensitiveCompare(selectedCategory) == .orderedSame
+            }
+        }
     }
 
     private func itemWord(_ count: Int) -> String {
@@ -542,40 +598,97 @@ class WishlistViewModel: ObservableObject {
 
     func loadWishlist() async {
         isLoading = true
+        defer { isLoading = false }
         error = nil
 
         do {
-            let result = try await repository.getWishlistProducts(page: 0, size: 20, sort: nil)
-            products = result.products
-            isLastPage = result.isLast
-            currentPage = 0
+            var page = 0
+            var fetchedProducts: [Product] = []
+            var isLastFetchedPage = false
+
+            while true {
+                let result = try await repository.getWishlistProducts(
+                    page: page,
+                    size: 20,
+                    sort: sortQuery
+                )
+                fetchedProducts.append(contentsOf: filterBySelectedCategory(result.products))
+                isLastFetchedPage = result.isLast
+
+                if selectedCategory == nil || !fetchedProducts.isEmpty || isLastFetchedPage {
+                    break
+                }
+
+                page += 1
+            }
+
+            products = fetchedProducts
+            currentPage = page
+            isLastPage = isLastFetchedPage
+        } catch is CancellationError {
+            return
         } catch {
             self.error = error.localizedDescription
         }
-
-        isLoading = false
     }
 
     func loadMore() async {
         guard !isLoading, !isLastPage else { return }
         isLoading = true
+        defer { isLoading = false }
 
         do {
-            let result = try await repository.getWishlistProducts(page: currentPage + 1, size: 20, sort: nil)
-            products.append(contentsOf: result.products)
-            isLastPage = result.isLast
-            currentPage += 1
+            var page = currentPage + 1
+            var fetchedProducts: [Product] = []
+            var isLastFetchedPage = false
+
+            while true {
+                let result = try await repository.getWishlistProducts(
+                    page: page,
+                    size: 20,
+                    sort: sortQuery
+                )
+                fetchedProducts.append(contentsOf: filterBySelectedCategory(result.products))
+                isLastFetchedPage = result.isLast
+                currentPage = page
+
+                if selectedCategory == nil || !fetchedProducts.isEmpty || isLastFetchedPage {
+                    break
+                }
+
+                page += 1
+            }
+
+            products.append(contentsOf: fetchedProducts)
+            isLastPage = isLastFetchedPage
+        } catch is CancellationError {
+            return
         } catch {
             self.error = error.localizedDescription
         }
-
-        isLoading = false
     }
 
     func refresh() async {
         currentPage = 0
         isLastPage = false
         await loadWishlist()
+    }
+
+    func filterByCategory(_ category: String?) async {
+        selectedCategory = category
+        await refresh()
+    }
+
+    func updateSortCriterion(_ criterion: ProductSortCriterion) async {
+        guard selectedSortCriterion != criterion else { return }
+        selectedSortCriterion = criterion
+        sortDirection = criterion.defaultDirection
+        await refresh()
+    }
+
+    func toggleSortDirection() async {
+        sortDirection = sortDirection.toggled()
+        await refresh()
     }
 
     func removeFromWishlist(productId: Int) async {

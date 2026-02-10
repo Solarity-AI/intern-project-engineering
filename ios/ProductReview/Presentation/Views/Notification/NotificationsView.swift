@@ -24,12 +24,14 @@ struct NotificationsView: View {
                         Image(systemName: "bell.slash")
                             .font(.system(size: 60))
                             .foregroundColor(.secondary)
-                        Text("No notifications")
-                            .font(.title2)
-                            .fontWeight(.medium)
-                        Text("You're all caught up!")
-                            .font(.body)
-                            .foregroundColor(.secondary)
+                        VStack(spacing: 6) {
+                            Text("No notifications")
+                                .font(.title2)
+                                .fontWeight(.medium)
+                            Text("You're all caught up!")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                        }
                     }
                     .padding()
                 } else {
