@@ -358,9 +358,15 @@ export const ProductListScreen = () => {
 
   // Debounce search query with useDebounce hook
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
+  const prevDebouncedRef = useRef(debouncedSearchQuery);
 
   useEffect(() => {
-    if (debouncedSearchQuery.trim().length === 0 && submittedSearchQuery.length > 0) {
+    const prev = prevDebouncedRef.current;
+    prevDebouncedRef.current = debouncedSearchQuery;
+
+    // Only reset when the user actively clears the search field
+    // (debounced value transitions from non-empty to empty)
+    if (prev.trim().length > 0 && debouncedSearchQuery.trim().length === 0) {
       handleReset();
     }
 
@@ -370,7 +376,7 @@ export const ProductListScreen = () => {
         search: debouncedSearchQuery,
       } as any);
     }
-  }, [debouncedSearchQuery, submittedSearchQuery, selectedCategory, navigation, handleReset]);
+  }, [debouncedSearchQuery, selectedCategory, navigation, handleReset]);
 
   // Pull-to-refresh
   const [refreshing, setRefreshing] = useState(false);
@@ -988,7 +994,7 @@ const styles = StyleSheet.create({
   heroContent: {
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.lg,
-    paddingBottom: Spacing['3xl'],
+    paddingBottom: Spacing['5xl'],
     zIndex: 2,
   },
   heroTitle: {

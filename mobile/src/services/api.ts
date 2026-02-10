@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 const BASE_URL = "https://product-review-app-ybmf.onrender.com";
 // const BASE_URL = "http://localhost:8080"; // Local development
-// const BASE_URL = "http://10.3.137.113:8080"; // EREN LOCAL URL
 
 const USER_ID_KEY = 'device_user_id';
 
@@ -214,7 +213,7 @@ async function request<T>(url: string, options?: RequestInit & { timeoutMs?: num
   }
 }
 
-function isRetriable(error: unknown): boolean {
+export function isRetriable(error: unknown): boolean {
   if (error instanceof ApiError) {
     return RETRIABLE_STATUS_CODES.has(error.status);
   }
@@ -307,15 +306,15 @@ export function getProducts(params?: { page?: number; size?: number; sort?: stri
     size: String(params?.size ?? 10),
     sort: params?.sort ?? "name,asc",
   });
-  
+
   if (params?.category && params.category !== 'All') {
     q.append('category', params.category);
   }
-  
+
   if (params?.search) {
     q.append('search', params.search);
   }
-  
+
   return requestWithRetry<Page<ApiProduct>>(`${BASE_URL}/api/products?${q.toString()}`);
 }
 
@@ -329,11 +328,11 @@ export function getReviews(productId: number | string, params?: { page?: number;
     size: String(params?.size ?? 10),
     sort: params?.sort ?? "createdAt,desc",
   });
-  
+
   if (params?.rating) {
     q.append('rating', String(params.rating));
   }
-  
+
   return requestWithRetry<Page<ApiReview>>(`${BASE_URL}/api/products/${productId}/reviews?${q.toString()}`);
 }
 

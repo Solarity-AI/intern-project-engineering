@@ -20,11 +20,16 @@ import org.springframework.data.domain.Pageable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import com.example.productreview.model.ReviewVote;
+import com.example.productreview.exception.ResourceNotFoundException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -113,5 +118,419 @@ public class ProductServiceTest {
         assertEquals(1, product.getReviewCount());
         assertEquals(5.0, product.getAverageRating());
         verify(productRepository, times(1)).save(product);
+    }
+
+    // --- Error Case Tests (U24) ---
+
+    @Test
+    void getProductById_WhenNotExists_ShouldThrowResourceNotFoundException() {
+        when(productRepository.findById(999L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> productService.getProductById(999L));
+    }
+
+    @Test
+    void getProductDTOById_WhenNotExists_ShouldThrowResourceNotFoundException() {
+        when(productRepository.findById(999L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> productService.getProductDTOById(999L));
+    }
+
+    @Test
+    void addReview_WhenProductNotFound_ShouldThrowResourceNotFoundException() {
+        when(productRepository.findById(999L)).thenReturn(Optional.empty());
+        ReviewDTO reviewDTO = new ReviewDTO();
+        reviewDTO.setReviewerName("User");
+        reviewDTO.setComment("Good product indeed");
+        reviewDTO.setRating(5);
+        assertThrows(ResourceNotFoundException.class, () -> productService.addReview(999L, reviewDTO));
+    }
+
+    // --- markReviewAsHelpful Tests ---
+
+    @Test
+    void markReviewAsHelpful_ShouldIncrementOnFirstVote() {
+        Review review = new Review();
+        review.setId(1L);
+        review.setHelpfulCount(0);
+        review.setProduct(product);
+
+        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewVoteRepository.findByUserIdAndReviewId("user1", 1L)).thenReturn(Optional.empty());
+        when(reviewRepository.save(any(Review.class))).thenReturn(review);
+
+        productService.markReviewAsHelpful(1L, "user1");
+
+        assertEquals(1, review.getHelpfulCount());
+        verify(reviewVoteRepository).save(any(ReviewVote.class));
+    }
+
+    @Test
+    void markReviewAsHelpful_ShouldDecrementOnSecondVote() {
+        Review review = new Review();
+        review.setId(1L);
+        review.setHelpfulCount(1);
+        review.setProduct(product);
+        ReviewVote existingVote = new ReviewVote("user1", 1L);
+
+        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewVoteRepository.findByUserIdAndReviewId("user1", 1L)).thenReturn(Optional.of(existingVote));
+        when(reviewRepository.save(any(Review.class))).thenReturn(review);
+
+        productService.markReviewAsHelpful(1L, "user1");
+
+        assertEquals(0, review.getHelpfulCount());
+        verify(reviewVoteRepository).delete(existingVote);
+    }
+
+    @Test
+    void markReviewAsHelpful_WhenReviewNotFound_ShouldThrowException() {
+        when(reviewRepository.findById(999L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> productService.markReviewAsHelpful(999L, "user1"));
+    }
+
+    @Test
+    void markReviewAsHelpful_WithNullUserId_ShouldIncrementWithoutVoteRecord() {
+        Review review = new Review();
+        review.setId(1L);
+        review.setHelpfulCount(0);
+        review.setProduct(product);
+
+        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewRepository.save(any(Review.class))).thenReturn(review);
+
+        productService.markReviewAsHelpful(1L, null);
+
+        assertEquals(1, review.getHelpfulCount());
+        verifyNoInteractions(reviewVoteRepository);
+    }
+
+    // --- getUserVotedReviewIds Tests ---
+
+    @Test
+    void getUserVotedReviewIds_ShouldReturnVotedIds() {
+        ReviewVote vote1 = new ReviewVote("user1", 10L);
+        ReviewVote vote2 = new ReviewVote("user1", 20L);
+        when(reviewVoteRepository.findByUserId("user1")).thenReturn(Arrays.asList(vote1, vote2));
+
+        List<Long> result = productService.getUserVotedReviewIds("user1");
+
+        assertEquals(2, result.size());
+        assertTrue(result.contains(10L));
+        assertTrue(result.contains(20L));
+    }
+
+    @Test
+    void getUserVotedReviewIds_WhenNoVotes_ShouldReturnEmpty() {
+        when(reviewVoteRepository.findByUserId("user1")).thenReturn(new ArrayList<>());
+
+        List<Long> result = productService.getUserVotedReviewIds("user1");
+
+        assertTrue(result.isEmpty());
+    }
+
+    // --- getGlobalStats Tests ---
+
+    @Test
+    void getGlobalStats_NoFilter_ShouldReturnAllStats() {
+        Product p1 = new Product();
+        p1.setReviewCount(5);
+        p1.setAverageRating(4.0);
+        Product p2 = new Product();
+        p2.setReviewCount(3);
+        p2.setAverageRating(3.0);
+        when(productRepository.findAll()).thenReturn(Arrays.asList(p1, p2));
+
+        Map<String, Object> stats = productService.getGlobalStats(null, null);
+
+        assertEquals(2L, stats.get("totalProducts"));
+        assertEquals(8L, stats.get("totalReviews"));
+    }
+
+    @Test
+    void getGlobalStats_WithCategory_ShouldFilterByCategory() {
+        Product p1 = new Product();
+        p1.setCategories(new HashSet<>(Arrays.asList("Electronics")));
+        p1.setReviewCount(5);
+        p1.setAverageRating(4.0);
+        Product p2 = new Product();
+        p2.setCategories(new HashSet<>(Arrays.asList("Audio")));
+        p2.setReviewCount(3);
+        p2.setAverageRating(3.0);
+        when(productRepository.findAll()).thenReturn(Arrays.asList(p1, p2));
+
+        Map<String, Object> stats = productService.getGlobalStats("Electronics", null);
+
+        assertEquals(1L, stats.get("totalProducts"));
+        assertEquals(5L, stats.get("totalReviews"));
+    }
+
+    @Test
+    void getGlobalStats_WithSearch_ShouldFilterByName() {
+        Product p1 = new Product();
+        p1.setName("Samsung Galaxy");
+        p1.setCategories(new HashSet<>());
+        p1.setReviewCount(5);
+        p1.setAverageRating(4.0);
+        Product p2 = new Product();
+        p2.setName("iPhone");
+        p2.setCategories(new HashSet<>());
+        p2.setReviewCount(3);
+        p2.setAverageRating(3.0);
+        when(productRepository.findAll()).thenReturn(Arrays.asList(p1, p2));
+
+        Map<String, Object> stats = productService.getGlobalStats(null, "Samsung");
+
+        assertEquals(1L, stats.get("totalProducts"));
+        assertEquals(5L, stats.get("totalReviews"));
+    }
+
+    // --- getAllProducts Filter Tests ---
+
+    @Test
+    void getAllProducts_WithCategory_ShouldFilterByCategory() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Product> productPage = new PageImpl<>(Arrays.asList(product));
+        when(productRepository.findByCategory("Electronics", pageable)).thenReturn(productPage);
+
+        Page<ProductDTO> result = productService.getAllProducts("Electronics", null, pageable);
+
+        assertNotNull(result);
+        verify(productRepository).findByCategory("Electronics", pageable);
+    }
+
+    @Test
+    void getAllProducts_WithSearch_ShouldFilterByName() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Product> productPage = new PageImpl<>(Arrays.asList(product));
+        when(productRepository.findByNameContainingIgnoreCase("Test", pageable)).thenReturn(productPage);
+
+        Page<ProductDTO> result = productService.getAllProducts(null, "Test", pageable);
+
+        assertNotNull(result);
+        verify(productRepository).findByNameContainingIgnoreCase("Test", pageable);
+    }
+
+    @Test
+    void getAllProducts_WithCategoryAndSearch_ShouldFilterByBoth() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Product> productPage = new PageImpl<>(Arrays.asList(product));
+        when(productRepository.findByCategoryAndNameContainingIgnoreCase("Electronics", "Test", pageable))
+                .thenReturn(productPage);
+
+        Page<ProductDTO> result = productService.getAllProducts("Electronics", "Test", pageable);
+
+        assertNotNull(result);
+        verify(productRepository).findByCategoryAndNameContainingIgnoreCase("Electronics", "Test", pageable);
+    }
+
+    // --- Additional Tests for Criteria Compliance ---
+
+    @Test
+    void addReview_WithMinRating_ShouldUpdateStats() {
+        ReviewDTO reviewDTO = new ReviewDTO();
+        reviewDTO.setReviewerName("User");
+        reviewDTO.setComment("Not great product at all");
+        reviewDTO.setRating(1);
+
+        Review review = new Review();
+        review.setId(2L);
+        review.setReviewerName("User");
+        review.setRating(1);
+        review.setProduct(product);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(reviewRepository.save(any(Review.class))).thenReturn(review);
+        when(reviewRepository.findByProductId(1L)).thenReturn(Arrays.asList(review));
+
+        ReviewDTO result = productService.addReview(1L, reviewDTO);
+
+        assertNotNull(result);
+        assertEquals(1, product.getReviewCount());
+        assertEquals(1.0, product.getAverageRating());
+    }
+
+    @Test
+    void addReview_WithMaxRating_ShouldUpdateStats() {
+        ReviewDTO reviewDTO = new ReviewDTO();
+        reviewDTO.setReviewerName("FanUser");
+        reviewDTO.setComment("Absolutely perfect product");
+        reviewDTO.setRating(5);
+
+        Review review = new Review();
+        review.setId(3L);
+        review.setReviewerName("FanUser");
+        review.setRating(5);
+        review.setProduct(product);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(reviewRepository.save(any(Review.class))).thenReturn(review);
+        when(reviewRepository.findByProductId(1L)).thenReturn(Arrays.asList(review));
+
+        ReviewDTO result = productService.addReview(1L, reviewDTO);
+
+        assertNotNull(result);
+        assertEquals(5.0, product.getAverageRating());
+    }
+
+    @Test
+    void getReviewsByProductId_ShouldReturnReviewDTOList() {
+        Review review = new Review();
+        review.setId(1L);
+        review.setReviewerName("User");
+        review.setComment("Nice");
+        review.setRating(4);
+        review.setHelpfulCount(0);
+        review.setProduct(product);
+
+        when(reviewRepository.findByProductId(1L)).thenReturn(Arrays.asList(review));
+
+        List<ReviewDTO> result = productService.getReviewsByProductId(1L);
+
+        assertEquals(1, result.size());
+        assertEquals("User", result.get(0).getReviewerName());
+    }
+
+    @Test
+    void getReviewsByProductId_Paged_ShouldReturnPagedReviews() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Review review = new Review();
+        review.setId(1L);
+        review.setReviewerName("User");
+        review.setComment("Nice");
+        review.setRating(4);
+        review.setHelpfulCount(0);
+        review.setProduct(product);
+
+        Page<Review> reviewPage = new PageImpl<>(Arrays.asList(review));
+        when(reviewRepository.findByProductId(1L, pageable)).thenReturn(reviewPage);
+
+        Page<ReviewDTO> result = productService.getReviewsByProductId(1L, null, pageable);
+
+        assertEquals(1, result.getContent().size());
+    }
+
+    @Test
+    void getReviewsByProductId_WithRatingFilter_ShouldFilter() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Review review = new Review();
+        review.setId(1L);
+        review.setReviewerName("User");
+        review.setComment("Nice");
+        review.setRating(5);
+        review.setHelpfulCount(0);
+        review.setProduct(product);
+
+        Page<Review> reviewPage = new PageImpl<>(Arrays.asList(review));
+        when(reviewRepository.findByProductIdAndRating(1L, 5, pageable)).thenReturn(reviewPage);
+
+        Page<ReviewDTO> result = productService.getReviewsByProductId(1L, 5, pageable);
+
+        assertEquals(1, result.getContent().size());
+        verify(reviewRepository).findByProductIdAndRating(1L, 5, pageable);
+    }
+
+    @Test
+    void chatAboutProduct_ShouldDelegateToAIService() {
+        when(reviewRepository.findByProductId(1L)).thenReturn(new ArrayList<>());
+        when(aiSummaryService.chatWithReviews(eq(1L), eq("How is quality?"), any()))
+                .thenReturn("AI response");
+
+        String result = productService.chatAboutProduct(1L, "How is quality?");
+
+        assertEquals("AI response", result);
+        verify(aiSummaryService).chatWithReviews(eq(1L), eq("How is quality?"), any());
+    }
+
+    @Test
+    void getProductDTOById_ShouldIncludeRatingBreakdown() {
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        List<Object[]> ratingCounts = Arrays.asList(
+                new Object[]{5, 3L},
+                new Object[]{4, 2L}
+        );
+        when(reviewRepository.findRatingCountsByProductId(1L)).thenReturn(ratingCounts);
+        when(reviewRepository.findByProductId(1L)).thenReturn(new ArrayList<>());
+
+        ProductDTO result = productService.getProductDTOById(1L);
+
+        assertNotNull(result.getRatingBreakdown());
+        assertEquals(3L, result.getRatingBreakdown().get(5));
+        assertEquals(2L, result.getRatingBreakdown().get(4));
+        assertEquals(0L, result.getRatingBreakdown().get(1));
+    }
+
+    @Test
+    void getGlobalStats_WithCategoryAndSearch_ShouldFilterByBoth() {
+        Product p1 = new Product();
+        p1.setName("Samsung Galaxy");
+        p1.setCategories(new HashSet<>(Arrays.asList("Electronics")));
+        p1.setReviewCount(5);
+        p1.setAverageRating(4.0);
+        Product p2 = new Product();
+        p2.setName("Samsung Watch");
+        p2.setCategories(new HashSet<>(Arrays.asList("Wearables")));
+        p2.setReviewCount(3);
+        p2.setAverageRating(3.0);
+        when(productRepository.findAll()).thenReturn(Arrays.asList(p1, p2));
+
+        Map<String, Object> stats = productService.getGlobalStats("Electronics", "Samsung");
+
+        assertEquals(1L, stats.get("totalProducts"));
+        assertEquals(5L, stats.get("totalReviews"));
+    }
+
+    @Test
+    void getAllProducts_WithCategoryAll_ShouldReturnAll() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Product> productPage = new PageImpl<>(Arrays.asList(product));
+        when(productRepository.findAll(pageable)).thenReturn(productPage);
+
+        Page<ProductDTO> result = productService.getAllProducts("All", null, pageable);
+
+        verify(productRepository).findAll(pageable);
+        assertEquals(1, result.getContent().size());
+    }
+
+    @Test
+    void getAllProducts_WithEmptySearch_ShouldReturnAll() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Product> productPage = new PageImpl<>(Arrays.asList(product));
+        when(productRepository.findAll(pageable)).thenReturn(productPage);
+
+        Page<ProductDTO> result = productService.getAllProducts(null, "  ", pageable);
+
+        verify(productRepository).findAll(pageable);
+    }
+
+    @Test
+    void markReviewAsHelpful_ShouldNotGoBelowZero() {
+        Review review = new Review();
+        review.setId(1L);
+        review.setHelpfulCount(0);
+        review.setProduct(product);
+        ReviewVote existingVote = new ReviewVote("user1", 1L);
+
+        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewVoteRepository.findByUserIdAndReviewId("user1", 1L)).thenReturn(Optional.of(existingVote));
+        when(reviewRepository.save(any(Review.class))).thenReturn(review);
+
+        productService.markReviewAsHelpful(1L, "user1");
+
+        assertEquals(0, review.getHelpfulCount());
+    }
+
+    @Test
+    void markReviewAsHelpful_WithNullHelpfulCount_ShouldInitializeToZero() {
+        Review review = new Review();
+        review.setId(1L);
+        review.setHelpfulCount(null);
+        review.setProduct(product);
+
+        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewVoteRepository.findByUserIdAndReviewId("user1", 1L)).thenReturn(Optional.empty());
+        when(reviewRepository.save(any(Review.class))).thenReturn(review);
+
+        productService.markReviewAsHelpful(1L, "user1");
+
+        assertEquals(1, review.getHelpfulCount());
     }
 }
