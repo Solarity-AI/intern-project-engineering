@@ -138,15 +138,54 @@ class ProductRepository @Inject constructor(
         rating: Int,
         comment: String
     ): FWResult<ApiReview> {
+        val sanitizedName = reviewerName?.trim()?.takeIf { it.isNotBlank() }
+            ?: "Anonymous"
+        val sanitizedComment = comment.trim()
+        val clampedRating = rating.coerceIn(1, 5)
+
+        // Client-side validation matching backend @Valid constraints
+        if (sanitizedName.length < 2 || sanitizedName.length > 50) {
+            return FWResult.failure(FWError.invalidArgument("Reviewer name must be 2-50 characters"))
+        }
+        if (sanitizedComment.length < 10 || sanitizedComment.length > 500) {
+            return FWResult.failure(FWError.invalidArgument("Comment must be 10-500 characters"))
+        }
+
         logger.log(LogEvent(
             category = LogCategory.DATA,
             name = "post_review",
             level = LogLevel.INFO,
-            metadata = mapOf("productId" to productId)
+            metadata = mapOf(
+                "productId" to productId,
+                "nameLen" to sanitizedName.length.toString(),
+                "commentLen" to sanitizedComment.length.toString(),
+                "rating" to clampedRating.toString()
+            )
         ))
 
-        return safeApiCall {
-            api.postReview(productId, ReviewRequest(reviewerName, rating, comment))
+        return try {
+            FWResult.success(
+                api.postReview(productId, ReviewRequest(sanitizedName, clampedRating, sanitizedComment))
+            )
+        } catch (e: retrofit2.HttpException) {
+            if (e.code() == 400) {
+                val body = e.response()?.errorBody()?.string()
+                logger.log(LogEvent(
+                    category = LogCategory.NETWORK,
+                    name = "REVIEW_400",
+                    level = LogLevel.ERROR,
+                    metadata = mapOf(
+                        "productId" to productId,
+                        "status" to "400",
+                        "errorBody" to (body ?: "empty")
+                    )
+                ))
+            }
+            val error = FWError.fromHttpStatus(e.code(), e.message())
+            FWResult.failure(error)
+        } catch (e: Exception) {
+            val error = FWError.fromThrowable(e)
+            FWResult.failure(error)
         }
     }
 
