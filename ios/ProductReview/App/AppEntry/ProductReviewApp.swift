@@ -362,7 +362,8 @@ class LocalNotificationManager {
             }
 
             DispatchQueue.main.async {
-                let nextBadgeCount = max(0, self.currentBadgeCount + 1)
+                self.currentBadgeCount = max(0, self.currentBadgeCount + 1)
+                let nextBadgeCount = self.currentBadgeCount
                 let content = UNMutableNotificationContent()
                 content.title = "Product Review"
                 content.body = message
