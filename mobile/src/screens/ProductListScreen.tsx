@@ -3,7 +3,8 @@
 // ✨ Added: Sort preference persistence with AsyncStorage
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getProducts, getGlobalStats, ApiProduct, GlobalStats } from '../services/api';
+import { getGlobalStats, ApiProduct, GlobalStats } from '../services/api';
+import { useProductListViewModel } from './useProductListViewModel';
 import { TouchableWithoutFeedback, DeviceEventEmitter } from 'react-native'; // ✨ Added DeviceEventEmitter
 
 const SORT_STORAGE_KEY = 'user_sort_preference';
@@ -66,9 +67,17 @@ export const ProductListScreen = () => {
   // Offline
   const isOffline = !isConnected || isInternetReachable === false;
 
-  // Refs to prevent double fetching and handle race conditions
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const fetchIdRef = useRef(0); // Unique ID for each fetch to handle race conditions
+  const {
+    apiProducts,
+    loading,
+    error,
+    hasMore,
+    currentPage,
+    totalPages,
+    totalElements,
+    loadingMore,
+    fetchProducts,
+  } = useProductListViewModel(isOffline);
 
   // Grid mode: 1 / 2 / 3
   const [gridMode, setGridMode] = useState<1 | 2 | 3>(2);
@@ -89,17 +98,6 @@ export const ProductListScreen = () => {
 
   const [selectionTick, setSelectionTick] = useState(0);
   const bumpSelectionTick = useCallback(() => setSelectionTick(t => t + 1), []);
-
-  const [apiProducts, setApiProducts] = useState<ApiProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Pagination states
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
 
   // Search / Sort / Filter
   const [searchQuery, setSearchQuery] = useState((route.params as any)?.search ?? '');
@@ -211,99 +209,17 @@ export const ProductListScreen = () => {
     navigation.navigate('ProductDetails', { productId: (product as any)?.id });
   };
 
-  // ✨ Improved fetchProducts with race condition protection
-  const fetchProducts = useCallback(
-    async (page: number, append: boolean, searchOverride?: string, categoryOverride?: string, sortOverride?: string) => {
-      if (!sortLoaded) return;
-
-      // Use override values or current state
-      const effectiveSearch = searchOverride !== undefined ? searchOverride : submittedSearchQuery;
-      const effectiveCategory = categoryOverride !== undefined ? categoryOverride : selectedCategory;
-      const effectiveSort = sortOverride !== undefined ? sortOverride : sortBy;
-
-      // Cancel any pending request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      // Create new abort controller
-      abortControllerRef.current = new AbortController();
-
-      // Increment fetch ID to track this specific request
-      fetchIdRef.current += 1;
-      const currentFetchId = fetchIdRef.current;
-
-      console.log(`[Search] Fetching with: search="${effectiveSearch}", category="${effectiveCategory}", sort="${effectiveSort}", page=${page}`);
-
-      try {
-        if (page === 0) setLoading(true);
-        else setLoadingMore(true);
-
-        setError(null);
-
-        if (isOffline) {
-          setLoading(false);
-          setLoadingMore(false);
-          return;
-        }
-
-        const res = await getProducts({
-          page,
-          size: 20,
-          category: effectiveCategory === 'All' ? undefined : effectiveCategory,
-          search: effectiveSearch?.trim() ? effectiveSearch.trim() : undefined,
-          sort: effectiveSort,
-        });
-
-        // Check if this is still the latest request (race condition protection)
-        if (currentFetchId !== fetchIdRef.current) {
-          console.log(`[Search] Ignoring stale response for fetchId=${currentFetchId}, current=${fetchIdRef.current}`);
-          return;
-        }
-
-        const items = (res as any)?.content ?? (res as any)?.items ?? [];
-        const totalPagesFromApi = (res as any)?.totalPages ?? 0;
-        const totalElementsFromApi = (res as any)?.totalElements ?? 0;
-
-        console.log(`[Search] Received ${items.length} items for search="${effectiveSearch}"`);
-
-        setTotalPages(totalPagesFromApi);
-        setTotalElements(totalElementsFromApi);
-        setCurrentPage(page);
-        setHasMore(page < totalPagesFromApi - 1);
-        setApiProducts(prev => (append ? [...prev, ...items] : items));
-      } catch (err: any) {
-        // Ignore abort errors
-        if (err.name === 'AbortError') {
-          console.log('[Search] Request aborted');
-          return;
-        }
-        // Check if this is still the latest request
-        if (currentFetchId !== fetchIdRef.current) return;
-        setError(err?.message ?? 'Failed to fetch products');
-      } finally {
-        // Only update loading state if this is the latest request
-        if (currentFetchId === fetchIdRef.current) {
-          setLoading(false);
-          setLoadingMore(false);
-        }
-      }
-    },
-    [sortLoaded, isOffline, submittedSearchQuery, selectedCategory, sortBy]
-  );
-
-  // Initial load and filter changes
+  // Initial load and filter changes — use hook's fetchProducts with explicit params
   useEffect(() => {
     if (!sortLoaded) return;
-    fetchProducts(0, false);
-  }, [selectedCategory, submittedSearchQuery, sortBy, sortLoaded]);
+    fetchProducts(0, false, { sort: sortBy, category: selectedCategory, search: submittedSearchQuery });
+  }, [selectedCategory, submittedSearchQuery, sortBy, sortLoaded, fetchProducts]);
 
   // ✨ Listen for review updates
   useEffect(() => {
     const subscription = DeviceEventEmitter.addListener('reviewAdded', (event) => {
       console.log('Review added event received:', event);
-      // Refresh the list silently (or with loading if preferred)
-      fetchProducts(0, false);
+      fetchProducts(0, false, { sort: sortBy, category: selectedCategory, search: submittedSearchQuery });
 
       // Also refresh stats
       getGlobalStats({
@@ -315,7 +231,7 @@ export const ProductListScreen = () => {
     return () => {
       subscription.remove();
     };
-  }, [fetchProducts, selectedCategory, submittedSearchQuery]);
+  }, [fetchProducts, sortBy, selectedCategory, submittedSearchQuery]);
 
   useEffect(() => {
     const category = (route.params as any)?.category;
@@ -329,7 +245,7 @@ export const ProductListScreen = () => {
 
   const loadMoreProducts = () => {
     if (loadingMore || loading || !hasMore) return;
-    fetchProducts(currentPage + 1, true);
+    fetchProducts(currentPage + 1, true, { sort: sortBy, category: selectedCategory, search: submittedSearchQuery });
   };
 
   const stats = useMemo(() => {
@@ -409,10 +325,9 @@ export const ProductListScreen = () => {
   const handleRetry = useCallback(async () => {
     const online = await checkConnection();
     if (online) {
-      setError(null);
-      fetchProducts(0, false);
+      fetchProducts(0, false, { sort: sortBy, category: selectedCategory, search: submittedSearchQuery });
     }
-  }, [checkConnection, fetchProducts]);
+  }, [checkConnection, fetchProducts, sortBy, selectedCategory, submittedSearchQuery]);
 
   // ✨ ListHeaderComponent - Hero, Search, Filter - all scroll together with list
   const listHeaderContent = useMemo(() => (
