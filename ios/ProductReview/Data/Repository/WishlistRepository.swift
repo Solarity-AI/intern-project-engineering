@@ -62,8 +62,6 @@ final class WishlistRepository: WishlistRepositoryProtocol {
         )
 
         let products = ProductMapper.map(response.content)
-        cachedIds.formUnion(products.map(\.id))
-        saveCachedIds()
         return (products, response.totalPages, response.last)
     }
 

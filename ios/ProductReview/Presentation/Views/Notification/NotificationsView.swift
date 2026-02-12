@@ -195,14 +195,31 @@ class NotificationsViewModel: ObservableObject {
         )
     }
 
+    private func rollbackAfterFailure(_ originalError: Error) async {
+        await loadNotifications()
+        if self.error == nil {
+            self.error = originalError.localizedDescription
+        }
+    }
+
     func loadNotifications() async {
         isLoading = true
         error = nil
         defer { isLoading = false }
 
         do {
-            notifications = try await repository.getNotifications()
-            unreadCount = try await repository.getUnreadCount()
+            let fetchedNotifications = try await repository.getNotifications()
+            let fetchedUnreadCount: Int
+            do {
+                fetchedUnreadCount = try await repository.getUnreadCount()
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                fetchedUnreadCount = fetchedNotifications.filter { !$0.isRead }.count
+            }
+
+            notifications = fetchedNotifications
+            unreadCount = fetchedUnreadCount
             pushBadgeUpdate()
         } catch is CancellationError {
             // Ignore cancellation errors
@@ -228,8 +245,7 @@ class NotificationsViewModel: ObservableObject {
             // Ignore cancellation errors
             return
         } catch {
-            await loadNotifications()
-            self.error = error.localizedDescription
+            await rollbackAfterFailure(error)
         }
     }
 
@@ -247,8 +263,7 @@ class NotificationsViewModel: ObservableObject {
             // Ignore cancellation errors
             return
         } catch {
-            await loadNotifications()
-            self.error = error.localizedDescription
+            await rollbackAfterFailure(error)
         }
     }
 
@@ -267,8 +282,7 @@ class NotificationsViewModel: ObservableObject {
             // Ignore cancellation errors
             return
         } catch {
-            await loadNotifications()
-            self.error = error.localizedDescription
+            await rollbackAfterFailure(error)
         }
     }
 
@@ -284,8 +298,7 @@ class NotificationsViewModel: ObservableObject {
             // Ignore cancellation errors
             return
         } catch {
-            await loadNotifications()
-            self.error = error.localizedDescription
+            await rollbackAfterFailure(error)
         }
     }
 

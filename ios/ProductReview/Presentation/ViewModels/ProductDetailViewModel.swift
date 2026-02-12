@@ -96,6 +96,7 @@ class ProductDetailViewModel: ObservableObject {
 
     func loadReviews() async {
         isLoadingReviews = true
+        defer { isLoadingReviews = false }
 
         do {
             // Load voted review IDs first
@@ -119,13 +120,12 @@ class ProductDetailViewModel: ObservableObject {
         } catch {
             showError(error.localizedDescription)
         }
-
-        isLoadingReviews = false
     }
 
     func loadMoreReviews() async {
         guard !isLoadingReviews, !isLastPage else { return }
         isLoadingReviews = true
+        defer { isLoadingReviews = false }
 
         do {
             let result = try await productRepository.getReviews(
@@ -145,8 +145,6 @@ class ProductDetailViewModel: ObservableObject {
         } catch {
             showError(error.localizedDescription)
         }
-
-        isLoadingReviews = false
     }
 
     func filterReviewsByRating(_ rating: Int?) async {

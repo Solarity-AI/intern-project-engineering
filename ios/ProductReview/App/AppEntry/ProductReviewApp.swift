@@ -165,12 +165,19 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Keep app state and icon badge synchronized through the shared update path.
-        NotificationCenter.default.post(
-            name: .updateBadgeCount,
-            object: nil,
-            userInfo: ["count": 0]
-        )
+        // Refresh unread count on foreground instead of force-resetting badge state.
+        Task {
+            do {
+                let unreadCount = try await NotificationRepository().getUnreadCount()
+                NotificationCenter.default.post(
+                    name: .updateBadgeCount,
+                    object: nil,
+                    userInfo: ["count": unreadCount]
+                )
+            } catch {
+                // Keep existing badge state when refresh fails.
+            }
+        }
     }
 
     // MARK: - Notification Permission
@@ -318,6 +325,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
 class LocalNotificationManager {
     static let shared = LocalNotificationManager()
+    private var currentBadgeCount = 0
 
     private init() {}
 
@@ -354,11 +362,12 @@ class LocalNotificationManager {
             }
 
             DispatchQueue.main.async {
+                let nextBadgeCount = max(0, self.currentBadgeCount + 1)
                 let content = UNMutableNotificationContent()
                 content.title = "Product Review"
                 content.body = message
                 content.sound = .default
-                content.badge = NSNumber(value: UIApplication.shared.applicationIconBadgeNumber + 1)
+                content.badge = NSNumber(value: nextBadgeCount)
                 content.categoryIdentifier = "PRODUCT_NOTIFICATION"
                 content.userInfo = ["productId": String(productId)]
 
@@ -377,6 +386,11 @@ class LocalNotificationManager {
                     if let error = error {
                         print("❌ Failed to schedule notification: \(error.localizedDescription)")
                     } else {
+                        NotificationCenter.default.post(
+                            name: .updateBadgeCount,
+                            object: nil,
+                            userInfo: ["count": nextBadgeCount]
+                        )
                         print("✅ Scheduled notification for product \(productId)")
                     }
                 }
@@ -389,14 +403,19 @@ class LocalNotificationManager {
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
         DispatchQueue.main.async {
-            UIApplication.shared.applicationIconBadgeNumber = 0
+            NotificationCenter.default.post(
+                name: .updateBadgeCount,
+                object: nil,
+                userInfo: ["count": 0]
+            )
         }
     }
 
     /// Update badge count
     func updateBadgeCount(_ count: Int) {
         DispatchQueue.main.async {
-            UIApplication.shared.applicationIconBadgeNumber = count
+            self.currentBadgeCount = max(0, count)
+            UIApplication.shared.applicationIconBadgeNumber = self.currentBadgeCount
         }
     }
 }
