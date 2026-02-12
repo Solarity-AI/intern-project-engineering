@@ -365,6 +365,8 @@ class WishlistViewModel: ObservableObject {
     private struct RemovedItem {
         let product: Product
         let index: Int
+        let precedingProductId: Int?
+        let followingProductId: Int?
     }
 
     private struct PendingRemoval {
@@ -501,13 +503,31 @@ class WishlistViewModel: ObservableObject {
     private func commitRemovalToServer(items: [RemovedItem], showSuccessOnComplete: Bool = true) async {
         var removedCount = 0
         var failedItems: [RemovedItem] = []
+        var serverWishlistIds: Set<Int> = []
+        var canVerifyServerState = true
 
-        for item in items {
-            do {
-                try await repository.toggleWishlist(productId: item.product.id)
-                removedCount += 1
-            } catch {
-                failedItems.append(item)
+        do {
+            serverWishlistIds = Set(try await repository.getWishlistIds())
+        } catch {
+            canVerifyServerState = false
+            failedItems = items
+        }
+
+        if canVerifyServerState {
+            for item in items {
+                // If already absent on server, treat it as successfully removed.
+                guard serverWishlistIds.contains(item.product.id) else {
+                    removedCount += 1
+                    continue
+                }
+
+                do {
+                    try await repository.toggleWishlist(productId: item.product.id)
+                    serverWishlistIds.remove(item.product.id)
+                    removedCount += 1
+                } catch {
+                    failedItems.append(item)
+                }
             }
         }
 
@@ -552,7 +572,38 @@ class WishlistViewModel: ObservableObject {
         }
         guard !indexedMatches.isEmpty else { return }
 
-        let removedItems = indexedMatches.map { RemovedItem(product: $0.element, index: $0.offset) }
+        let removalIndexSet = Set(indexedMatches.map { $0.offset })
+        let removedItems = indexedMatches.map { entry -> RemovedItem in
+            let index = entry.offset
+            let product = entry.element
+
+            var precedingProductId: Int?
+            var previousIndex = index - 1
+            while previousIndex >= 0 {
+                if !removalIndexSet.contains(previousIndex) {
+                    precedingProductId = products[previousIndex].id
+                    break
+                }
+                previousIndex -= 1
+            }
+
+            var followingProductId: Int?
+            var nextIndex = index + 1
+            while nextIndex < products.count {
+                if !removalIndexSet.contains(nextIndex) {
+                    followingProductId = products[nextIndex].id
+                    break
+                }
+                nextIndex += 1
+            }
+
+            return RemovedItem(
+                product: product,
+                index: index,
+                precedingProductId: precedingProductId,
+                followingProductId: followingProductId
+            )
+        }
         let idsToRemove = removedItems.map { $0.product.id }
 
         products.removeAll { idsToRemove.contains($0.id) }
@@ -560,7 +611,11 @@ class WishlistViewModel: ObservableObject {
 
         let pendingId = UUID()
         let commitTask = Task {
-            try? await Task.sleep(nanoseconds: undoWindowNanoseconds)
+            do {
+                try await Task.sleep(nanoseconds: undoWindowNanoseconds)
+            } catch {
+                return
+            }
             await commitPendingRemovalIfMatching(id: pendingId)
         }
 
@@ -590,7 +645,21 @@ class WishlistViewModel: ObservableObject {
         clearPendingRemoval()
 
         for item in pendingRemoval.items.sorted(by: { $0.index < $1.index }) {
-            let insertIndex = min(item.index, products.count)
+            guard !products.contains(where: { $0.id == item.product.id }) else { continue }
+
+            let anchoredIndex: Int?
+            if let precedingProductId = item.precedingProductId,
+               let precedingIndex = products.firstIndex(where: { $0.id == precedingProductId }) {
+                anchoredIndex = precedingIndex + 1
+            } else if let followingProductId = item.followingProductId,
+                      let followingIndex = products.firstIndex(where: { $0.id == followingProductId }) {
+                anchoredIndex = followingIndex
+            } else {
+                anchoredIndex = nil
+            }
+
+            let fallbackIndex = min(item.index, products.count)
+            let insertIndex = min(max(anchoredIndex ?? fallbackIndex, 0), products.count)
             products.insert(item.product, at: insertIndex)
         }
 
@@ -720,5 +789,6 @@ class WishlistViewModel: ObservableObject {
     NavigationStack {
         WishlistView()
             .environmentObject(NavigationRouter())
+            .environmentObject(AppState())
     }
 }

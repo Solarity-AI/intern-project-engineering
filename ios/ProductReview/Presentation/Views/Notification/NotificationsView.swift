@@ -40,10 +40,11 @@ struct NotificationsView: View {
                             NotificationRow(notification: notification)
                                 .listRowBackground(Color("CardBackground"))
                                 .onTapGesture {
-                                    Task {
+                                    Task { @MainActor in
                                         await viewModel.markAsRead(notificationId: notification.id)
+                                        let updatedNotification = viewModel.notifications.first { $0.id == notification.id } ?? notification
+                                        navigationRouter.navigate(to: .notificationDetail(notification: updatedNotification))
                                     }
-                                    navigationRouter.navigate(to: .notificationDetail(notification: notification))
                                 }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {

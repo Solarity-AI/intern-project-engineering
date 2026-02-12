@@ -8,6 +8,7 @@
 import SwiftUI
 import UIKit
 import UserNotifications
+import OSLog
 
 // MARK: - Notification Names Extension
 extension Notification.Name {
@@ -140,6 +141,7 @@ class AppState: ObservableObject {
 // MARK: - App Delegate
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "ProductReview", category: "PushNotifications")
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
@@ -300,13 +302,15 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     func application(_ application: UIApplication,
                      didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-        print("📱 Device token: \(token)")
+        #if DEBUG
+        logger.debug("Device token received: \(token, privacy: .private(mask: .hash))")
+        #endif
         // TODO: Send token to backend server
     }
 
     func application(_ application: UIApplication,
                      didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        print("❌ Failed to register for remote notifications: \(error.localizedDescription)")
+        logger.error("Failed to register for remote notifications: \(error.localizedDescription, privacy: .public)")
     }
 }
 
