@@ -1,19 +1,21 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   Animated,
   Easing,
-  Platform, // ✨ Added Platform
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { StarRating } from './StarRating';
 import { RootStackParamList } from '../types';
-import { Spacing, BorderRadius, Shadow, FontWeight } from '../constants/theme';
+import { Spacing, BorderRadius, Shadow, FontWeight, Glass, Glow, Gradients, FontSize } from '../constants/theme';
 import { ApiProduct } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -60,17 +62,27 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
   const productId = String(product.id ?? '');
   const inWishlist = isInWishlist(productId);
 
-  // Wishlist button styling - theme-aware
-  const wishlistButtonBg = inWishlist
-    ? colors.primary
-    : colorScheme === 'dark'
-      ? 'rgba(28, 25, 23, 0.9)'
-      : 'rgba(255, 255, 255, 0.9)';
-  const wishlistIconColor = inWishlist ? '#fff' : colors.foreground;
-  const showWishlistButton = numColumns < 4;
+  const heartScale = useRef(new Animated.Value(1)).current;
 
   const handleWishlistToggle = (e: any) => {
     e.stopPropagation();
+
+    // Bounce animation
+    Animated.sequence([
+      Animated.spring(heartScale, {
+        toValue: 1.35,
+        useNativeDriver: true,
+        speed: 50,
+        bounciness: 12,
+      }),
+      Animated.spring(heartScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 50,
+        bounciness: 8,
+      }),
+    ]).start();
+
     toggleWishlist({
       id: productId,
       name: product.name ?? 'Product',
@@ -80,6 +92,15 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
       averageRating: avgRating,
     } as any);
   };
+
+  const imageOpacity = useRef(new Animated.Value(0)).current;
+  const onImageLoad = useCallback(() => {
+    Animated.timing(imageOpacity, {
+      toValue: 1,
+      duration: 350,
+      useNativeDriver: true,
+    }).start();
+  }, [imageOpacity]);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
@@ -126,6 +147,10 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
     displayCategory = (product as any).category;
   }
 
+  // Aspect ratio based on column count
+  const aspectRatio = numColumns === 1 ? 16 / 9 : numColumns >= 3 ? 1 : 3 / 4;
+  const showWishlistButton = numColumns < 4;
+
   return (
     <Animated.View
       style={
@@ -138,106 +163,105 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
         activeOpacity={0.9}
         style={[
           styles.container,
-          { backgroundColor: colors.card },
+          { aspectRatio },
           isSelectionMode && styles.cardSelectionMode,
-          isSelected && [styles.cardSelected, { borderColor: colors.primary }],
+          isSelected && [styles.cardSelected, { borderColor: colors.primary }, Glow.primary],
+          // Web hover transition
+          Platform.OS === 'web' && ({ transition: 'transform 0.3s ease', cursor: 'pointer' } as any),
         ]}
         onPress={() => onPress(product)}
         onLongPress={() => onLongPress(product)}
         delayLongPress={2250}
+        accessibilityLabel={`${product.name ?? 'Product'}, rated ${avgRating.toFixed(1)} stars, $${product.price.toFixed(2)}`}
+        accessibilityRole="button"
+        accessibilityHint="Double tap to view product details"
       >
-        <View
-          style={[
-            styles.imageContainer,
-            numColumns >= 3 && styles.imageContainerCompact,
-            // ✨ iOS Single Column: Larger Image
-            (Platform.OS === 'ios' && numColumns === 1) && styles.imageContainerLarge
-          ]}
-        >
-          <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
+        {/* Full-bleed image with fade-in */}
+        <Animated.Image
+          source={{ uri: imageUri }}
+          style={[styles.image, { opacity: imageOpacity }]}
+          resizeMode="cover"
+          onLoad={onImageLoad}
+        />
 
+        {/* Bottom gradient overlay — 65% height */}
+        <LinearGradient
+          colors={['transparent', 'rgba(11,17,32,0.90)'] as [string, string]}
+          style={styles.bottomGradient}
+        />
 
-          {/* Wishlist button (normal mode) */}
-          {!isSelectionMode && showWishlistButton && (
-            <TouchableOpacity
-              style={[styles.wishlistButton, { backgroundColor: wishlistButtonBg, zIndex: 2 }]}
-              onPress={handleWishlistToggle}
-              activeOpacity={0.8}
-            >
+        {/* Wishlist button — top right, glass circle */}
+        {/* Using Pressable instead of TouchableOpacity to avoid nested button issue on web */}
+        {!isSelectionMode && showWishlistButton && (
+          <Pressable
+            style={[
+              styles.wishlistButton,
+              colorScheme === 'dark' ? Glass.strong : { backgroundColor: 'rgba(255,255,255,0.9)' },
+              numColumns >= 3 && styles.wishlistButtonCompact,
+            ]}
+            onPress={handleWishlistToggle}
+            accessibilityLabel={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+            accessibilityRole="button"
+          >
+            <Animated.View style={{ transform: [{ scale: heartScale }] }}>
               <Ionicons
                 name={inWishlist ? 'heart' : 'heart-outline'}
-                size={20}
-                color={wishlistIconColor}
+                size={numColumns >= 3 ? 14 : 18}
+                color={inWishlist ? '#F87171' : colorScheme === 'dark' ? '#fff' : '#111'}
               />
-            </TouchableOpacity>
-          )}
-          {/* Selection indicator */}
-          {isSelectionMode && (
-            <View
-              style={[
-                styles.selectionIndicator,
-                {
-                  backgroundColor: isSelected ? colors.primary : 'rgba(255,255,255,0.9)',
-                  borderColor: isSelected ? colors.primary : colors.border,
-                },
-              ]}
-            >
-              {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
-            </View>
-          )}
+            </Animated.View>
+          </Pressable>
+        )}
 
-          <View style={[
-            styles.categoryBadge, 
-            { backgroundColor: colors.secondary },
-            numColumns >= 3 && styles.categoryBadgeCompact,
-          ]}>
-            <Text
-              style={[
-                styles.categoryText,
-                { color: colors.foreground },
-                numColumns >= 3 && styles.categoryTextCompact,
-              ]}
-              numberOfLines={1}
-            >
+        {/* Selection indicator */}
+        {isSelectionMode && (
+          <View
+            style={[
+              styles.selectionIndicator,
+              {
+                backgroundColor: isSelected ? colors.primary : 'rgba(255,255,255,0.9)',
+                borderColor: isSelected ? colors.primary : colors.border,
+              },
+            ]}
+          >
+            {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+          </View>
+        )}
+
+        {/* Overlaid content at bottom */}
+        <View style={[styles.overlayContent, numColumns >= 3 && styles.overlayContentCompact]}>
+          {/* Category pill */}
+          <View style={[styles.categoryPill, numColumns >= 3 && styles.categoryPillCompact]}>
+            <Text style={[styles.categoryText, numColumns >= 3 && styles.categoryTextCompact]} numberOfLines={1}>
               {displayCategory}
             </Text>
           </View>
-        </View>
 
-        <View style={[styles.content, numColumns >= 3 && styles.contentCompact]}>
+          {/* Product name */}
           <Text
-            numberOfLines={1}
-            style={[
-              styles.name,
-              { color: colors.foreground },
-              numColumns >= 3 && styles.nameCompact,
-            ]}
+            numberOfLines={numColumns >= 3 ? 1 : 2}
+            style={[styles.name, numColumns >= 3 && styles.nameCompact]}
           >
             {product.name ?? 'Product'}
           </Text>
 
+          {/* Rating row */}
           <View style={styles.ratingRow}>
             <StarRating rating={avgRating} size="sm" compact={numColumns >= 3} />
-            <Text
-              style={[
-                styles.reviewCount,
-                { color: colors.mutedForeground },
-                numColumns >= 3 && styles.reviewCountCompact,
-              ]}
-            >
+            <Text style={[styles.reviewCount, numColumns >= 3 && styles.reviewCountCompact]}>
               ({reviewCount})
             </Text>
           </View>
 
-          <Text
-            style={[
-              styles.price,
-              { color: colors.foreground },
-              numColumns >= 3 && styles.priceCompact,
-            ]}
-          >
-            {`$${product.price.toFixed(2)}`}
-          </Text>
+          {/* Price + arrow row */}
+          <View style={styles.priceRow}>
+            <Text style={[styles.price, numColumns >= 3 && styles.priceCompact]}>
+              {`$${product.price.toFixed(2)}`}
+            </Text>
+            {numColumns < 3 && (
+              <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.5)" />
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -247,9 +271,11 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    borderRadius: BorderRadius.xl,
+    borderRadius: BorderRadius['2xl'],
     overflow: 'hidden',
-    ...Shadow.soft,
+    ...Shadow.medium,
+    position: 'relative',
+    backgroundColor: '#0B1120',
   },
   cardSelectionMode: {
     transform: [{ scale: 1.05 }],
@@ -263,39 +289,39 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
 
-  imageContainer: {
-    position: 'relative',
-    width: '100%',
-    aspectRatio: 16 / 9,
-    maxHeight: 220,
-  },
-  imageContainerCompact: {
-    aspectRatio: 1,
-    maxHeight: 150,
-  },
-  // ✨ Larger image for single column
-  imageContainerLarge: {
-    aspectRatio: 4 / 3,
-    maxHeight: 300,
-  },
-
   image: {
+    ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
   },
 
+  bottomGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '65%',
+  },
 
   wishlistButton: {
     position: 'absolute',
     top: Spacing.md,
     right: Spacing.md,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadow.soft,
+    zIndex: 2,
   },
+  wishlistButtonCompact: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    top: Spacing.sm,
+    right: Spacing.sm,
+  },
+
   selectionIndicator: {
     position: 'absolute',
     top: Spacing.sm,
@@ -307,50 +333,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...Shadow.soft,
+    zIndex: 2,
   },
 
-  categoryBadge: {
+  overlayContent: {
     position: 'absolute',
-    top: Spacing.md,
-    left: Spacing.md,
-    maxWidth: '80%',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-    ...Shadow.soft,
-    zIndex: 1, // ✨ Added zIndex
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: Spacing.md,
+    gap: 4,
   },
-  categoryBadgeCompact: {
-    top: Spacing.sm,
-    left: Spacing.sm,
-    maxWidth: '70%',
-    paddingHorizontal: Spacing.xs,
-    paddingVertical: 2,
+  overlayContentCompact: {
+    padding: Spacing.sm,
+    gap: 2,
   },
 
+  categoryPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+    marginBottom: 2,
+  },
+  categoryPillCompact: {
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 1,
+  },
   categoryText: {
-    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
     fontWeight: FontWeight.medium,
   },
   categoryTextCompact: {
     fontSize: 9,
   },
 
-  content: {
-    padding: Spacing.md,
-    gap: 6,
-  },
-  contentCompact: {
-    padding: Spacing.sm,
-    gap: 4,
-  },
-
   name: {
+    color: '#fff',
     fontSize: 14,
-    fontWeight: FontWeight.semibold,
+    fontWeight: FontWeight.bold,
+    lineHeight: 18,
   },
   nameCompact: {
     fontSize: 11,
+    lineHeight: 14,
   },
 
   ratingRow: {
@@ -358,17 +386,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.xs,
   },
-
   reviewCount: {
-    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 11,
   },
   reviewCountCompact: {
-    fontSize: 10,
+    fontSize: 9,
   },
 
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   price: {
-    fontSize: 14,
-    fontWeight: FontWeight.semibold,
+    color: '#10B981',
+    fontSize: 15,
+    fontWeight: FontWeight.bold,
   },
   priceCompact: {
     fontSize: 12,

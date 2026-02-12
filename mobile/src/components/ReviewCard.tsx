@@ -1,5 +1,5 @@
-// React Native ReviewCard Component
-// Displays individual review
+// ReviewCard — v3 Radical Redesign
+// 2px left accent line colored by rating
 
 import React from 'react';
 import {
@@ -9,9 +9,10 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StarRating } from './StarRating';
 import { Review } from '../types';
-import { Spacing, FontSize, BorderRadius, FontWeight } from '../constants/theme';
+import { Spacing, FontSize, BorderRadius, FontWeight, Glass, Shadow, Gradients } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 interface ReviewCardProps {
@@ -20,8 +21,14 @@ interface ReviewCardProps {
   isHelpful?: boolean;
 }
 
+function getRatingAccentColor(rating: number): string {
+  if (rating >= 4) return '#10B981'; // emerald
+  if (rating === 3) return '#FBBF24'; // gold
+  return '#F87171'; // red
+}
+
 export const ReviewCard: React.FC<ReviewCardProps> = ({ review, onHelpfulPress, isHelpful = false }) => {
-  const { colors } = useTheme();
+  const { colors, colorScheme } = useTheme();
 
   const formattedDate = new Date(review.createdAt).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -29,21 +36,29 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({ review, onHelpfulPress, 
     day: 'numeric',
   });
 
-  // ✨ Use helpfulCount from API, fallback to helpful or 0
   const helpfulCount = review.helpfulCount ?? review.helpful ?? 0;
+  const accentColor = getRatingAccentColor(review.rating);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[
+      styles.container,
+      colorScheme === 'dark' ? Glass.card : Glass.cardLight,
+    ]}>
+      {/* 2px left accent line */}
+      <View style={[styles.accentLine, { backgroundColor: accentColor }]} />
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.userInfo}>
-          {/* Avatar */}
-          <View style={[styles.avatar, { backgroundColor: colors.secondary }]}>
-            <Ionicons name="person" size={20} color={colors.mutedForeground} />
-          </View>
+          <LinearGradient
+            colors={colorScheme === 'dark' ? ['rgba(16,185,129,0.2)', 'rgba(99,102,241,0.15)'] as [string, string] : [colors.secondary, colors.secondary] as [string, string]}
+            style={styles.avatar}
+          >
+            <Ionicons name="person" size={18} color={colorScheme === 'dark' ? '#94A3B8' : colors.mutedForeground} />
+          </LinearGradient>
           <View>
             <Text style={[styles.userName, { color: colors.foreground }]}>
-              {review.reviewerName || review.userName} 
+              {review.reviewerName || review.userName}
             </Text>
             <Text style={[styles.date, { color: colors.mutedForeground }]}>
               {formattedDate}
@@ -59,18 +74,20 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({ review, onHelpfulPress, 
       </Text>
 
       {/* Footer */}
-      <TouchableOpacity 
-        style={[styles.helpfulButton, isHelpful && styles.helpfulButtonActive]} 
+      <TouchableOpacity
+        style={[styles.helpfulButton, isHelpful && styles.helpfulButtonActive]}
         activeOpacity={0.7}
         onPress={() => onHelpfulPress && onHelpfulPress(review.id)}
+        accessibilityLabel={`Mark as helpful, ${helpfulCount} people found this helpful`}
+        accessibilityRole="button"
       >
-        <Ionicons 
-          name={isHelpful ? "thumbs-up" : "thumbs-up-outline"} 
-          size={16} 
-          color={isHelpful ? colors.primary : colors.mutedForeground} 
+        <Ionicons
+          name={isHelpful ? "thumbs-up" : "thumbs-up-outline"}
+          size={16}
+          color={isHelpful ? colors.primary : colors.mutedForeground}
         />
         <Text style={[
-          styles.helpfulText, 
+          styles.helpfulText,
           { color: isHelpful ? colors.primary : colors.mutedForeground }
         ]}>
           Helpful ({helpfulCount})
@@ -82,10 +99,23 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({ review, onHelpfulPress, 
 
 const styles = StyleSheet.create({
   container: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 0.5,
+    paddingLeft: Spacing.xl + 6, // extra space for accent line
+    paddingRight: Spacing.xl,
+    paddingVertical: Spacing.xl,
+    borderRadius: BorderRadius['2xl'],
     marginBottom: Spacing.md,
+    overflow: 'hidden',
+    position: 'relative',
+    ...Shadow.soft,
+  },
+  accentLine: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 2,
+    borderTopLeftRadius: BorderRadius['2xl'],
+    borderBottomLeftRadius: BorderRadius['2xl'],
   },
   header: {
     flexDirection: 'row',
@@ -126,7 +156,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
   },
   helpfulButtonActive: {
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
   },
   helpfulText: {
     fontSize: FontSize.sm,

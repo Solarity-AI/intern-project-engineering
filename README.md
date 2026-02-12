@@ -81,7 +81,8 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 ### Frontend — React Native (Mobile/Web)
 *   **State Management:** React Context API for Wishlist, Search, and Notifications.
 *   **Responsive Design:** Adaptive layouts for Mobile (Android/iOS) and Web (Vercel).
-*   **Networking:** Centralized API service with race-condition protection and abort controllers.
+*   **Networking:** Centralized API service with retry logic (exponential backoff), request deduplication, memory caching, and structured error handling.
+*   **UI Design:** Glassmorphism theme with Glass cards, Gradients, and Glow effects.
 
 ### Frontend — iOS Native (Swift/SwiftUI)
 *   **Architecture:** MVVM with Clean Architecture (Domain, Data, Presentation layers).
@@ -179,20 +180,21 @@ vercel login           # Login to Vercel
 vercel --prod          # Deploy to production
 ```
 
-### Color Palette (Updated 2026-01)
-The application features a professional, modern color system with WCAG AA compliance:
+### Color Palette (Updated 2026-02)
+The application features a premium dark SaaS design with glassmorphism effects:
+
+**Dark Mode (Default):**
+- Background: `#0B1120` (Deep navy)
+- Primary: `#10B981` (Emerald green)
+- Accent: `#FBBF24` (Golden yellow)
+- Glass cards with `backdrop-filter: blur()` for web
 
 **Light Mode:**
-- Primary: `#0066FF` (Vibrant Blue - trustworthy, modern)
-- Background: `#FAFAFA` (Soft neutral for reduced eye strain)
-- Accent: `#4F46E5` (Professional Indigo)
+- Background: `#F8FAFC` (Soft slate)
+- Primary: `#059669` (Emerald)
+- Accent: `#D97706` (Amber)
 
-**Dark Mode:**
-- Primary: `#3B82F6` (Softer blue for dark mode)
-- Background: `#0A0A0A` (OLED optimized)
-- Accent: `#C7D2FE` (High contrast indigo)
-
-All colors maintain optimal contrast ratios for accessibility standards.
+Theme exports: `Colors`, `Gradients`, `Glass`, `Glow`, `Shadow`, `Spacing`, `FontSize`, `BorderRadius`.
 
 ---
 

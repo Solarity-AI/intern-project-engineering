@@ -42,7 +42,7 @@ const linking: LinkingOptions<RootStackParamList> = {
 // ✨ Loading screen component to prevent white flash
 const LoadingScreen: React.FC<{ backgroundColor: string }> = ({ backgroundColor }) => (
   <View style={[styles.loadingContainer, { backgroundColor }]}>
-    <ActivityIndicator size="large" color="#F59E0B" />
+    <ActivityIndicator size="large" color="#10B981" />
   </View>
 );
 
@@ -52,7 +52,7 @@ function AppNavigator() {
 
   // ✨ Show loading screen until theme is loaded - prevents white flash
   if (!isThemeLoaded) {
-    const bgColor = colorScheme === 'dark' ? '#0A0A0A' : '#FAFAFA';
+    const bgColor = colorScheme === 'dark' ? '#0B1120' : '#F8FAFC';
     return <LoadingScreen backgroundColor={bgColor} />;
   }
 

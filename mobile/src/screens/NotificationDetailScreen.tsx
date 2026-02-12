@@ -1,4 +1,5 @@
-// NotificationDetailScreen - Full notification details with actions
+// NotificationDetailScreen — v3 Radical Redesign
+// Mini gradient hero (120px) with centered type icon, gradient button styles
 import React, { useEffect, useMemo } from 'react';
 import {
   View,
@@ -15,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import { GradientDivider } from '../components/GradientDivider';
 import { useNotifications, NotificationType } from '../context/NotificationContext';
 import { useTheme } from '../context/ThemeContext';
 import { RootStackParamList } from '../types';
@@ -24,29 +26,34 @@ import {
   FontWeight,
   BorderRadius,
   Shadow,
+  Glass,
+  Glow,
+  Gradients,
 } from '../constants/theme';
 
 type RouteType = RouteProp<RootStackParamList, 'NotificationDetail'>;
 
 function getNotificationIcon(type: NotificationType): keyof typeof Ionicons.glyphMap {
   switch (type) {
-    case 'review':
-      return 'star';
-    case 'order':
-      return 'cube';
-    case 'system':
-      return 'notifications';
+    case 'review': return 'star';
+    case 'order': return 'cube';
+    case 'system': return 'notifications';
   }
 }
 
-function getNotificationColor(type: NotificationType, colors: ReturnType<typeof useTheme>['colors']): string {
+function getNotificationGradient(type: NotificationType): [string, string] {
   switch (type) {
-    case 'review':
-      return colors.primary;
-    case 'order':
-      return colors.success;
-    case 'system':
-      return '#6366F1'; // Indigo
+    case 'review': return ['#10B981', '#059669'];
+    case 'order': return ['#3B82F6', '#2563EB'];
+    case 'system': return ['#8B5CF6', '#6366F1'];
+  }
+}
+
+function getNotificationColor(type: NotificationType): string {
+  switch (type) {
+    case 'review': return '#10B981';
+    case 'order': return '#3B82F6';
+    case 'system': return '#8B5CF6';
   }
 }
 
@@ -64,16 +71,13 @@ function formatFullDate(date: Date): string {
 export const NotificationDetailScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteType>();
-  const { colors } = useTheme();
+  const { colors, colorScheme } = useTheme();
   const { notifications, markAsRead, clearNotification } = useNotifications();
 
-  // ✨ Responsive: Get window dimensions
   const { width: windowWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
   const MAX_CONTENT_WIDTH = 600;
-  const isWideScreen = windowWidth > MAX_CONTENT_WIDTH;
 
-  // ✨ Responsive container style
   const responsiveContainerStyle = {
     width: '100%' as const,
     maxWidth: isWeb ? MAX_CONTENT_WIDTH : undefined,
@@ -93,7 +97,6 @@ export const NotificationDetailScreen: React.FC = () => {
     }
   }, [notification, markAsRead]);
 
-  // ✨ Improved back handler for Web/Deep Links
   const handleBack = () => {
     if (navigation.canGoBack()) {
       navigation.goBack();
@@ -105,7 +108,6 @@ export const NotificationDetailScreen: React.FC = () => {
   if (!notification) {
     return (
       <ScreenWrapper backgroundColor={colors.background}>
-        {/* ✨ Responsive Wrapper */}
         <View style={responsiveContainerStyle}>
           <View style={styles.header}>
             <TouchableOpacity onPress={handleBack} style={styles.backButton}>
@@ -126,7 +128,8 @@ export const NotificationDetailScreen: React.FC = () => {
     );
   }
 
-  const iconColor = getNotificationColor(notification.type, colors);
+  const typeColor = getNotificationColor(notification.type);
+  const typeGradient = getNotificationGradient(notification.type);
 
   const handleDelete = () => {
     clearNotification(notification.id);
@@ -143,9 +146,8 @@ export const NotificationDetailScreen: React.FC = () => {
 
   return (
     <ScreenWrapper backgroundColor={colors.background}>
-      {/* ✨ Responsive Wrapper */}
       <View style={responsiveContainerStyle}>
-        {/* Header */}
+        {/* Header bar */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="arrow-back" size={22} color={colors.foreground} />
@@ -157,89 +159,92 @@ export const NotificationDetailScreen: React.FC = () => {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.content}>
-          {/* Icon Badge */}
-          <View style={styles.iconBadgeContainer}>
-            <LinearGradient
-              colors={[iconColor, iconColor + 'CC']}
-              style={styles.iconBadge}
-            >
+          {/* ===== MINI GRADIENT HERO ===== */}
+          <LinearGradient
+            colors={typeGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.miniHero}
+          >
+            <View style={styles.heroIconCircle}>
               <Ionicons name={getNotificationIcon(notification.type)} size={32} color="#fff" />
-            </LinearGradient>
-          </View>
-
-          {/* Type Badge */}
-          <View style={[styles.typeBadge, { backgroundColor: iconColor + '15' }]}>
-            <Text style={[styles.typeBadgeText, { color: iconColor }]}>
-              {notification.type.charAt(0).toUpperCase() + notification.type.slice(1)}
-            </Text>
-          </View>
-
-          {/* Title */}
-          <Text style={[styles.title, { color: colors.foreground }]}>
-            {notification.title}
-          </Text>
-
-          {/* Timestamp */}
-          <View style={styles.timestampContainer}>
-            <Ionicons name="time-outline" size={16} color={colors.mutedForeground} />
-            <Text style={[styles.timestamp, { color: colors.mutedForeground }]}>
-              {formatFullDate(notification.timestamp)}
-            </Text>
-          </View>
-
-          {/* Divider */}
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          {/* Body */}
-          <Text style={[styles.body, { color: colors.foreground }]}>
-            {notification.body}
-          </Text>
-
-          {/* Additional Info */}
-          {notification.data?.productName && (
-            <View style={[styles.infoCard, { backgroundColor: colors.secondary }]}>
-              <View style={styles.infoRow}>
-                <Ionicons name="cube-outline" size={18} color={colors.mutedForeground} />
-                <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>
-                  Product:
-                </Text>
-                <Text style={[styles.infoValue, { color: colors.foreground }]}>
-                  {notification.data.productName}
-                </Text>
-              </View>
             </View>
-          )}
+          </LinearGradient>
 
-          {/* Actions */}
-          <View style={styles.actions}>
-            {notification.data?.productId && (
-              <TouchableOpacity
-                onPress={handleViewProduct}
-                activeOpacity={0.8}
-                style={[styles.actionButton, { backgroundColor: colors.primary }]}
-              >
-                <Text style={[styles.actionButtonText, { color: colors.primaryForeground }]}>
-                  View Product
-                </Text>
-                <Ionicons name="arrow-forward" size={18} color={colors.primaryForeground} />
-              </TouchableOpacity>
+          <View style={styles.content}>
+            {/* Type Badge */}
+            <View style={[styles.typeBadge, { backgroundColor: typeColor + '15' }]}>
+              <Text style={[styles.typeBadgeText, { color: typeColor }]}>
+                {notification.type.charAt(0).toUpperCase() + notification.type.slice(1)}
+              </Text>
+            </View>
+
+            {/* Title */}
+            <Text style={[styles.title, { color: colors.foreground }]}>
+              {notification.title}
+            </Text>
+
+            {/* Timestamp */}
+            <View style={styles.timestampContainer}>
+              <Ionicons name="time-outline" size={16} color={colors.mutedForeground} />
+              <Text style={[styles.timestamp, { color: colors.mutedForeground }]}>
+                {formatFullDate(notification.timestamp)}
+              </Text>
+            </View>
+
+            <GradientDivider />
+
+            {/* Body */}
+            <Text style={[styles.body, { color: colors.foreground }]}>
+              {notification.body}
+            </Text>
+
+            {/* Additional Info */}
+            {notification.data?.productName && (
+              <View style={[styles.infoCard, colorScheme === 'dark' ? Glass.elevated : { backgroundColor: colors.secondary }]}>
+                <View style={styles.infoRow}>
+                  <Ionicons name="cube-outline" size={18} color={colors.mutedForeground} />
+                  <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>
+                    Product:
+                  </Text>
+                  <Text style={[styles.infoValue, { color: colors.foreground }]}>
+                    {notification.data.productName}
+                  </Text>
+                </View>
+              </View>
             )}
 
-            <TouchableOpacity
-              onPress={handleDelete}
-              activeOpacity={0.8}
-              style={[styles.actionButton, styles.deleteActionButton, { borderColor: colors.border }]}
-            >
-              <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
-                Delete Notification
-              </Text>
-              <Ionicons name="trash-outline" size={18} color={colors.destructive} />
-            </TouchableOpacity>
-          </View>
+            {/* Actions */}
+            <View style={styles.actions}>
+              {notification.data?.productId && (
+                <TouchableOpacity
+                  onPress={handleViewProduct}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={Gradients.brand as [string, string]}
+                    style={[styles.actionButtonGradient, Glow.primary]}
+                  >
+                    <Text style={styles.actionButtonGradientText}>View Product</Text>
+                    <Ionicons name="arrow-forward" size={18} color="#fff" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                onPress={handleDelete}
+                activeOpacity={0.8}
+                style={[styles.actionButton, styles.deleteActionButton, { borderColor: colors.border }]}
+              >
+                <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
+                  Delete Notification
+                </Text>
+                <Ionicons name="trash-outline" size={18} color={colors.destructive} />
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
-      </View>{/* ✨ End Responsive Wrapper */}
+      </View>
     </ScreenWrapper>
   );
 };
@@ -260,21 +265,23 @@ const styles = StyleSheet.create({
     padding: Spacing.xs,
   },
 
-  content: {
-    padding: Spacing.lg,
-  },
-
-  iconBadgeContainer: {
-    alignItems: 'center',
-    marginVertical: Spacing.xl,
-  },
-  iconBadge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  /* Mini gradient hero */
+  miniHero: {
+    height: 120,
     alignItems: 'center',
     justifyContent: 'center',
-    ...Shadow.soft,
+  },
+  heroIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  content: {
+    padding: Spacing.lg,
   },
 
   typeBadge: {
@@ -283,6 +290,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.full,
     marginBottom: Spacing.lg,
+    marginTop: Spacing.md,
   },
   typeBadgeText: {
     fontSize: FontSize.xs,
@@ -304,15 +312,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.xs,
-    marginBottom: Spacing.xl,
   },
   timestamp: {
     fontSize: FontSize.sm,
-  },
-
-  divider: {
-    height: 1,
-    marginVertical: Spacing.xl,
   },
 
   body: {
@@ -344,15 +346,28 @@ const styles = StyleSheet.create({
   actions: {
     gap: Spacing.md,
   },
+  actionButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.xl,
+  },
+  actionButtonGradientText: {
+    color: '#fff',
+    fontSize: FontSize.base,
+    fontWeight: FontWeight.semibold,
+  },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.sm,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    ...Shadow.soft,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.xl,
   },
   deleteActionButton: {
     backgroundColor: 'transparent',

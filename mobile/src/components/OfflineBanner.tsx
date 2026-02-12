@@ -112,7 +112,9 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#DC2626', // Red
+    backgroundColor: '#991B1B',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(248,113,113,0.2)',
     zIndex: 9999,
     elevation: 9999,
   },

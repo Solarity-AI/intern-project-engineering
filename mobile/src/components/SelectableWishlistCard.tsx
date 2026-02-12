@@ -1,20 +1,22 @@
-import React, { useRef, useEffect, memo } from 'react';
+import React, { useRef, useEffect, useCallback, memo } from 'react';
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   Animated,
   Easing,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { StarRating } from './StarRating';
 import { useTheme } from '../context/ThemeContext';
 import { WishlistItem } from '../context/WishlistContext';
-import { Spacing, BorderRadius, Shadow, FontSize, FontWeight } from '../constants/theme';
+import { Spacing, BorderRadius, Shadow, FontSize, FontWeight, Glass, Glow } from '../constants/theme';
 
 interface SelectableWishlistCardProps {
   item: WishlistItem;
@@ -40,6 +42,15 @@ function SelectableWishlistCardComponent({
   const { colors, colorScheme } = useTheme();
   const [imageError, setImageError] = React.useState(false);
   const [imageKey, setImageKey] = React.useState(0);
+
+  const imageOpacity = useRef(new Animated.Value(0)).current;
+  const onImageLoad = useCallback(() => {
+    Animated.timing(imageOpacity, {
+      toValue: 1,
+      duration: 350,
+      useNativeDriver: true,
+    }).start();
+  }, [imageOpacity]);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
@@ -79,10 +90,8 @@ function SelectableWishlistCardComponent({
     outputRange: ['-1.2deg', '1.2deg'],
   });
 
-  // ✨ Quick delete button styling - theme-aware
-  const deleteButtonBg = colorScheme === 'dark'
-    ? 'rgba(28, 25, 23, 0.9)'
-    : 'rgba(255, 255, 255, 0.9)';
+  const isCompact = numColumns !== undefined && numColumns >= 3;
+  const aspectRatio = numColumns === 1 ? 16 / 9 : isCompact ? 1 : 3 / 4;
 
   return (
     <View style={{ zIndex: isSelectionMode ? (isSelected ? 2 : 1) : 1 }}>
@@ -104,116 +113,111 @@ function SelectableWishlistCardComponent({
           activeOpacity={0.9}
           style={[
             styles.card,
-            { backgroundColor: colors.card, opacity: 1 },
+            { aspectRatio },
             isSelectionMode && styles.cardSelectionMode,
-            isSelected && [styles.cardSelected, { borderColor: colors.primary }],
+            isSelected && [styles.cardSelected, { borderColor: colors.primary }, Glow.primary],
           ]}
           onPress={() => onPress(item)}
           onLongPress={() => onLongPress(item)}
           delayLongPress={2250}
+          accessibilityLabel={`${item.name}, $${item.price?.toFixed(2) ?? '0.00'}`}
+          accessibilityRole="button"
+          accessibilityHint="Double tap to view product details"
         >
-          <View 
-            style={[
-              styles.imageContainer,
-              numColumns !== undefined && numColumns >= 2 && styles.imageContainerCompact
-            ]} 
-            collapsable={false}
-          >
-            {item.imageUrl && !imageError && (
-              <Image
-                key={`${item.id}-${imageKey}`}
-                source={{ uri: item.imageUrl }}
-                style={styles.image}
-                resizeMode="cover"
-                onError={() => {
-                  setImageError(true);
-                  setImageKey(prev => prev + 1);
-                }}
-              />
-            )}
-            {(!item.imageUrl || imageError) && (
-              <View style={[styles.imagePlaceholder, { backgroundColor: colors.muted }]}>
-                <Ionicons name="image-outline" size={32} color={colors.mutedForeground} />
-              </View>
-            )}
-
-            {/* ✨ Quick Delete Button (×) - Top Right Corner */}
-            {!isSelectionMode && (
-              <TouchableOpacity
-                style={[
-                  styles.quickDeleteButton,
-                  { backgroundColor: deleteButtonBg },
-                  numColumns !== undefined && numColumns >= 3 && styles.quickDeleteButtonCompact,
-                ]}
-                onPress={() => onRemove(item.id)}
-                activeOpacity={0.8}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons 
-                  name="close" 
-                  size={numColumns !== undefined && numColumns >= 3 ? 14 : 18} 
-                  color={colors.foreground} 
-                />
-              </TouchableOpacity>
-            )}
-
-            {/* Selection indicator (shown in selection mode) */}
-            {isSelectionMode && (
-              <View
-                style={[
-                  styles.selectionIndicator,
-                  {
-                    backgroundColor: isSelected ? colors.primary : 'rgba(255,255,255,0.9)',
-                    borderColor: isSelected ? colors.primary : colors.border,
-                  },
-                ]}
-              >
-                {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
-              </View>
-            )}
-          </View>
-
-          <View style={styles.content}>
-            {/* Category badge row */}
-            <View style={styles.compactTopRow}>
-              {item.category && (
-                <View style={[styles.categoryBadgeCompact, { backgroundColor: colors.secondary + '88' }, numColumns !== undefined && numColumns >= 2 && { marginLeft: -Spacing.xs }]}>
-                  <Text style={[styles.categoryTextCompact, { color: colors.mutedForeground }]}>
-                    {item.category}
-                  </Text>
-                </View>
-              )}
-              {/* ✨ Heart icon for visual indication (not clickable anymore - use × button instead) */}
-              <Ionicons 
-                name="heart" 
-                size={numColumns !== undefined && numColumns >= 3 ? 14 : 16} 
-                color={colors.primary} 
-                style={numColumns !== undefined && numColumns >= 2 ? { marginRight: -Spacing.xs } : undefined}
-              />
+          {/* Full-bleed image with fade-in */}
+          {item.imageUrl && !imageError ? (
+            <Animated.Image
+              key={`${item.id}-${imageKey}`}
+              source={{ uri: item.imageUrl }}
+              style={[styles.image, { opacity: imageOpacity }]}
+              resizeMode="cover"
+              onLoad={onImageLoad}
+              onError={() => {
+                setImageError(true);
+                setImageKey(prev => prev + 1);
+              }}
+            />
+          ) : (
+            <View style={[styles.imagePlaceholder, { backgroundColor: colors.muted }]}>
+              <Ionicons name="image-outline" size={32} color={colors.mutedForeground} />
             </View>
+          )}
 
-            <Text numberOfLines={2} style={[styles.name, { color: colors.foreground }]}>
+          {/* Bottom gradient overlay */}
+          <LinearGradient
+            colors={['transparent', 'rgba(11,17,32,0.90)'] as [string, string]}
+            style={styles.bottomGradient}
+          />
+
+          {/* Emerald heart icon — top left */}
+          {!isSelectionMode && (
+            <View style={[styles.heartBadge, isCompact && styles.heartBadgeCompact]}>
+              <Ionicons name="heart" size={isCompact ? 12 : 14} color="#10B981" />
+            </View>
+          )}
+
+          {/* Quick delete button — top right */}
+          {/* Using Pressable instead of TouchableOpacity to avoid nested button issue on web */}
+          {!isSelectionMode && (
+            <Pressable
+              style={[
+                styles.deleteButton,
+                colorScheme === 'dark' ? Glass.strong : { backgroundColor: 'rgba(255,255,255,0.9)' },
+                isCompact && styles.deleteButtonCompact,
+              ]}
+              onPress={() => onRemove(item.id)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Remove from wishlist"
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name="close"
+                size={isCompact ? 14 : 18}
+                color={colorScheme === 'dark' ? '#fff' : '#000'}
+              />
+            </Pressable>
+          )}
+
+          {/* Selection indicator */}
+          {isSelectionMode && (
+            <View
+              style={[
+                styles.selectionIndicator,
+                {
+                  backgroundColor: isSelected ? colors.primary : 'rgba(255,255,255,0.9)',
+                  borderColor: isSelected ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+            </View>
+          )}
+
+          {/* Overlaid content at bottom */}
+          <View style={[styles.overlayContent, isCompact && styles.overlayContentCompact]}>
+            {item.category && (
+              <View style={[styles.categoryPill, isCompact && styles.categoryPillCompact]}>
+                <Text style={[styles.categoryText, isCompact && styles.categoryTextCompact]}>
+                  {item.category}
+                </Text>
+              </View>
+            )}
+
+            <Text numberOfLines={2} style={[styles.name, isCompact && styles.nameCompact]}>
               {item.name}
             </Text>
 
             {item.averageRating !== undefined && (
               <View style={styles.ratingRow}>
-                <StarRating rating={item.averageRating} size="sm" compact={numColumns !== undefined && numColumns >= 3} />
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.reviewCount,
-                    { color: colors.mutedForeground },
-                    numColumns !== undefined && numColumns >= 3 && styles.reviewCountCompact,
-                  ]}
-                >
-                  ({(item as any).reviewCount ?? 0})
+                <StarRating rating={item.averageRating} size="sm" compact={isCompact} />
+                <Text style={[styles.reviewCount, isCompact && styles.reviewCountCompact]}>
+                  ({item.reviewCount ?? 0})
                 </Text>
               </View>
             )}
 
             {item.price !== undefined && (
-              <Text style={[styles.price, { color: colors.primary }]}>
+              <Text style={[styles.price, isCompact && styles.priceCompact]}>
                 ${item.price.toFixed(2)}
               </Text>
             )}
@@ -228,9 +232,11 @@ export const SelectableWishlistCard = memo(SelectableWishlistCardComponent);
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: BorderRadius.xl,
+    borderRadius: BorderRadius['2xl'],
     overflow: 'hidden',
-    ...Shadow.soft,
+    ...Shadow.medium,
+    position: 'relative',
+    backgroundColor: '#0B1120',
   },
   cardSelectionMode: {
     shadowColor: '#000',
@@ -243,33 +249,46 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
 
-  imageContainer: {
-    position: 'relative',
-    width: '100%',
-    aspectRatio: 1,
-    maxHeight: 320,
-    overflow: 'hidden',
-    alignItems: 'stretch',
-    justifyContent: 'center',
-  },
-  imageContainerCompact: {
-    aspectRatio: 1,
-    maxHeight: 170,
-    backgroundColor: '#f0f0f0',
-  },
   image: {
+    ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
   },
   imagePlaceholder: {
-    width: '100%',
-    height: '100%',
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // ✨ Quick Delete Button (×) - positioned at top-right of image
-  quickDeleteButton: {
+  bottomGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '65%',
+  },
+
+  heartBadge: {
+    position: 'absolute',
+    top: Spacing.sm,
+    left: Spacing.sm,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(15,23,42,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  heartBadgeCompact: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    top: Spacing.xs,
+    left: Spacing.xs,
+  },
+
+  deleteButton: {
     position: 'absolute',
     top: Spacing.sm,
     right: Spacing.sm,
@@ -279,9 +298,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
-    ...Shadow.soft,
   },
-  quickDeleteButtonCompact: {
+  deleteButtonCompact: {
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -303,49 +321,70 @@ const styles = StyleSheet.create({
     ...Shadow.soft,
   },
 
-  compactTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-    width: '100%',
+  overlayContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: Spacing.md,
+    gap: 4,
   },
-  categoryBadgeCompact: {
-    paddingHorizontal: 6,
+  overlayContentCompact: {
+    padding: Spacing.sm,
+    gap: 2,
+  },
+
+  categoryPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
-    borderRadius: BorderRadius.sm,
-    maxWidth: '80%',
+    borderRadius: BorderRadius.full,
+    marginBottom: 2,
   },
-  categoryTextCompact: {
+  categoryPillCompact: {
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 1,
+  },
+  categoryText: {
+    color: 'rgba(255,255,255,0.85)',
     fontSize: 10,
     fontWeight: FontWeight.medium,
   },
-
-  content: {
-    padding: Spacing.sm,
-    gap: 4,
+  categoryTextCompact: {
+    fontSize: 8,
   },
+
+  name: {
+    color: '#fff',
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    lineHeight: 16,
+  },
+  nameCompact: {
+    fontSize: 10,
+    lineHeight: 13,
+  },
+
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    flexWrap: 'wrap',
   },
   reviewCount: {
+    color: 'rgba(255,255,255,0.6)',
     fontSize: 10,
   },
   reviewCountCompact: {
     fontSize: 9,
   },
-  name: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
-  },
+
   price: {
+    color: '#10B981',
     fontSize: FontSize.sm,
     fontWeight: FontWeight.bold,
   },
-  category: {
-    fontSize: 10,
+  priceCompact: {
+    fontSize: 11,
   },
 });

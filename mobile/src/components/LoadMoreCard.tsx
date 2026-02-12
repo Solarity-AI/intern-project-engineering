@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../context/ThemeContext';
-import { Spacing, FontSize, FontWeight, BorderRadius, Shadow } from '../constants/theme';
+import { Spacing, FontSize, FontWeight, BorderRadius, Shadow, Gradients, Glass } from '../constants/theme';
 
 interface LoadMoreCardProps {
   onPress: () => void;
@@ -28,7 +28,7 @@ export const LoadMoreCard: React.FC<LoadMoreCardProps> = ({
   currentPage,
   totalPages,
 }) => {
-  const { colors } = useTheme();
+  const { colors, colorScheme } = useTheme();
 
   if (!hasMore) {
     return (
@@ -36,7 +36,7 @@ export const LoadMoreCard: React.FC<LoadMoreCardProps> = ({
         style={[
           styles.container,
           styles.endContainer,
-          { backgroundColor: colors.card },
+          colorScheme === 'dark' ? Glass.card : Glass.cardLight,
         ]}
       >
         <View style={[styles.endIconContainer, { backgroundColor: colors.muted }]}>
@@ -63,9 +63,11 @@ export const LoadMoreCard: React.FC<LoadMoreCardProps> = ({
         styles.container,
         pressed && styles.pressed,
       ]}
+      accessibilityLabel={`Load more products, page ${currentPage + 1} of ${totalPages}`}
+      accessibilityRole="button"
     >
       <LinearGradient
-        colors={[colors.primary, colors.accent]}
+        colors={Gradients.brand}
         style={styles.gradientCard}
       >
         {loading ? (
@@ -98,9 +100,9 @@ export const LoadMoreCard: React.FC<LoadMoreCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: BorderRadius.xl,
+    borderRadius: BorderRadius['2xl'],
     overflow: 'hidden',
-    ...Shadow.soft,
+    ...Shadow.medium,
   },
 
   pressed: {

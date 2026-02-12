@@ -72,6 +72,10 @@ web-build/
 .env.local
 .env.*.local
 
+# Project-specific
+tasks.md
+issues-*.md
+
 # OS
 .DS_Store
 Thumbs.db

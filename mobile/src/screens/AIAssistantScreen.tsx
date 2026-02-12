@@ -1,5 +1,5 @@
-// AIAssistantScreen.tsx
-// Getir/Yemeksepeti-style AI Assistant - no keyboard, choice buttons only
+// AIAssistantScreen.tsx — v3 Radical Redesign
+// Gradient header, decorative orbs, accent-line bubbles, 2-column option grid
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
@@ -20,8 +20,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useTheme } from '../context/ThemeContext';
 import { RootStackParamList } from '../types';
-import { Spacing, FontSize, BorderRadius, FontWeight, Shadow } from '../constants/theme';
-import { chatWithAI } from '../services/api';
+import { Spacing, FontSize, BorderRadius, FontWeight, Shadow, Glass, Gradients } from '../constants/theme';
+import { chatWithAI, getUserMessage } from '../services/api';
 
 type RouteType = RouteProp<RootStackParamList, 'AIAssistant'>;
 
@@ -30,9 +30,9 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   options?: string[];
-  selectedOption?: string; // selected option shown as user bubble (user role message)
+  selectedOption?: string;
   timestamp: Date;
-  hideIcon?: boolean; // ✅ to avoid showing AI icon in some assistant bubbles (whatsapp-like)
+  hideIcon?: boolean;
 }
 
 const QUESTIONS = [
@@ -46,16 +46,14 @@ const QUESTIONS = [
 export const AIAssistantScreen: React.FC = () => {
   const route = useRoute<RouteType>();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { colors } = useTheme();
+  const { colors, colorScheme } = useTheme();
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // ✨ Responsive: Get window dimensions
   const { width: windowWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
   const MAX_CONTENT_WIDTH = 600;
   const isWideScreen = windowWidth > MAX_CONTENT_WIDTH;
 
-  // ✨ Responsive container style
   const responsiveContainerStyle = {
     width: '100%' as const,
     maxWidth: isWeb ? MAX_CONTENT_WIDTH : undefined,
@@ -67,7 +65,6 @@ export const AIAssistantScreen: React.FC = () => {
   const productId = route.params?.productId;
   const reviews = route.params?.reviews || [];
 
-  // ✅ Global lock: only one active question at a time
   const activeRequestRef = useRef(false);
   const processingRef = useRef(false);
   const isExitingRef = useRef(false);
@@ -105,7 +102,6 @@ export const AIAssistantScreen: React.FC = () => {
     [reviews.length]
   );
 
-  // ✅ Helper: hide options on the active assistant message immediately (prevents spam taps)
   const consumeOptionsForMessage = useCallback((messageId: string, selected: string) => {
     setMessages((prev) =>
       prev.map((m) =>
@@ -118,7 +114,6 @@ export const AIAssistantScreen: React.FC = () => {
 
   const handleQuestionSelect = useCallback(
     async (question: string, messageId: string) => {
-      // ✅ Hard block: only one request at a time
       if (
         activeRequestRef.current ||
         processingRef.current ||
@@ -129,18 +124,14 @@ export const AIAssistantScreen: React.FC = () => {
         return;
       }
 
-      // Only allow clicking on the last active message
       if (messageId !== lastActiveMessageId) return;
 
-      // lock
       activeRequestRef.current = true;
       processingRef.current = true;
       setIsProcessing(true);
 
-      // ✅ Hide question options immediately (UX + prevents rapid multi submit)
       consumeOptionsForMessage(messageId, question);
 
-      // Add user bubble (selected question)
       const userMessage: Message = {
         id: Date.now().toString(),
         role: 'user',
@@ -161,7 +152,6 @@ export const AIAssistantScreen: React.FC = () => {
 
         const answerId = (Date.now() + 1).toString();
 
-        // ✅ assistant answer bubble
         const assistantAnswer: Message = {
           id: answerId,
           role: 'assistant',
@@ -169,7 +159,6 @@ export const AIAssistantScreen: React.FC = () => {
           timestamp: new Date(),
         };
 
-        // ✅ separate assistant bubble for "Do you have more questions?" (whatsapp-like)
         const followupId = (Date.now() + 2).toString();
         const assistantFollowup: Message = {
           id: followupId,
@@ -177,7 +166,7 @@ export const AIAssistantScreen: React.FC = () => {
           content: 'Do you have more questions?',
           options: ['Yes', 'No'],
           timestamp: new Date(),
-          hideIcon: true, // ✅ don’t show AI icon again
+          hideIcon: true,
         };
 
         setMessages((prev) => [...prev, assistantAnswer, assistantFollowup]);
@@ -190,7 +179,7 @@ export const AIAssistantScreen: React.FC = () => {
         const errMsg: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: 'Sorry, I had trouble connecting to the server. Please try again.',
+          content: getUserMessage(error),
           timestamp: new Date(),
         };
         const retryMsg: Message = {
@@ -209,7 +198,7 @@ export const AIAssistantScreen: React.FC = () => {
         setIsLoading(false);
         setIsProcessing(false);
         processingRef.current = false;
-        activeRequestRef.current = false; // ✅ unlock after response shown
+        activeRequestRef.current = false;
       }
     },
     [
@@ -227,17 +216,14 @@ export const AIAssistantScreen: React.FC = () => {
     (choice: string, messageId: string) => {
       if (processingRef.current || isProcessing || isExitingRef.current) return;
 
-      // Only allow clicking on the last active message
       if (messageId !== lastActiveMessageId) return;
 
       processingRef.current = true;
       setIsProcessing(true);
       setWaitingForMore(false);
 
-      // ✅ Hide Yes/No immediately and render user bubble instead
       consumeOptionsForMessage(messageId, choice);
 
-      // user bubble for Yes/No
       const userMessage: Message = {
         id: Date.now().toString(),
         role: 'user',
@@ -253,7 +239,7 @@ export const AIAssistantScreen: React.FC = () => {
           const exitMessage: Message = {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
-            content: 'Thank you for using AI Assistant! Feel free to come back anytime. 👋',
+            content: 'Thank you for using AI Assistant! Feel free to come back anytime.',
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, exitMessage]);
@@ -263,10 +249,9 @@ export const AIAssistantScreen: React.FC = () => {
 
           setTimeout(() => {
             navigation.goBack();
-          }, 3000); // ✨ Increased from 1500ms to 3000ms
+          }, 3000);
         }, 300);
       } else {
-        // Yes → show next questions
         setTimeout(() => {
           const newId = (Date.now() + 1).toString();
           const restartMessage: Message = {
@@ -293,7 +278,6 @@ export const AIAssistantScreen: React.FC = () => {
     const shouldShowOptions =
       !isUser && isActiveMessage && !!message.options && message.options.length > 0;
 
-    // ✅ Disable options when loading OR processing OR exit flow OR another request active
     const isDisabled =
       isProcessing || isLoading || isExitingRef.current || activeRequestRef.current;
 
@@ -307,7 +291,7 @@ export const AIAssistantScreen: React.FC = () => {
       >
         {!isUser && !message.hideIcon && (
           <View style={styles.aiIconContainer}>
-            <LinearGradient colors={['#8B5CF6', '#6366F1']} style={styles.aiIcon}>
+            <LinearGradient colors={Gradients.ai as [string, string]} style={styles.aiIcon}>
               <Ionicons name="sparkles" size={16} color="#fff" />
             </LinearGradient>
           </View>
@@ -316,16 +300,20 @@ export const AIAssistantScreen: React.FC = () => {
         <View
           style={[
             styles.bubbleContent,
-            {
-              backgroundColor: isUser ? colors.primary : colors.card,
-              borderColor: colors.border,
-            },
+            isUser
+              ? styles.userBubbleContent
+              : [
+                  colorScheme === 'dark'
+                    ? { ...Glass.elevated }
+                    : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 },
+                  styles.assistantBubbleContent,
+                ],
           ]}
         >
           <Text
             style={[
               styles.messageText,
-              { color: isUser ? colors.primaryForeground : colors.foreground },
+              { color: isUser ? '#fff' : colors.foreground },
             ]}
           >
             {message.content}
@@ -333,43 +321,49 @@ export const AIAssistantScreen: React.FC = () => {
 
           {shouldShowOptions && (
             <View style={styles.optionsContainer}>
-              <Text style={[styles.optionsTitle, { color: colors.mutedForeground }]}>
-                {waitingForMore ? 'Do you have more questions?' : 'Choose a question:'}
-              </Text>
-
-              {message.options!.map((option, index) => (
-                <TouchableOpacity
-                  key={index}
-                  activeOpacity={isDisabled ? 1 : 0.8}
-                  disabled={isDisabled}
-                  style={[
-                    styles.optionButton,
-                    {
-                      backgroundColor: isDisabled ? colors.muted : colors.secondary,
-                      borderColor: colors.border,
-                      opacity: isDisabled ? 0.5 : 1,
-                    },
-                  ]}
-                  onPress={() => {
-                    if (isDisabled) return;
-
-                    if (waitingForMore) {
-                      handleMoreQuestions(option, message.id);
-                    } else {
-                      handleQuestionSelect(option, message.id);
-                    }
-                  }}
-                >
-                  <Text
+              {/* 2-column grid for question options, single row for Yes/No */}
+              <View style={[
+                styles.optionsGrid,
+                waitingForMore && styles.optionsGridSingle,
+              ]}>
+                {message.options!.map((option, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    activeOpacity={isDisabled ? 1 : 0.8}
+                    disabled={isDisabled}
                     style={[
-                      styles.optionText,
-                      { color: isDisabled ? colors.mutedForeground : colors.foreground },
+                      styles.optionButton,
+                      waitingForMore && styles.optionButtonFull,
+                      isDisabled
+                        ? { backgroundColor: colors.muted, borderColor: colors.border, opacity: 0.5 }
+                        : colorScheme === 'dark'
+                          ? { ...Glass.card }
+                          : { backgroundColor: colors.secondary, borderColor: colors.border },
                     ]}
+                    onPress={() => {
+                      if (isDisabled) return;
+
+                      if (waitingForMore) {
+                        handleMoreQuestions(option, message.id);
+                      } else {
+                        handleQuestionSelect(option, message.id);
+                      }
+                    }}
                   >
-                    {option}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    {/* 2px emerald left accent */}
+                    <View style={styles.optionAccent} />
+                    <Text
+                      style={[
+                        styles.optionText,
+                        { color: isDisabled ? colors.mutedForeground : colors.foreground },
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           )}
         </View>
@@ -383,59 +377,77 @@ export const AIAssistantScreen: React.FC = () => {
 
   return (
     <ScreenWrapper backgroundColor={colors.background}>
-      {/* ✨ Responsive Wrapper */}
       <View style={responsiveContainerStyle}>
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        {/* ===== GRADIENT HEADER ===== */}
+        <LinearGradient
+          colors={Gradients.ai as [string, string]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.header}
+        >
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color={colors.foreground} />
+            <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
 
           <View style={styles.headerTitle}>
-            <LinearGradient colors={['#8B5CF6', '#6366F1']} style={styles.headerIcon}>
+            <View style={styles.headerIconCircle}>
               <Ionicons name="sparkles" size={20} color="#fff" />
-            </LinearGradient>
+            </View>
             <View>
-              <Text style={[styles.headerTitleText, { color: colors.foreground }]}>
-                AI Assistant
-              </Text>
-              <Text style={[styles.headerSubtitle, { color: colors.mutedForeground }]}>
+              <Text style={styles.headerTitleText}>AI Assistant</Text>
+              <Text style={styles.headerSubtitle}>
                 Analyzing {reviews.length} reviews
               </Text>
             </View>
           </View>
 
           <View style={{ width: 40 }} />
-        </View>
 
-        <ScrollView
-          ref={scrollViewRef}
-          contentContainerStyle={styles.messagesContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {messages.map(renderMessage)}
+          {/* Purple glow line at bottom */}
+          <View style={styles.headerGlowLine} />
+        </LinearGradient>
 
-          {isLoading && (
-            <View style={[styles.loadingBubble, { backgroundColor: colors.card }]}>
-              <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
-                Analyzing reviews...
-              </Text>
-            </View>
+        {/* ===== CHAT BODY with decorative orbs ===== */}
+        <View style={{ flex: 1, position: 'relative' }}>
+          {/* Decorative background orbs */}
+          {colorScheme === 'dark' && (
+            <>
+              <View style={styles.bgOrbPurple} />
+              <View style={styles.bgOrbGreen} />
+            </>
           )}
-        </ScrollView>
-      </View>{/* ✨ End Responsive Wrapper */}
+
+          <ScrollView
+            ref={scrollViewRef}
+            contentContainerStyle={styles.messagesContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            {messages.map(renderMessage)}
+
+            {isLoading && (
+              <View style={[styles.loadingBubble, colorScheme === 'dark' ? Glass.card : { backgroundColor: colors.card }]}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
+                  Analyzing reviews...
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </View>
     </ScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
+  /* ===== GRADIENT HEADER ===== */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
+    paddingVertical: Spacing.lg,
+    position: 'relative',
   },
   backButton: {
     padding: Spacing.xs,
@@ -445,20 +457,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
   },
-  headerIcon: {
-    width: 36,
-    height: 36,
+  headerIconCircle: {
+    width: 40,
+    height: 40,
     borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitleText: {
     fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
+    color: '#fff',
   },
   headerSubtitle: {
     fontSize: FontSize.xs,
     marginTop: 2,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  headerGlowLine: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(139,92,246,0.5)',
+  },
+
+  /* ===== DECORATIVE ORBS ===== */
+  bgOrbPurple: {
+    position: 'absolute',
+    top: 40,
+    right: -40,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(139,92,246,0.05)',
+    ...Platform.select({
+      web: { filter: 'blur(80px)' } as any,
+      default: { opacity: 0.3 },
+    }),
+  },
+  bgOrbGreen: {
+    position: 'absolute',
+    bottom: 60,
+    left: -20,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(16,185,129,0.03)',
+    ...Platform.select({
+      web: { filter: 'blur(60px)' } as any,
+      default: { opacity: 0.2 },
+    }),
   },
 
   messagesContainer: {
@@ -490,10 +541,19 @@ const styles = StyleSheet.create({
 
   bubbleContent: {
     maxWidth: '85%',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1,
-    ...Shadow.soft,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius['2xl'],
+    ...Shadow.medium,
+  },
+  userBubbleContent: {
+    borderBottomRightRadius: 4,
+    overflow: 'hidden',
+    backgroundColor: '#10B981',
+    borderWidth: 0,
+  },
+  assistantBubbleContent: {
+    borderLeftWidth: 2,
+    borderLeftColor: '#8B5CF6',
   },
 
   messageText: {
@@ -503,26 +563,42 @@ const styles = StyleSheet.create({
 
   optionsContainer: {
     marginTop: Spacing.md,
+  },
+  optionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.sm,
   },
-
-  optionsTitle: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.medium,
-    marginBottom: Spacing.xs,
+  optionsGridSingle: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
   },
 
   optionButton: {
-    paddingVertical: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    alignItems: 'center',
+    width: '48%',
+    overflow: 'hidden',
+  },
+  optionButtonFull: {
+    width: '48%',
+  },
+  optionAccent: {
+    width: 2,
+    height: '100%',
+    backgroundColor: '#10B981',
+    borderRadius: 1,
+    marginRight: Spacing.sm,
+    minHeight: 16,
   },
 
   optionText: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.medium,
+    flex: 1,
   },
 
   timestamp: {
