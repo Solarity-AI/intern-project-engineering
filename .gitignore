@@ -43,6 +43,9 @@ buildNumber.properties
 # Claude Code
 .claude/
 
+# Xcode / Expo derived data
+.derivedData/
+
 # iOS / Xcode
 ios/*.xcodeproj/xcuserdata/
 ios/*.xcodeproj/project.xcworkspace/xcuserdata/
