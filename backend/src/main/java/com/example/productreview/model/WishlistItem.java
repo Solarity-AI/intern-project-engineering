@@ -3,7 +3,12 @@ package com.example.productreview.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "wishlist_items")
+@Table(name = "wishlist_items", indexes = {
+    @Index(name = "idx_wishlist_user", columnList = "userId"),
+    @Index(name = "idx_wishlist_product", columnList = "productId")
+}, uniqueConstraints = {
+    @UniqueConstraint(name = "uk_wishlist_user_product", columnNames = {"userId", "productId"})
+})
 public class WishlistItem {
     
     @Id

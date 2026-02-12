@@ -24,7 +24,8 @@ public class Product {
     private String description;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "product_categories", joinColumns = @JoinColumn(name = "product_id"))
+    @CollectionTable(name = "product_categories", joinColumns = @JoinColumn(name = "product_id"),
+        indexes = @Index(name = "idx_product_categories_product", columnList = "product_id"))
     @Column(name = "category")
     private Set<String> categories = new HashSet<>(); // ✨ Changed from String to Set<String>
 

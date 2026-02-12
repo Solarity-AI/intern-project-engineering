@@ -3,7 +3,12 @@ package com.example.productreview.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "review_votes")
+@Table(name = "review_votes", indexes = {
+    @Index(name = "idx_review_vote_user", columnList = "userId"),
+    @Index(name = "idx_review_vote_review", columnList = "reviewId")
+}, uniqueConstraints = {
+    @UniqueConstraint(name = "uk_review_vote_user_review", columnNames = {"userId", "reviewId"})
+})
 public class ReviewVote {
     
     @Id
