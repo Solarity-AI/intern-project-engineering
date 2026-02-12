@@ -392,6 +392,7 @@ class WishlistViewModel: ObservableObject {
     private let repository: WishlistRepositoryProtocol
     private var currentPage = 0
     private var isLastPage = false
+    private let maxClientCategoryPages = 5
     private var pendingRemoval: PendingRemoval?
     private var failedRemovalItems: [RemovedItem] = []
     private let undoWindowNanoseconds: UInt64 = 3_000_000_000
@@ -615,16 +616,23 @@ class WishlistViewModel: ObservableObject {
                 fetchedProducts.append(contentsOf: filterBySelectedCategory(result.products))
                 isLastFetchedPage = result.isLast
 
-                if selectedCategory == nil || !fetchedProducts.isEmpty || isLastFetchedPage {
+                if selectedCategory == nil
+                    || !fetchedProducts.isEmpty
+                    || isLastFetchedPage
+                    || page >= maxClientCategoryPages - 1 {
                     break
                 }
 
                 page += 1
             }
 
+            let reachedClientPageLimit = selectedCategory != nil
+                && fetchedProducts.isEmpty
+                && !isLastFetchedPage
+                && page >= maxClientCategoryPages - 1
             products = fetchedProducts
             currentPage = page
-            isLastPage = isLastFetchedPage
+            isLastPage = isLastFetchedPage || reachedClientPageLimit
         } catch is CancellationError {
             return
         } catch {
@@ -638,7 +646,8 @@ class WishlistViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            var page = currentPage + 1
+            let firstPage = currentPage + 1
+            var page = firstPage
             var fetchedProducts: [Product] = []
             var isLastFetchedPage = false
 
@@ -650,9 +659,11 @@ class WishlistViewModel: ObservableObject {
                 )
                 fetchedProducts.append(contentsOf: filterBySelectedCategory(result.products))
                 isLastFetchedPage = result.isLast
-                currentPage = page
 
-                if selectedCategory == nil || !fetchedProducts.isEmpty || isLastFetchedPage {
+                if selectedCategory == nil
+                    || !fetchedProducts.isEmpty
+                    || isLastFetchedPage
+                    || page >= firstPage + maxClientCategoryPages - 1 {
                     break
                 }
 
@@ -660,7 +671,12 @@ class WishlistViewModel: ObservableObject {
             }
 
             products.append(contentsOf: fetchedProducts)
-            isLastPage = isLastFetchedPage
+            currentPage = page
+            let reachedClientPageLimit = selectedCategory != nil
+                && fetchedProducts.isEmpty
+                && !isLastFetchedPage
+                && page >= firstPage + maxClientCategoryPages - 1
+            isLastPage = isLastFetchedPage || reachedClientPageLimit
         } catch is CancellationError {
             return
         } catch {

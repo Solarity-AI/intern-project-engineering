@@ -163,6 +163,7 @@ class ProductListViewModel: ObservableObject {
     }
 
     private func showError(_ message: String) {
+        error = message
         toastMessage = message
         toastType = .error
         showToast = true

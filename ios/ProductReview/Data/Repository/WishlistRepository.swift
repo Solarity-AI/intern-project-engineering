@@ -62,7 +62,7 @@ final class WishlistRepository: WishlistRepositoryProtocol {
         )
 
         let products = ProductMapper.map(response.content)
-        cachedIds = Set(products.map(\.id))
+        cachedIds.formUnion(products.map(\.id))
         saveCachedIds()
         return (products, response.totalPages, response.last)
     }
@@ -99,12 +99,7 @@ final class WishlistRepository: WishlistRepositoryProtocol {
     }
 
     func isInWishlist(productId: Int) async -> Bool {
-        // Prefer server truth when reachable; fall back to local cache offline.
-        do {
-            let ids: [Int] = try await apiClient.request(endpoint: "/api/user/wishlist")
-            cachedIds = Set(ids)
-            saveCachedIds()
-        } catch {
+        if cachedIds.isEmpty {
             loadCachedIds()
         }
         return cachedIds.contains(productId)

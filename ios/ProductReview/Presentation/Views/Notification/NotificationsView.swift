@@ -197,6 +197,7 @@ class NotificationsViewModel: ObservableObject {
     func loadNotifications() async {
         isLoading = true
         error = nil
+        defer { isLoading = false }
 
         do {
             notifications = try await repository.getNotifications()
@@ -208,16 +209,16 @@ class NotificationsViewModel: ObservableObject {
         } catch {
             self.error = error.localizedDescription
         }
-
-        isLoading = false
     }
 
     func markAsRead(notificationId: Int) async {
         // Optimistic update
         if let index = notifications.firstIndex(where: { $0.id == notificationId }) {
-            notifications[index].isRead = true
-            unreadCount = max(0, unreadCount - 1)
-            pushBadgeUpdate()
+            if !notifications[index].isRead {
+                notifications[index].isRead = true
+                unreadCount = max(0, unreadCount - 1)
+                pushBadgeUpdate()
+            }
         }
 
         do {

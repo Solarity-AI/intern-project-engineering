@@ -328,7 +328,7 @@ struct ProductListView: View {
                             }
                         }
                     }
-                    .id(shouldShowSkeleton ? "product-list-skeleton" : "product-list-cards-\(viewModel.products.count)")
+                    .id(shouldShowSkeleton ? "product-list-skeleton" : "product-list-cards")
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, contentHorizontalPadding)
 

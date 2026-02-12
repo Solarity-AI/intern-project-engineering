@@ -63,6 +63,8 @@ class AppState: ObservableObject {
     @Published var selectedTab: AppTab = .products
     @Published var pendingProductId: Int? = nil
     @Published var notificationBadgeCount: Int = 0
+    private var navigateToProductObserver: NSObjectProtocol?
+    private var updateBadgeCountObserver: NSObjectProtocol?
 
     init() {
         // Setup notification observers
@@ -85,7 +87,7 @@ class AppState: ObservableObject {
 
     private func setupNotificationObservers() {
         // Deep link to product from notification
-        NotificationCenter.default.addObserver(
+        navigateToProductObserver = NotificationCenter.default.addObserver(
             forName: .navigateToProduct,
             object: nil,
             queue: .main
@@ -100,7 +102,7 @@ class AppState: ObservableObject {
         }
 
         // Update badge count
-        NotificationCenter.default.addObserver(
+        updateBadgeCountObserver = NotificationCenter.default.addObserver(
             forName: .updateBadgeCount,
             object: nil,
             queue: .main
@@ -126,7 +128,12 @@ class AppState: ObservableObject {
     }
 
     deinit {
-        NotificationCenter.default.removeObserver(self)
+        if let navigateToProductObserver {
+            NotificationCenter.default.removeObserver(navigateToProductObserver)
+        }
+        if let updateBadgeCountObserver {
+            NotificationCenter.default.removeObserver(updateBadgeCountObserver)
+        }
     }
 }
 
@@ -156,8 +163,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Clear badge when app becomes active
-        application.applicationIconBadgeNumber = 0
+        // Keep app state and icon badge synchronized through the shared update path.
+        NotificationCenter.default.post(
+            name: .updateBadgeCount,
+            object: nil,
+            userInfo: ["count": 0]
+        )
     }
 
     // MARK: - Notification Permission
@@ -338,30 +349,32 @@ class LocalNotificationManager {
                 return
             }
 
-            let content = UNMutableNotificationContent()
-            content.title = "Product Review"
-            content.body = message
-            content.sound = .default
-            content.badge = NSNumber(value: UIApplication.shared.applicationIconBadgeNumber + 1)
-            content.categoryIdentifier = "PRODUCT_NOTIFICATION"
-            content.userInfo = ["productId": String(productId)]
+            DispatchQueue.main.async {
+                let content = UNMutableNotificationContent()
+                content.title = "Product Review"
+                content.body = message
+                content.sound = .default
+                content.badge = NSNumber(value: UIApplication.shared.applicationIconBadgeNumber + 1)
+                content.categoryIdentifier = "PRODUCT_NOTIFICATION"
+                content.userInfo = ["productId": String(productId)]
 
-            // Create trigger
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
+                // Create trigger
+                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
 
-            // Create request
-            let request = UNNotificationRequest(
-                identifier: "product-\(productId)-\(Date().timeIntervalSince1970)",
-                content: content,
-                trigger: trigger
-            )
+                // Create request
+                let request = UNNotificationRequest(
+                    identifier: "product-\(productId)-\(Date().timeIntervalSince1970)",
+                    content: content,
+                    trigger: trigger
+                )
 
-            // Schedule notification
-            UNUserNotificationCenter.current().add(request) { error in
-                if let error = error {
-                    print("❌ Failed to schedule notification: \(error.localizedDescription)")
-                } else {
-                    print("✅ Scheduled notification for product \(productId)")
+                // Schedule notification
+                UNUserNotificationCenter.current().add(request) { error in
+                    if let error = error {
+                        print("❌ Failed to schedule notification: \(error.localizedDescription)")
+                    } else {
+                        print("✅ Scheduled notification for product \(productId)")
+                    }
                 }
             }
         }
