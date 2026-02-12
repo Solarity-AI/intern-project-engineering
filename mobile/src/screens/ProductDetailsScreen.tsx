@@ -98,8 +98,11 @@ const ProductDetailsContent: React.FC = () => {
   useEffect(() => {
     fetchProduct(productId);
     fetchUserVotes();
+  }, [productId, fetchProduct, fetchUserVotes]);
+
+  useEffect(() => {
     fetchReviews(productId, 0, false, selectedRating);
-  }, [productId, selectedRating]);
+  }, [productId, selectedRating, fetchReviews]);
 
   useEffect(() => {
     if (error) {

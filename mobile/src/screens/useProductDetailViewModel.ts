@@ -3,15 +3,19 @@ import { getProduct, getReviews, getUserVotedReviews } from '../services/api';
 import type { ApiProduct, ApiReview } from '../services/api';
 import type { Review } from '../types';
 
-const mapApiReviewToReview = (apiReview: ApiReview, productId: string): Review => ({
-  id: String(apiReview.id ?? Date.now()),
-  productId,
-  userName: apiReview.reviewerName || 'Anonymous',
-  rating: apiReview.rating,
-  comment: apiReview.comment,
-  createdAt: apiReview.createdAt || new Date().toISOString(),
-  helpfulCount: apiReview.helpfulCount ?? 0,
-});
+const mapApiReviewToReview = (apiReview: ApiReview, productId: string): Review => {
+  const reviewerName = apiReview.reviewerName || 'Anonymous';
+  return {
+    id: String(apiReview.id ?? Date.now()),
+    productId,
+    userName: reviewerName,
+    reviewerName,
+    rating: apiReview.rating,
+    comment: apiReview.comment,
+    createdAt: apiReview.createdAt || new Date().toISOString(),
+    helpfulCount: apiReview.helpfulCount ?? 0,
+  };
+};
 
 /**
  * Manages the async fetch state for the product details screen.
