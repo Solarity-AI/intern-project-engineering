@@ -1,4 +1,5 @@
-// Shopify/Amazon-style Notifications Screen
+// NotificationsScreen — v3 Radical Redesign
+// 3px left accent lines, elevated glass cards, type-colored glow for unread
 import React, { useMemo, useState } from 'react';
 import {
   View,
@@ -6,14 +7,12 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  Animated,
   useWindowDimensions,
   Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useNotifications, Notification, NotificationType } from '../context/NotificationContext';
@@ -25,6 +24,7 @@ import {
   FontWeight,
   BorderRadius,
   Shadow,
+  Glass,
 } from '../constants/theme';
 
 type FilterType = 'all' | NotificationType;
@@ -53,40 +53,31 @@ function getTimeAgo(date: Date): string {
 
 function getNotificationIcon(type: NotificationType): keyof typeof Ionicons.glyphMap {
   switch (type) {
-    case 'review':
-      return 'star';
-    case 'order':
-      return 'cube';
-    case 'system':
-      return 'notifications';
+    case 'review': return 'star';
+    case 'order': return 'cube';
+    case 'system': return 'notifications';
   }
 }
 
-function getNotificationColor(type: NotificationType, colors: ReturnType<typeof useTheme>['colors']): string {
+function getNotificationAccentColor(type: NotificationType): string {
   switch (type) {
-    case 'review':
-      return colors.primary;
-    case 'order':
-      return colors.success;
-    case 'system':
-      return '#6366F1'; // Indigo
+    case 'review': return '#10B981'; // emerald
+    case 'order': return '#3B82F6'; // blue
+    case 'system': return '#8B5CF6'; // purple
   }
 }
 
 export const NotificationsScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { colors } = useTheme();
+  const { colors, colorScheme } = useTheme();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('all');
 
-  // ✨ Responsive: Get window dimensions
   const { width: windowWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
   const MAX_CONTENT_WIDTH = 600;
-  const isWideScreen = windowWidth > MAX_CONTENT_WIDTH;
 
-  // ✨ Responsive container style
   const responsiveContainerStyle = {
     width: '100%' as const,
     maxWidth: isWeb ? MAX_CONTENT_WIDTH : undefined,
@@ -100,12 +91,9 @@ export const NotificationsScreen: React.FC = () => {
 
   const handleNotificationPress = (notification: Notification) => {
     markAsRead(notification.id);
-    
-    // Navigate to notification detail screen
     navigation.navigate('NotificationDetail', { notificationId: notification.id } as any);
   };
 
-  // ✨ Improved back handler for Web/Deep Links
   const handleBack = () => {
     if (navigation.canGoBack()) {
       navigation.goBack();
@@ -142,7 +130,7 @@ export const NotificationsScreen: React.FC = () => {
   };
 
   const renderNotification = ({ item }: { item: Notification }) => {
-    const iconColor = getNotificationColor(item.type, colors);
+    const accentColor = getNotificationAccentColor(item.type);
 
     return (
       <TouchableOpacity
@@ -150,18 +138,25 @@ export const NotificationsScreen: React.FC = () => {
         activeOpacity={0.7}
         style={[
           styles.notificationCard,
-          {
-            backgroundColor: item.isRead ? colors.card : colors.accent,
-            borderColor: item.isRead ? colors.border : colors.primary + '30',
+          colorScheme === 'dark'
+            ? Glass.elevated
+            : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 },
+          // Unread: type-colored glow
+          !item.isRead && {
+            shadowColor: accentColor,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.3,
+            shadowRadius: 12,
+            elevation: 8,
           },
         ]}
       >
-        {/* Unread dot indicator */}
-        {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
+        {/* 3px left accent line */}
+        <View style={[styles.accentLine, { backgroundColor: accentColor }]} />
 
         {/* Icon */}
-        <View style={[styles.iconContainer, { backgroundColor: iconColor + '15' }]}>
-          <Ionicons name={getNotificationIcon(item.type)} size={20} color={iconColor} />
+        <View style={[styles.iconContainer, { backgroundColor: accentColor + '15' }]}>
+          <Ionicons name={getNotificationIcon(item.type)} size={20} color={accentColor} />
         </View>
 
         {/* Content */}
@@ -211,7 +206,6 @@ export const NotificationsScreen: React.FC = () => {
 
   const renderHeader = () => (
     <View>
-      {/* Filters */}
       <View style={styles.filtersContainer}>
         {FILTERS.map(renderFilterChip)}
       </View>
@@ -220,7 +214,6 @@ export const NotificationsScreen: React.FC = () => {
 
   return (
     <ScreenWrapper backgroundColor={colors.background}>
-      {/* ✨ Responsive Wrapper */}
       <View style={responsiveContainerStyle}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -255,7 +248,7 @@ export const NotificationsScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
         />
-      </View>{/* ✨ End Responsive Wrapper */}
+      </View>
     </ScreenWrapper>
   );
 };
@@ -266,7 +259,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.lg,
     borderBottomWidth: 1,
   },
   headerLeft: {
@@ -296,8 +289,8 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   filterChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
   },
@@ -312,20 +305,20 @@ const styles = StyleSheet.create({
   notificationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
+    padding: Spacing.lg,
+    paddingLeft: Spacing.lg + 6, // space for accent line
+    borderRadius: BorderRadius['2xl'],
     gap: Spacing.md,
     position: 'relative',
+    overflow: 'hidden',
     ...Shadow.soft,
   },
-  unreadDot: {
+  accentLine: {
     position: 'absolute',
-    top: Spacing.md,
-    left: Spacing.sm,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
   },
   iconContainer: {
     width: 44,

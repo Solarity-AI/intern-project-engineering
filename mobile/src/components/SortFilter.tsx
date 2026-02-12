@@ -10,7 +10,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Spacing, FontSize, BorderRadius, FontWeight } from '../constants/theme';
+import { Spacing, FontSize, BorderRadius, FontWeight, Glow, Shadow } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 export type SortOption = {
@@ -58,6 +58,7 @@ export const SortFilter: React.FC<SortFilterProps> = ({
               {
                 backgroundColor: isSelected ? colors.primary : colors.secondary,
                 borderColor: isSelected ? colors.primary : colors.border,
+                ...(isSelected ? Glow.primarySoft : {}),
               },
             ]}
           >
@@ -87,13 +88,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
   },
   chipText: {
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.medium,
+    fontWeight: FontWeight.semibold,
+    letterSpacing: 0.3,
   },
 });

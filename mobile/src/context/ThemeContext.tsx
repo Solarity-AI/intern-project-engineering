@@ -23,13 +23,13 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 // ✨ Background colors for preventing white flash
 const THEME_BACKGROUNDS = {
-  light: '#FAFAFA',
-  dark: '#0A0A0A',
+  light: '#F8FAFC',
+  dark: '#0B1120',
 };
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const systemColorScheme = useColorScheme();
-  const initialScheme: ColorScheme = systemColorScheme === 'dark' ? 'dark' : 'light';
+  const initialScheme: ColorScheme = 'dark';
   
   const [colorScheme, setColorScheme] = useState<ColorScheme>(initialScheme);
   const [isThemeLoaded, setIsThemeLoaded] = useState(false);

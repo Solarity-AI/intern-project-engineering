@@ -12,6 +12,7 @@ export interface WishlistItem {
   imageUrl?: string;
   category?: string;
   averageRating?: number;
+  reviewCount?: number;
   addedAt: Date;
 }
 

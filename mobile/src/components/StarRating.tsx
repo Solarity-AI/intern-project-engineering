@@ -1,13 +1,14 @@
 // React Native StarRating Component
-// Compatible with iOS and Android
+// Compatible with iOS and Android — with tap animation
 
-import React from 'react';
+import React, { useRef, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ViewStyle,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Spacing, FontSize } from '../constants/theme';
@@ -21,13 +22,61 @@ interface StarRatingProps {
   onRatingChange?: (rating: number) => void;
   showValue?: boolean;
   style?: ViewStyle;
-  compact?: boolean; // FIX: 4 sütunda küçük yıldız
+  compact?: boolean;
 }
 
 const sizeMap = {
   sm: 16,
   md: 20,
   lg: 24,
+};
+
+const AnimatedStar: React.FC<{
+  index: number;
+  iconName: 'star' | 'star-half' | 'star-outline';
+  iconSize: number;
+  color: string;
+  interactive: boolean;
+  onPress: (index: number) => void;
+}> = ({ index, iconName, iconSize, color, interactive, onPress }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePress = useCallback(() => {
+    if (!interactive) return;
+
+    Animated.sequence([
+      Animated.spring(scaleAnim, {
+        toValue: 1.4,
+        useNativeDriver: true,
+        speed: 50,
+        bounciness: 15,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 50,
+        bounciness: 8,
+      }),
+    ]).start();
+
+    onPress(index);
+  }, [interactive, index, onPress, scaleAnim]);
+
+  const StarComponent = interactive ? TouchableOpacity : View;
+
+  return (
+    <StarComponent
+      onPress={handlePress}
+      style={styles.starContainer}
+      activeOpacity={0.7}
+      accessibilityLabel={`${index + 1} star${index > 0 ? 's' : ''}`}
+      accessibilityRole={interactive ? 'button' : undefined}
+    >
+      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+        <Ionicons name={iconName} size={iconSize} color={color} />
+      </Animated.View>
+    </StarComponent>
+  );
 };
 
 export const StarRating: React.FC<StarRatingProps> = ({
@@ -38,25 +87,22 @@ export const StarRating: React.FC<StarRatingProps> = ({
   onRatingChange,
   showValue = false,
   style,
-  compact = false, // FIX: Default false
+  compact = false,
 }) => {
   const { colors } = useTheme();
-  // FIX: 4 sütunda 12px, yoksa normal
   const iconSize = compact ? 12 : sizeMap[size];
 
-  const handlePress = (index: number) => {
+  const handlePress = useCallback((index: number) => {
     if (interactive && onRatingChange) {
       onRatingChange(index + 1);
     }
-  };
+  }, [interactive, onRatingChange]);
 
   const renderStar = (index: number) => {
     const floorRating = Math.floor(rating);
     const isFull = index < floorRating;
     const isHalf = index === floorRating && rating % 1 >= 0.2 && rating % 1 < 0.8;
     const isActuallyFull = index === floorRating && rating % 1 >= 0.8;
-
-    const StarComponent = interactive ? TouchableOpacity : View;
 
     let iconName: 'star' | 'star-half' | 'star-outline' = 'star-outline';
     if (isFull || isActuallyFull) {
@@ -68,18 +114,15 @@ export const StarRating: React.FC<StarRatingProps> = ({
     const isFilled = iconName !== 'star-outline';
 
     return (
-      <StarComponent
+      <AnimatedStar
         key={index}
-        onPress={() => handlePress(index)}
-        style={styles.starContainer}
-        activeOpacity={0.7}
-      >
-        <Ionicons
-          name={iconName}
-          size={iconSize}
-          color={isFilled ? colors.starFilled : colors.starEmpty}
-        />
-      </StarComponent>
+        index={index}
+        iconName={iconName}
+        iconSize={iconSize}
+        color={isFilled ? colors.starFilled : colors.starEmpty}
+        interactive={interactive}
+        onPress={handlePress}
+      />
     );
   };
 

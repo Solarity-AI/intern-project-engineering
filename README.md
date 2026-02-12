@@ -15,7 +15,8 @@ Ensure you have the following installed:
 *   **Java JDK 17+**
 *   **Node.js 20+** & **npm**
 *   **Git**
-*   **Android Studio / Xcode** (for mobile emulation) or **Expo Go** on a physical device.
+*   **Android Studio / Xcode 15+** (for mobile emulation) or **Expo Go** on a physical device.
+*   **XcodeGen** (for iOS native app): `brew install xcodegen`
 
 ### 2. Backend Setup
 ```bash
@@ -36,13 +37,14 @@ cd backend
 
 See: `README-Android-Kotlin-FINAL.md`
 
-#### iOS
-- Swift
-- SwiftUI
-- MVVM + async/await
-- Apple Human Interface Guidelines
+#### iOS (Native Swift App)
+- Swift 5.9+ / SwiftUI
+- MVVM + Clean Architecture
+- Swift Concurrency (async/await, MainActor)
+- Minimum iOS 17.0
+- XcodeGen for project generation
 
-See: `README-iOS-Swift-FINAL.md`
+See: [`ios/README.md`](ios/README.md) for full setup and architecture details.
 
 ```bash
 cd mobile
@@ -52,6 +54,16 @@ npx expo start
 *   Press **'w'** for Web version.
 *   Press **'a'** for Android Emulator.
 *   Scan the QR code with **Expo Go** for physical device testing.
+
+### 4. iOS Native App Setup
+```bash
+cd ios
+xcodegen generate              # Generate Xcode project from project.yml
+open ProductReview.xcodeproj   # Open in Xcode
+# Select target device (iPhone 16 Pro recommended) → Cmd+R to build & run
+```
+*   The app auto-connects to the deployed backend in release builds and `localhost:8080` in debug builds.
+*   See [`ios/README.md`](ios/README.md) for detailed architecture and feature documentation.
 
 ---
 
@@ -63,12 +75,20 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 *   **Controller Layer:** REST API design with versioning and DTO mapping.
 *   **Service Layer:** Business logic encapsulation with Dependency Inversion.
 *   **Data Layer:** Spring Data JPA with optimized SQL queries for filtering and aggregation.
-*   **Security:** (Planned) JWT-based authentication and RBAC.
+*   **Security:** Centralized CORS configuration, Bucket4j rate limiting (60 req/min per client), production profile with H2 console disabled.
+*   **Error Handling:** Custom exception classes with structured `ErrorResponse` (timestamp, code, message, details).
 
-### Frontend (Mobile)
+### Frontend — React Native (Mobile/Web)
 *   **State Management:** React Context API for Wishlist, Search, and Notifications.
 *   **Responsive Design:** Adaptive layouts for Mobile (Android/iOS) and Web (Vercel).
-*   **Networking:** Centralized API service with race-condition protection and abort controllers.
+*   **Networking:** Centralized API service with retry logic (exponential backoff), request deduplication, memory caching, and structured error handling.
+*   **UI Design:** Glassmorphism theme with Glass cards, Gradients, and Glow effects.
+
+### Frontend — iOS Native (Swift/SwiftUI)
+*   **Architecture:** MVVM with Clean Architecture (Domain, Data, Presentation layers).
+*   **Networking:** URLSession with async/await, exponential backoff retry, and connectivity monitoring.
+*   **UI Components:** Reusable components including shimmer loading, toast notifications, animated heart buttons, and rating stars.
+*   **Utilities:** Haptic feedback, theme management, image caching (NSCache, 50MB), and search history persistence.
 
 ---
 
@@ -103,6 +123,16 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 │   ├── src/screens/        # Screen-level Components
 │   ├── src/context/        # Global State Management
 │   └── vercel.json         # Web Deployment Configuration
+├── ios/                    # Native iOS App (Swift/SwiftUI)
+│   ├── ProductReview/      # Main app source
+│   │   ├── App/            # App entry, navigation, core utilities
+│   │   ├── Data/           # Network, local storage, mappers, repositories
+│   │   ├── Domain/         # Models & repository protocols
+│   │   └── Presentation/   # Views, ViewModels, reusable components
+│   ├── ProductReviewTests/ # Unit tests
+│   ├── ProductReviewUITests/ # UI tests
+│   ├── project.yml         # XcodeGen configuration
+│   └── README.md           # iOS-specific documentation
 └── README.md               # Main Project Entry Point
 ```
 
@@ -150,20 +180,21 @@ vercel login           # Login to Vercel
 vercel --prod          # Deploy to production
 ```
 
-### Color Palette (Updated 2026-01)
-The application features a professional, modern color system with WCAG AA compliance:
+### Color Palette (Updated 2026-02)
+The application features a premium dark SaaS design with glassmorphism effects:
+
+**Dark Mode (Default):**
+- Background: `#0B1120` (Deep navy)
+- Primary: `#10B981` (Emerald green)
+- Accent: `#FBBF24` (Golden yellow)
+- Glass cards with `backdrop-filter: blur()` for web
 
 **Light Mode:**
-- Primary: `#0066FF` (Vibrant Blue - trustworthy, modern)
-- Background: `#FAFAFA` (Soft neutral for reduced eye strain)
-- Accent: `#4F46E5` (Professional Indigo)
+- Background: `#F8FAFC` (Soft slate)
+- Primary: `#059669` (Emerald)
+- Accent: `#D97706` (Amber)
 
-**Dark Mode:**
-- Primary: `#3B82F6` (Softer blue for dark mode)
-- Background: `#0A0A0A` (OLED optimized)
-- Accent: `#C7D2FE` (High contrast indigo)
-
-All colors maintain optimal contrast ratios for accessibility standards.
+Theme exports: `Colors`, `Gradients`, `Glass`, `Glow`, `Shadow`, `Spacing`, `FontSize`, `BorderRadius`.
 
 ---
 
@@ -181,6 +212,8 @@ Future interns are expected to:
 *   **Port 8080 Conflict:** If the backend fails to start, check if another process is using port 8080.
 *   **Network Issues:** Ensure the `BASE_URL` in `mobile/src/services/api.ts` matches your backend IP (use local IP for physical devices).
 *   **Vercel 404 on Refresh:** Fixed via `vercel.json` rewrites. If issues persist, ensure the file is in the `mobile/` root.
+*   **iOS — XcodeGen:** If the `.xcodeproj` is missing, install XcodeGen (`brew install xcodegen`) and run `xcodegen generate` inside the `ios/` directory.
+*   **iOS — Simulator:** Requires Xcode 15.0+ and macOS Sonoma (14.0+). Target device must be iOS 17.0+.
 
 ---
 
@@ -198,4 +231,4 @@ The final submission must include the following items:
 8. **Final Presentation:** A slide deck summarizing the project and learnings.
 
 **Maintained by:** @MehmetBegun & Engineering Team
-**Last Updated:** January 2026
+**Last Updated:** February 2026

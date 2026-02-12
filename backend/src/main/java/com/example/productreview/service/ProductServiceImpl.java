@@ -2,6 +2,7 @@ package com.example.productreview.service;
 
 import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.dto.ReviewDTO;
+import com.example.productreview.exception.ResourceNotFoundException;
 import com.example.productreview.model.Product;
 import com.example.productreview.model.Review;
 import com.example.productreview.model.ReviewVote;
@@ -112,7 +113,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public Product getProductById(Long id) {
         return productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product", id));
     }
 
     @Override
@@ -155,7 +156,7 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     public ReviewDTO markReviewAsHelpful(Long reviewId, String userId) {
         Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new RuntimeException("Review not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Review", reviewId));
 
         if (review.getHelpfulCount() == null) {
             review.setHelpfulCount(0);

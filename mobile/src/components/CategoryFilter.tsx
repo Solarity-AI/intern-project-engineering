@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { categories } from '../constants/data';
-import { Spacing, FontSize, BorderRadius, Shadow } from '../constants/theme';
+import { Spacing, FontSize, BorderRadius, Shadow, Gradients, Glow } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 interface CategoryFilterProps {
@@ -42,10 +42,10 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={['#F59E0B', '#FBBF24']}
+                colors={Gradients.brand}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={[styles.chip, Shadow.soft]}
+                style={[styles.chip, Glow.primarySoft]}
               >
                 <Text style={[styles.chipText, { color: colors.primaryForeground }]}>
                   {category}
@@ -60,7 +60,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
             key={category}
             onPress={() => onCategoryChange(category)}
             activeOpacity={0.7}
-            style={[styles.chip, { backgroundColor: colors.secondary }]}
+            style={[styles.chip, { backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border }]}
           >
             <Text style={[styles.chipText, { color: colors.secondaryForeground }]}>
               {category}
@@ -79,12 +79,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   chip: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
     borderRadius: BorderRadius.full,
   },
   chipText: {
     fontSize: FontSize.sm,
-    fontWeight: '500',
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });

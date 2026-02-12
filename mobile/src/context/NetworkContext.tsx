@@ -2,6 +2,7 @@
 // Uses fetch-based connectivity check instead of native module
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
+import { BASE_URL } from '../services/api';
 
 interface NetworkContextType {
   isConnected: boolean;
@@ -13,35 +14,22 @@ interface NetworkContextType {
 const NetworkContext = createContext<NetworkContextType | undefined>(undefined);
 
 // Simple connectivity check using fetch
+// On web, use our own backend health endpoint to avoid CORS issues
 const checkInternetConnection = async (): Promise<boolean> => {
   try {
-    // Use a reliable endpoint with short timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    const response = await fetch('https://www.google.com/generate_204', {
-      method: 'HEAD',
+
+    // Use our backend's actuator health endpoint (CORS-enabled)
+    const response = await fetch(`${BASE_URL}/actuator/health`, {
+      method: 'GET',
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeoutId);
-    return response.ok || response.status === 204;
-  } catch (error) {
-    // Try backup endpoint
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
-      const response = await fetch('https://httpbin.org/get', {
-        method: 'HEAD',
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return response.ok;
+  } catch {
+    return false;
   }
 };
 
