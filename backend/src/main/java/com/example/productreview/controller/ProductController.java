@@ -2,6 +2,7 @@ package com.example.productreview.controller;
 
 import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.dto.ReviewDTO;
+import com.example.productreview.exception.ValidationException;
 import com.example.productreview.service.ProductService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -19,13 +20,26 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
-    
+
     private static final Logger log = LoggerFactory.getLogger(ProductController.class);
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final ProductService productService;
 
     public ProductController(ProductService productService) {
         this.productService = productService;
+    }
+
+    private void validatePagination(int page, int size) {
+        if (page < 0) {
+            throw new ValidationException("Page index must not be negative");
+        }
+        if (size < 1) {
+            throw new ValidationException("Page size must be at least 1");
+        }
+        if (size > MAX_PAGE_SIZE) {
+            throw new ValidationException("Page size must not exceed " + MAX_PAGE_SIZE);
+        }
     }
 
     // ✨ NEW: Global stats endpoint for hero section (supports filtering)
@@ -44,13 +58,15 @@ public class ProductController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "name,asc") String sort) {
         
+        validatePagination(page, size);
+
         log.info("getAllProducts called with category: {}, search: {}, sort: {}", category, search, sort);
-        
+
         String[] sortParams = sort.split(",");
         String sortField = sortParams[0];
-        Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc") 
+        Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")
                 ? Sort.Direction.DESC : Sort.Direction.ASC;
-        
+
         // ✨ FIX: Case-insensitive sorting for name field
         // This ensures "iPhone" sorts correctly with other "I" names
         Sort.Order order = new Sort.Order(direction, sortField);
@@ -76,12 +92,14 @@ public class ProductController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
-        
+
+        validatePagination(page, size);
+
         String[] sortParams = sort.split(",");
         String sortField = sortParams[0];
-        Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc") 
+        Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")
                 ? Sort.Direction.DESC : Sort.Direction.ASC;
-        
+
         // ✨ FIX: Case-insensitive sorting for reviewerName field as well
         Sort.Order order = new Sort.Order(direction, sortField);
         if (sortField.equalsIgnoreCase("reviewerName")) {

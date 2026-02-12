@@ -1,6 +1,7 @@
 package com.example.productreview.controller;
 
 import com.example.productreview.dto.ProductDTO;
+import com.example.productreview.exception.ValidationException;
 import com.example.productreview.model.AppNotification;
 import com.example.productreview.service.UserService;
 import org.springframework.data.domain.Page;
@@ -17,10 +18,24 @@ import java.util.Map;
 @RequestMapping("/api/user")
 public class UserController {
 
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final UserService userService;
 
     public UserController(UserService userService) {
         this.userService = userService;
+    }
+
+    private void validatePagination(int page, int size) {
+        if (page < 0) {
+            throw new ValidationException("Page index must not be negative");
+        }
+        if (size < 1) {
+            throw new ValidationException("Page size must be at least 1");
+        }
+        if (size > MAX_PAGE_SIZE) {
+            throw new ValidationException("Page size must not exceed " + MAX_PAGE_SIZE);
+        }
     }
 
     // --- Wishlist ---
@@ -37,7 +52,9 @@ public class UserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id,desc") String sort) {
-        
+
+        validatePagination(page, size);
+
         String[] sortParams = sort.split(",");
         Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc") 
                 ? Sort.Direction.DESC : Sort.Direction.ASC;
