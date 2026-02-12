@@ -35,20 +35,10 @@ import { ToastProvider, useToast } from '../context/ToastContext';
 
 import { RootStackParamList, Review } from '../types';
 import { Spacing, FontSize, FontWeight, BorderRadius, Shadow } from '../constants/theme';
-import { getProduct, postReview, getReviews, markReviewAsHelpful, getUserVotedReviews, ApiReview } from '../services/api';
+import { postReview, markReviewAsHelpful } from '../services/api';
+import { useProductDetailViewModel } from './useProductDetailViewModel';
 
 type RouteType = RouteProp<RootStackParamList, 'ProductDetails'>;
-
-// ✨ Helper function to convert ApiReview to Review
-const mapApiReviewToReview = (apiReview: ApiReview, productId: string): Review => ({
-  id: String(apiReview.id ?? Date.now()),
-  productId: productId,
-  userName: apiReview.reviewerName || 'Anonymous',
-  rating: apiReview.rating,
-  comment: apiReview.comment,
-  createdAt: apiReview.createdAt || new Date().toISOString(),
-  helpfulCount: apiReview.helpfulCount ?? 0,
-});
 
 const ProductDetailsContent: React.FC = () => {
   const route = useRoute<RouteType>();
@@ -77,17 +67,25 @@ const ProductDetailsContent: React.FC = () => {
   const routeImageUrl = route.params?.imageUrl;
   const routeName = route.params?.name;
 
-  const [product, setProduct] = useState<any>(null);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [helpfulReviews, setHelpfulReviews] = useState<string[]>([]);
-  const [selectedRating, setSelectedRating] = useState<number | null>(null);
+  const {
+    product,
+    loading,
+    error,
+    reviews,
+    setReviews,
+    hasMore,
+    currentPage,
+    totalPages,
+    loadingMore,
+    helpfulReviews,
+    setHelpfulReviews,
+    fetchProduct,
+    fetchReviews,
+    fetchUserVotes,
+  } = useProductDetailViewModel();
 
-  const [currentPage, setCurrentPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [totalPages, setTotalPages] = useState(0);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [selectedRating, setSelectedRating] = useState<number | null>(null);
 
   const inWishlist = isInWishlist(productId);
   const wishlistButtonBg = inWishlist
@@ -98,72 +96,20 @@ const ProductDetailsContent: React.FC = () => {
   const wishlistIconColor = inWishlist ? '#fff' : colors.foreground;
 
   useEffect(() => {
-    fetchProduct();
+    fetchProduct(productId);
     fetchUserVotes();
-    fetchReviews(0, false);
+    fetchReviews(productId, 0, false, selectedRating);
   }, [productId, selectedRating]);
 
-  const fetchProduct = async () => {
-    try {
-      setLoading(true);
-      const data = await getProduct(productId);
-      setProduct(data);
-    } catch (error: any) {
-      showToast({
-        type: 'error',
-        title: 'Error',
-        message: error.message || 'Failed to load product',
-      });
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (error) {
+      showToast({ type: 'error', title: 'Error', message: error });
     }
-  };
-
-  const fetchReviews = async (pageNum: number = 0, append: boolean = false) => {
-    try {
-      if (append) {
-        setLoadingMore(true);
-      }
-
-      const reviewsData = await getReviews(productId, {
-        page: pageNum,
-        size: 10,
-        rating: selectedRating
-      });
-
-      // ✨ Convert ApiReview[] to Review[]
-      const newReviews: Review[] = (reviewsData.content || []).map(
-        (apiReview: ApiReview) => mapApiReviewToReview(apiReview, productId)
-      );
-      
-      if (append) {
-        setReviews(prev => [...prev, ...newReviews]);
-      } else {
-        setReviews(newReviews);
-      }
-
-      setCurrentPage(pageNum);
-      setTotalPages(reviewsData.totalPages);
-      setHasMore(!reviewsData.last);
-    } catch (error: any) {
-      console.error('Error fetching reviews:', error);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
+  }, [error]);
 
   const loadMoreReviews = () => {
     if (!loadingMore && hasMore) {
-      fetchReviews(currentPage + 1, true);
-    }
-  };
-
-  const fetchUserVotes = async () => {
-    try {
-      const votedIds = await getUserVotedReviews();
-      setHelpfulReviews(votedIds.map(String));
-    } catch (error) {
-      console.error('Error fetching user votes:', error);
+      fetchReviews(productId, currentPage + 1, true, selectedRating);
     }
   };
 
@@ -195,8 +141,8 @@ const ProductDetailsContent: React.FC = () => {
       // ✨ Emit event to update ProductList
       DeviceEventEmitter.emit('reviewAdded', { productId });
 
-      await fetchProduct();
-      await fetchReviews(0, false);
+      await fetchProduct(productId);
+      await fetchReviews(productId, 0, false, selectedRating);
       
     } catch (error: any) {
       showToast({
