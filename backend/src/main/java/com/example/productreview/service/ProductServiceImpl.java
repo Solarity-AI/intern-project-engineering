@@ -195,67 +195,44 @@ public class ProductServiceImpl implements ProductService {
         return aiSummaryService.chatWithReviews(productId, question, reviews);
     }
     
-    // ✨ NEW: Get global statistics from database (supports filtering)
     @Override
     public Map<String, Object> getGlobalStats(String category, String search) {
         boolean hasCategory = category != null && !category.isEmpty() && !category.equalsIgnoreCase("All");
         boolean hasSearch = search != null && !search.trim().isEmpty();
-        
-        List<Product> products;
-        
-        // Get filtered products
+
+        List<Object[]> results;
         if (hasCategory && hasSearch) {
-            products = productRepository.findAll().stream()
-                    .filter(p -> p.getCategories() != null && p.getCategories().contains(category))
-                    .filter(p -> p.getName().toLowerCase().contains(search.toLowerCase()))
-                    .collect(Collectors.toList());
+            results = productRepository.getCategoryAndSearchStats(category, search);
         } else if (hasCategory) {
-            products = productRepository.findAll().stream()
-                    .filter(p -> p.getCategories() != null && p.getCategories().contains(category))
-                    .collect(Collectors.toList());
+            results = productRepository.getCategoryStats(category);
         } else if (hasSearch) {
-            products = productRepository.findAll().stream()
-                    .filter(p -> p.getName().toLowerCase().contains(search.toLowerCase()))
-                    .collect(Collectors.toList());
+            results = productRepository.getSearchStats(search);
         } else {
-            products = productRepository.findAll();
+            results = productRepository.getGlobalStats();
         }
-        
-        long totalProducts = products.size();
-        
-        // Sum of all review counts from filtered products
-        long totalReviews = products.stream()
-                .mapToLong(p -> p.getReviewCount() != null ? p.getReviewCount() : 0)
-                .sum();
-        
-        // Calculate average rating across filtered products
-        Double avgRating = products.stream()
-                .filter(p -> p.getAverageRating() != null && p.getAverageRating() > 0)
-                .mapToDouble(Product::getAverageRating)
-                .average()
-                .orElse(0.0);
-        
-        // Round to 1 decimal place
+
+        Object[] row = results.get(0);
+        long totalReviews = row[0] != null ? ((Number) row[0]).longValue() : 0L;
+        double avgRating = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
+        long totalProducts = row[2] != null ? ((Number) row[2]).longValue() : 0L;
+
         avgRating = Math.round(avgRating * 10.0) / 10.0;
-        
+
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalProducts", totalProducts);
         stats.put("totalReviews", totalReviews);
         stats.put("averageRating", avgRating);
-        
-        log.info("Filtered stats (category={}, search={}): products={}, reviews={}, avgRating={}", 
+
+        log.info("Filtered stats (category={}, search={}): products={}, reviews={}, avgRating={}",
                 category, search, totalProducts, totalReviews, avgRating);
-        
+
         return stats;
     }
 
     private void updateProductStats(Product product) {
-        List<Review> reviews = reviewRepository.findByProductId(product.getId());
-        int count = reviews.size();
-        double average = reviews.stream()
-                .mapToInt(Review::getRating)
-                .average()
-                .orElse(0.0);
+        Object[] stats = reviewRepository.getReviewStats(product.getId()).get(0);
+        int count = stats[0] != null ? ((Number) stats[0]).intValue() : 0;
+        double average = stats[1] != null ? ((Number) stats[1]).doubleValue() : 0.0;
 
         product.setReviewCount(count);
         product.setAverageRating(Math.round(average * 10.0) / 10.0);
