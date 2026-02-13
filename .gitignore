@@ -55,3 +55,6 @@ web-build/
 # ===== Environment variables =====
 .env
 .env.*
+# ===== Internal frameworks (READ-ONLY, do not commit) =====
+backend-fw/
+android-fw/
