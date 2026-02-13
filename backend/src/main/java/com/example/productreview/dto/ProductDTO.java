@@ -1,18 +1,41 @@
 package com.example.productreview.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.Map;
 import java.util.Set;
 
+@Schema(description = "Product details including ratings and AI summary")
 public class ProductDTO {
+
+    @Schema(description = "Unique product identifier", example = "1")
     private Long id;
+
+    @Schema(description = "Product name", example = "iPhone 15 Pro")
     private String name;
+
+    @Schema(description = "Product description", example = "The latest iPhone with A17 Pro chip and Titanium design.")
     private String description;
-    private Set<String> categories; // ✨ Changed from String to Set<String>
+
+    @Schema(description = "Product categories", example = "[\"Electronics\", \"Smartphones\"]")
+    private Set<String> categories;
+
+    @Schema(description = "Product price in USD", example = "999.99")
     private Double price;
+
+    @Schema(description = "Product image URL", example = "https://images.unsplash.com/photo-1695048133142-1a20484d2569")
     private String imageUrl;
+
+    @Schema(description = "Average star rating (1.0-5.0)", example = "4.3")
     private Double averageRating;
+
+    @Schema(description = "Total number of reviews", example = "42")
     private Integer reviewCount;
+
+    @Schema(description = "Rating distribution (star count to number of reviews)", example = "{\"1\": 2, \"2\": 3, \"3\": 5, \"4\": 12, \"5\": 20}")
     private Map<Integer, Long> ratingBreakdown;
+
+    @Schema(description = "AI-generated review summary (only on single product detail)", example = "Users praise the premium design and camera quality...")
     private String aiSummary;
 
     public ProductDTO() {
