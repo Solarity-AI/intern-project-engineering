@@ -6,52 +6,64 @@
 //
 
 import SwiftUI
+import Foundation
 
 struct NotificationsView: View {
     @EnvironmentObject var navigationRouter: NavigationRouter
     @StateObject private var viewModel = NotificationsViewModel()
 
     var body: some View {
-        Group {
-            if viewModel.notifications.isEmpty && !viewModel.isLoading {
-                // Empty state
-                VStack(spacing: 16) {
-                    Image(systemName: "bell.slash")
-                        .font(.system(size: 60))
-                        .foregroundColor(.secondary)
-                    Text("No notifications")
-                        .font(.title2)
-                        .fontWeight(.medium)
-                    Text("You're all caught up!")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                }
-                .padding()
-            } else {
-                List {
-                    ForEach(viewModel.notifications) { notification in
-                        NotificationRow(notification: notification)
-                            .onTapGesture {
-                                Task {
-                                    await viewModel.markAsRead(notificationId: notification.id)
-                                }
-                                navigationRouter.navigate(to: .notificationDetail(notification: notification))
-                            }
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    Task {
-                                        await viewModel.deleteNotification(notificationId: notification.id)
-                                    }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
+        ZStack {
+            Color("AppBackground")
+                .ignoresSafeArea()
+
+            Group {
+                if viewModel.notifications.isEmpty && !viewModel.isLoading {
+                    // Empty state
+                    VStack(spacing: 16) {
+                        Image(systemName: "bell.slash")
+                            .font(.system(size: 60))
+                            .foregroundColor(.secondary)
+                        VStack(spacing: 6) {
+                            Text("No notifications")
+                                .font(.title2)
+                                .fontWeight(.medium)
+                            Text("You're all caught up!")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                        }
                     }
+                    .padding()
+                } else {
+                    List {
+                        ForEach(viewModel.notifications) { notification in
+                            NotificationRow(notification: notification)
+                                .listRowBackground(Color("CardBackground"))
+                                .onTapGesture {
+                                    Task { @MainActor in
+                                        await viewModel.markAsRead(notificationId: notification.id)
+                                        let updatedNotification = viewModel.notifications.first { $0.id == notification.id } ?? notification
+                                        navigationRouter.navigate(to: .notificationDetail(notification: updatedNotification))
+                                    }
+                                }
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        Task {
+                                            await viewModel.deleteNotification(notificationId: notification.id)
+                                        }
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                        }
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
-                .listStyle(.plain)
             }
         }
         .navigationTitle("Notifications")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -175,32 +187,65 @@ class NotificationsViewModel: ObservableObject {
         self.repository = repository
     }
 
+    private func pushBadgeUpdate() {
+        NotificationCenter.default.post(
+            name: .updateBadgeCount,
+            object: nil,
+            userInfo: ["count": unreadCount]
+        )
+    }
+
+    private func rollbackAfterFailure(_ originalError: Error) async {
+        await loadNotifications()
+        if self.error == nil {
+            self.error = originalError.localizedDescription
+        }
+    }
+
     func loadNotifications() async {
         isLoading = true
         error = nil
+        defer { isLoading = false }
 
         do {
-            notifications = try await repository.getNotifications()
-            unreadCount = try await repository.getUnreadCount()
+            let fetchedNotifications = try await repository.getNotifications()
+            let fetchedUnreadCount: Int
+            do {
+                fetchedUnreadCount = try await repository.getUnreadCount()
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                fetchedUnreadCount = fetchedNotifications.filter { !$0.isRead }.count
+            }
+
+            notifications = fetchedNotifications
+            unreadCount = fetchedUnreadCount
+            pushBadgeUpdate()
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
             self.error = error.localizedDescription
         }
-
-        isLoading = false
     }
 
     func markAsRead(notificationId: Int) async {
         // Optimistic update
         if let index = notifications.firstIndex(where: { $0.id == notificationId }) {
-            notifications[index].isRead = true
-            unreadCount = max(0, unreadCount - 1)
+            if !notifications[index].isRead {
+                notifications[index].isRead = true
+                unreadCount = max(0, unreadCount - 1)
+                pushBadgeUpdate()
+            }
         }
 
         do {
             try await repository.markAsRead(notificationId: notificationId)
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            await loadNotifications()
-            self.error = error.localizedDescription
+            await rollbackAfterFailure(error)
         }
     }
 
@@ -210,12 +255,15 @@ class NotificationsViewModel: ObservableObject {
             notifications[i].isRead = true
         }
         unreadCount = 0
+        pushBadgeUpdate()
 
         do {
             try await repository.markAllAsRead()
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            await loadNotifications()
-            self.error = error.localizedDescription
+            await rollbackAfterFailure(error)
         }
     }
 
@@ -223,13 +271,18 @@ class NotificationsViewModel: ObservableObject {
         // Optimistic update
         let wasUnread = notifications.first(where: { $0.id == notificationId })?.isRead == false
         notifications.removeAll { $0.id == notificationId }
-        if wasUnread { unreadCount = max(0, unreadCount - 1) }
+        if wasUnread {
+            unreadCount = max(0, unreadCount - 1)
+            pushBadgeUpdate()
+        }
 
         do {
             try await repository.deleteNotification(notificationId: notificationId)
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            await loadNotifications()
-            self.error = error.localizedDescription
+            await rollbackAfterFailure(error)
         }
     }
 
@@ -237,14 +290,18 @@ class NotificationsViewModel: ObservableObject {
         // Optimistic update
         notifications.removeAll()
         unreadCount = 0
+        pushBadgeUpdate()
 
         do {
             try await repository.deleteAllNotifications()
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            await loadNotifications()
-            self.error = error.localizedDescription
+            await rollbackAfterFailure(error)
         }
     }
+
 }
 
 #Preview {

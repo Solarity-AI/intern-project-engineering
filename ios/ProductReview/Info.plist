@@ -59,5 +59,7 @@
             </dict>
         </dict>
     </dict>
+    <key>NSUserNotificationsUsageDescription</key>
+    <string>We'll send you notifications about new reviews and product updates.</string>
 </dict>
 </plist>

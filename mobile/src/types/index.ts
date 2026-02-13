@@ -23,6 +23,7 @@ export interface Review {
   id: string;
   productId: string;
   userName: string;
+  reviewerName?: string;
   rating: number;
   comment: string;
   createdAt: string;

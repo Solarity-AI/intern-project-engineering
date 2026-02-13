@@ -12,7 +12,7 @@ enum AppConstants {
     enum API {
         // Toggle for local development vs production
         #if DEBUG
-        static let useLocalServer = true
+        static let useLocalServer = false
         #else
         static let useLocalServer = false
         #endif
@@ -20,8 +20,9 @@ enum AppConstants {
         static var baseURL: String {
             useLocalServer ? "http://localhost:8080" : "https://product-review-app-ybmf.onrender.com"
         }
-        static let timeoutInterval: TimeInterval = 10.0
+        static let timeoutInterval: TimeInterval = 8.0
         static let aiTimeoutInterval: TimeInterval = 20.0 // Longer timeout for AI calls
+        static let maxRetries: Int = 3
     }
 
     // MARK: - Storage Keys
@@ -39,6 +40,7 @@ enum AppConstants {
 
     // MARK: - UI
     enum UI {
+        static let appDisplayName = "Product Review"
         static let animationDuration: Double = 0.3
         static let cornerRadius: CGFloat = 12
         static let shadowRadius: CGFloat = 4

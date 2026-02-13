@@ -16,6 +16,9 @@ class ProductDetailViewModel: ObservableObject {
     @Published var isLoadingReviews = false
     @Published var isInWishlist = false
     @Published var error: String?
+    @Published var showToast = false
+    @Published var toastMessage = ""
+    @Published var toastType: ToastType = .error
 
     private let productId: Int
     private let productRepository: ProductRepositoryProtocol
@@ -24,6 +27,7 @@ class ProductDetailViewModel: ObservableObject {
     private var currentPage = 0
     private var isLastPage = false
     private var currentRatingFilter: Int?
+    private var wishlistObserver: NSObjectProtocol?
 
     init(
         productId: Int,
@@ -33,6 +37,13 @@ class ProductDetailViewModel: ObservableObject {
         self.productId = productId
         self.productRepository = productRepository
         self.wishlistRepository = wishlistRepository
+        setupWishlistObserver()
+    }
+
+    deinit {
+        if let wishlistObserver {
+            NotificationCenter.default.removeObserver(wishlistObserver)
+        }
     }
 
     func loadProduct() async {
@@ -42,15 +53,50 @@ class ProductDetailViewModel: ObservableObject {
         do {
             product = try await productRepository.getProduct(id: productId)
             isInWishlist = await wishlistRepository.isInWishlist(productId: productId)
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            isLoading = false
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
 
         isLoading = false
     }
 
+    private func showError(_ message: String) {
+        error = message
+        toastMessage = message
+        toastType = .error
+        showToast = true
+    }
+
+    private func showSuccess(_ message: String) {
+        error = nil
+        toastMessage = message
+        toastType = .success
+        showToast = true
+    }
+
+    private func setupWishlistObserver() {
+        wishlistObserver = NotificationCenter.default.addObserver(
+            forName: .wishlistChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            guard let changedProductId = notification.userInfo?["productId"] as? Int else { return }
+            guard changedProductId == self.productId else { return }
+
+            if let isInWishlist = notification.userInfo?["isInWishlist"] as? Bool {
+                self.isInWishlist = isInWishlist
+            }
+        }
+    }
+
     func loadReviews() async {
         isLoadingReviews = true
+        defer { isLoadingReviews = false }
 
         do {
             // Load voted review IDs first
@@ -68,16 +114,18 @@ class ProductDetailViewModel: ObservableObject {
             reviews = result.reviews
             isLastPage = result.isLast
             currentPage = 0
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
-
-        isLoadingReviews = false
     }
 
     func loadMoreReviews() async {
         guard !isLoadingReviews, !isLastPage else { return }
         isLoadingReviews = true
+        defer { isLoadingReviews = false }
 
         do {
             let result = try await productRepository.getReviews(
@@ -91,11 +139,12 @@ class ProductDetailViewModel: ObservableObject {
             reviews.append(contentsOf: result.reviews)
             isLastPage = result.isLast
             currentPage += 1
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
-
-        isLoadingReviews = false
     }
 
     func filterReviewsByRating(_ rating: Int?) async {
@@ -119,8 +168,13 @@ class ProductDetailViewModel: ObservableObject {
 
             // Reload product to get updated stats
             await loadProduct()
+
+            showSuccess("Review submitted successfully")
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
     }
 
@@ -139,17 +193,26 @@ class ProductDetailViewModel: ObservableObject {
             if let index = reviews.firstIndex(where: { $0.id == reviewId }) {
                 reviews[index] = updatedReview
             }
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
     }
 
     func toggleWishlist() async {
         do {
             try await wishlistRepository.toggleWishlist(productId: productId)
-            isInWishlist.toggle()
+            isInWishlist = await wishlistRepository.isInWishlist(productId: productId)
+
+            let message = isInWishlist ? "Added to wishlist" : "Removed from wishlist"
+            showSuccess(message)
+        } catch is CancellationError {
+            // Ignore cancellation errors
+            return
         } catch {
-            self.error = error.localizedDescription
+            showError(error.localizedDescription)
         }
     }
 }

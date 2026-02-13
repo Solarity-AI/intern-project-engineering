@@ -18,99 +18,135 @@ struct ProductDetailView: View {
         _viewModel = StateObject(wrappedValue: ProductDetailViewModel(productId: productId))
     }
 
+    @ViewBuilder
+    private var imageFallbackView: some View {
+        ZStack {
+            Color("CardBackground")
+            VStack(spacing: 8) {
+                Image(systemName: "photo.fill")
+                    .foregroundColor(.secondary)
+                    .font(.largeTitle)
+                Text("No Image")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func productImageView(for product: Product) -> some View {
+        if let imageURL = product.resolvedImageURL {
+            CachedAsyncImage(url: imageURL) { image in
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } placeholder: {
+                imageFallbackView
+                    .overlay {
+                        ProgressView()
+                    }
+            } failure: {
+                imageFallbackView
+            }
+        } else {
+            imageFallbackView
+        }
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if let product = viewModel.product {
-                    // Product Image
-                    AsyncImage(url: URL(string: product.imageUrl ?? "")) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.2))
-                            .overlay {
-                                Image(systemName: "photo")
-                                    .foregroundColor(.gray)
-                                    .font(.largeTitle)
-                            }
-                    }
-                    .frame(height: 250)
-                    .clipped()
+        ZStack {
+            Color("AppBackground")
+                .ignoresSafeArea()
 
-                    VStack(alignment: .leading, spacing: 12) {
-                        // Categories
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack {
-                                ForEach(product.categories, id: \.self) { category in
-                                    Text(category)
-                                        .font(.caption)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(Color.blue.opacity(0.1))
-                                        .cornerRadius(16)
+            Group {
+                if viewModel.product == nil && !viewModel.isLoading && viewModel.error != nil {
+                    // Error state
+                    EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
+                        Task { await viewModel.loadProduct() }
+                    }
+                } else {
+                    ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if let product = viewModel.product {
+                            // Product Image
+                            productImageView(for: product)
+                            .frame(height: 250)
+                            .clipped()
+
+                            VStack(alignment: .leading, spacing: 12) {
+                                // Categories
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack {
+                                        ForEach(product.categories, id: \.self) { category in
+                                            Text(category)
+                                                .font(.caption)
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 6)
+                                                .background(Color.blue.opacity(0.1))
+                                                .cornerRadius(16)
+                                        }
+                                    }
                                 }
+
+                                // Title and Price
+                                Text(product.name)
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+
+                                Text(product.formattedPrice)
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.blue)
+
+                                // Rating
+                                HStack {
+                                    Image(systemName: "star.fill")
+                                        .foregroundColor(.yellow)
+                                    Text(product.formattedRating)
+                                        .fontWeight(.medium)
+                                    Text("(\(product.reviewCount) reviews)")
+                                        .foregroundColor(.secondary)
+                                }
+
+                                // Description
+                                Text(product.description)
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+
+                                // AI Summary Card
+                                if let summary = product.aiSummary {
+                                    AISummaryCard(summary: summary)
+                                }
+
+                                // Rating Breakdown
+                                RatingBreakdownView(
+                                    breakdown: product.ratingBreakdown,
+                                    totalCount: product.reviewCount,
+                                    selectedRating: $selectedRatingFilter
+                                )
+
+                                // Reviews Section
+                                ReviewsSection(
+                                    reviews: viewModel.reviews,
+                                    votedReviewIds: viewModel.votedReviewIds,
+                                    isLoading: viewModel.isLoadingReviews,
+                                    onHelpfulTap: { reviewId in
+                                        Task { await viewModel.markHelpful(reviewId: reviewId) }
+                                    },
+                                    onLoadMore: {
+                                        Task { await viewModel.loadMoreReviews() }
+                                    }
+                                )
                             }
+                            .padding()
+                        } else {
+                            // Show skeleton for initial load and transient states.
+                            ProductDetailSkeleton()
                         }
-
-                        // Title and Price
-                        Text(product.name)
-                            .font(.title2)
-                            .fontWeight(.bold)
-
-                        Text(product.formattedPrice)
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.blue)
-
-                        // Rating
-                        HStack {
-                            Image(systemName: "star.fill")
-                                .foregroundColor(.yellow)
-                            Text(product.formattedRating)
-                                .fontWeight(.medium)
-                            Text("(\(product.reviewCount) reviews)")
-                                .foregroundColor(.secondary)
-                        }
-
-                        // Description
-                        Text(product.description)
-                            .font(.body)
-                            .foregroundColor(.secondary)
-
-                        // AI Summary Card
-                        if let summary = product.aiSummary {
-                            AISummaryCard(summary: summary)
-                        }
-
-                        // Rating Breakdown
-                        RatingBreakdownView(
-                            breakdown: product.ratingBreakdown,
-                            totalCount: product.reviewCount,
-                            selectedRating: $selectedRatingFilter
-                        )
-
-                        // Reviews Section
-                        ReviewsSection(
-                            reviews: viewModel.reviews,
-                            votedReviewIds: viewModel.votedReviewIds,
-                            isLoading: viewModel.isLoadingReviews,
-                            onHelpfulTap: { reviewId in
-                                Task { await viewModel.markHelpful(reviewId: reviewId) }
-                            },
-                            onLoadMore: {
-                                Task { await viewModel.loadMoreReviews() }
-                            }
-                        )
                     }
-                    .padding()
-                } else if viewModel.isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.top, 100)
                 }
             }
+        }
         }
         .navigationTitle("Product Details")
         .navigationBarTitleDisplayMode(.inline)
@@ -145,19 +181,21 @@ struct ProductDetailView: View {
             )
         }
         .overlay(alignment: .bottomTrailing) {
-            Button {
-                showAddReview = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .frame(width: 56, height: 56)
-                    .background(Color.blue)
-                    .clipShape(Circle())
-                    .shadow(radius: 4)
+            if viewModel.product != nil {
+                Button {
+                    showAddReview = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .frame(width: 56, height: 56)
+                        .background(Color.blue)
+                        .clipShape(Circle())
+                        .shadow(radius: 4)
+                }
+                .padding()
             }
-            .padding()
         }
         .task {
             await viewModel.loadProduct()
@@ -168,14 +206,12 @@ struct ProductDetailView: View {
                 await viewModel.filterReviewsByRating(newValue)
             }
         }
-        .alert("Error", isPresented: Binding<Bool>(
-            get: { viewModel.error != nil },
-            set: { if !$0 { viewModel.error = nil } }
-        )) {
-            Button("OK") { viewModel.error = nil }
-        } message: {
-            Text(viewModel.error ?? "")
-        }
+        .toast(
+            isPresented: $viewModel.showToast,
+            message: viewModel.toastMessage,
+            type: viewModel.toastType,
+            duration: 3.0
+        )
     }
 }
 
@@ -284,23 +320,31 @@ struct ReviewsSection: View {
                     .padding()
             }
 
-            ForEach(reviews) { review in
-                ReviewCardView(
-                    review: review,
-                    isVoted: votedReviewIds.contains(review.id),
-                    onHelpfulTap: { onHelpfulTap(review.id) }
-                )
-                .onAppear {
-                    if review.id == reviews.last?.id {
-                        onLoadMore()
+            if reviews.isEmpty && isLoading {
+                // Show skeleton loading for initial reviews load
+                ForEach(0..<3, id: \.self) { _ in
+                    ReviewCardSkeleton()
+                }
+            } else {
+                ForEach(reviews) { review in
+                    ReviewCardView(
+                        review: review,
+                        isVoted: votedReviewIds.contains(review.id),
+                        onHelpfulTap: { onHelpfulTap(review.id) }
+                    )
+                    .onAppear {
+                        if review.id == reviews.last?.id {
+                            onLoadMore()
+                        }
                     }
                 }
-            }
 
-            if isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-                    .padding()
+                // Show progress indicator for pagination (load more)
+                if isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                }
             }
         }
     }

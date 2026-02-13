@@ -35,6 +35,8 @@ enum ToastType {
 struct ToastView: View {
     let message: String
     let type: ToastType
+    let actionTitle: String?
+    let onAction: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -47,6 +49,15 @@ struct ToastView: View {
                 .foregroundColor(.primary)
 
             Spacer()
+
+            if let actionTitle, let onAction {
+                Button(actionTitle) {
+                    onAction()
+                }
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.plain)
+                .foregroundColor(type.color)
+            }
         }
         .padding()
         .background(.ultraThinMaterial)
@@ -62,6 +73,8 @@ struct ToastModifier: ViewModifier {
     let message: String
     let type: ToastType
     let duration: Double
+    let actionTitle: String?
+    let onAction: (() -> Void)?
 
     func body(content: Content) -> some View {
         ZStack {
@@ -69,7 +82,17 @@ struct ToastModifier: ViewModifier {
 
             VStack {
                 if isPresented {
-                    ToastView(message: message, type: type)
+                    ToastView(
+                        message: message,
+                        type: type,
+                        actionTitle: actionTitle,
+                        onAction: {
+                            withAnimation {
+                                isPresented = false
+                            }
+                            onAction?()
+                        }
+                    )
                         .transition(.move(edge: .top).combined(with: .opacity))
                         .onAppear {
                             DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
@@ -87,17 +110,33 @@ struct ToastModifier: ViewModifier {
 }
 
 extension View {
-    func toast(isPresented: Binding<Bool>, message: String, type: ToastType = .info, duration: Double = 3.0) -> some View {
-        modifier(ToastModifier(isPresented: isPresented, message: message, type: type, duration: duration))
+    func toast(
+        isPresented: Binding<Bool>,
+        message: String,
+        type: ToastType = .info,
+        duration: Double = 3.0,
+        actionTitle: String? = nil,
+        onAction: (() -> Void)? = nil
+    ) -> some View {
+        modifier(
+            ToastModifier(
+                isPresented: isPresented,
+                message: message,
+                type: type,
+                duration: duration,
+                actionTitle: actionTitle,
+                onAction: onAction
+            )
+        )
     }
 }
 
 #Preview {
     VStack(spacing: 20) {
-        ToastView(message: "Item added to wishlist", type: .success)
-        ToastView(message: "Failed to load data", type: .error)
-        ToastView(message: "Check your connection", type: .warning)
-        ToastView(message: "New products available", type: .info)
+        ToastView(message: "Item added to wishlist", type: .success, actionTitle: nil, onAction: nil)
+        ToastView(message: "Failed to load data", type: .error, actionTitle: nil, onAction: nil)
+        ToastView(message: "Check your connection", type: .warning, actionTitle: nil, onAction: nil)
+        ToastView(message: "New products available", type: .info, actionTitle: "Undo", onAction: {})
     }
     .padding()
 }
