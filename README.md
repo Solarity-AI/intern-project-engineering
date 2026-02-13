@@ -72,10 +72,12 @@ open ProductReview.xcodeproj   # Open in Xcode
 The project follows a **Layered Clean Architecture** to ensure maintainability and testability.
 
 ### Backend (Spring Boot)
-*   **Controller Layer:** REST API design with versioning and DTO mapping.
+*   **Controller Layer:** Versioned REST API (`/api/v1/`) with full OpenAPI/Swagger documentation and DTO mapping.
 *   **Service Layer:** Business logic encapsulation with Dependency Inversion.
 *   **Data Layer:** Spring Data JPA with optimized SQL queries for filtering and aggregation.
-*   **Security:** Centralized CORS configuration, Bucket4j rate limiting (60 req/min per client), production profile with H2 console disabled.
+*   **Database:** H2 in-memory (dev) with PostgreSQL readiness via Flyway migrations (prod). HikariCP connection pooling.
+*   **API Documentation:** Swagger UI at `/swagger-ui.html` (development only, disabled in production).
+*   **Security:** Centralized CORS configuration, Bucket4j rate limiting (60 req/min per client), production profile with H2 console and Swagger UI disabled.
 *   **Error Handling:** Custom exception classes with structured `ErrorResponse` (timestamp, code, message, details).
 
 ### Frontend — React Native (Mobile/Web)
@@ -117,6 +119,9 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 .
 ├── backend/                # Java Spring Boot Source Code
 │   ├── src/main/java/      # Business logic & API Controllers
+│   ├── src/main/resources/
+│   │   ├── db/migration/   # Flyway SQL migrations (V1 schema, V2 seed data)
+│   │   └── *.properties    # Dev & prod configuration
 │   └── README.md           # Detailed Backend Documentation
 ├── mobile/                 # React Native (Expo) Source Code
 │   ├── src/components/     # Reusable UI Components

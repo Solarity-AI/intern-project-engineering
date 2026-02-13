@@ -32,11 +32,15 @@ The application serves as an internship training platform where the backend API 
 | **Spring Data JPA** | - | ORM and data access |
 | **Spring Boot Validation** | - | Input validation (Jakarta Bean Validation) |
 | **Spring Boot Actuator** | - | Health checks and monitoring |
-| **H2 Database** | - | In-memory relational database |
+| **H2 Database** | - | In-memory relational database (development) |
+| **PostgreSQL** | - | Production relational database |
+| **Flyway** | - | Database migration versioning |
 | **Hibernate** | - | JPA implementation |
+| **HikariCP** | - | JDBC connection pooling |
 | **Lombok** | 1.18.30 | Boilerplate code generation |
 | **simple-openai** | 3.8.1 | OpenAI GPT-4o-mini integration |
 | **Caffeine** | - | High-performance caching |
+| **springdoc-openapi** | 2.3.0 | OpenAPI 3.0 / Swagger UI |
 | **Maven** | 3.9 | Build tool |
 
 ### Frontend (React Native/Expo)
@@ -114,6 +118,7 @@ The application serves as an internship training platform where the backend API 
 │   │   │   │   ├── config/           # Configuration
 │   │   │   │   │   ├── CacheConfig.java
 │   │   │   │   │   ├── CorsConfig.java
+│   │   │   │   │   ├── OpenApiConfig.java
 │   │   │   │   │   └── RateLimitingFilter.java
 │   │   │   │   └── exception/        # Error handling
 │   │   │   │       ├── GlobalExceptionHandler.java
@@ -122,7 +127,10 @@ The application serves as an internship training platform where the backend API 
 │   │   │   │       └── UnauthorizedException.java
 │   │   │   └── resources/
 │   │   │       ├── application.properties
-│   │   │       └── application-prod.properties
+│   │   │       ├── application-prod.properties
+│   │   │       └── db/migration/
+│   │   │           ├── V1__initial_schema.sql
+│   │   │           └── V2__seed_data.sql
 │   │   └── test/                     # Unit & integration tests
 │   ├── pom.xml                       # Maven configuration
 │   └── Dockerfile                    # Container build
@@ -274,14 +282,14 @@ Presentation          Domain              Data
 
 ### 4.1 Backend API Layer
 
-**ProductController** (`/api/products`)
+**ProductController** (`/api/v1/products`)
 - Product listing with pagination, filtering, and sorting
 - Single product retrieval with AI summary
 - Review management (list, create, helpful voting)
 - AI chat endpoint for product questions
 - Global statistics aggregation
 
-**UserController** (`/api/user`)
+**UserController** (`/api/v1/user`)
 - Wishlist management (get, toggle, paginated products)
 - Notification CRUD operations
 - User identification via `X-User-ID` header
@@ -429,7 +437,7 @@ ProductListView (root)
 
 ### Backend Configuration
 
-**application.properties:**
+**application.properties (Development — H2):**
 ```properties
 # Server
 server.port=${PORT:8080}
@@ -437,6 +445,18 @@ server.port=${PORT:8080}
 # Database (H2 In-Memory)
 spring.datasource.url=jdbc:h2:mem:testdb
 spring.jpa.hibernate.ddl-auto=create-drop
+
+# HikariCP Connection Pool
+spring.datasource.hikari.pool-name=ProductReviewPool
+spring.datasource.hikari.maximum-pool-size=10
+spring.datasource.hikari.minimum-idle=5
+spring.datasource.hikari.idle-timeout=300000
+spring.datasource.hikari.max-lifetime=900000
+spring.datasource.hikari.connection-timeout=20000
+spring.datasource.hikari.leak-detection-threshold=60000
+
+# Flyway (disabled for H2 dev)
+spring.flyway.enabled=false
 
 # OpenAI
 openai.api.key=${OPENAI_API_KEY:your-api-key-here}
@@ -451,12 +471,41 @@ spring.cache.caffeine.spec=maximumSize=100,expireAfterWrite=1h
 management.endpoints.web.exposure.include=health,info
 ```
 
+**application-prod.properties (Production — PostgreSQL):**
+```properties
+# PostgreSQL Datasource
+spring.datasource.url=${DATABASE_URL}
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+spring.datasource.driverClassName=org.postgresql.Driver
+
+# JPA — validate schema against Flyway migrations
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.hibernate.ddl-auto=validate
+
+# Flyway (enabled for PostgreSQL migrations)
+spring.flyway.enabled=true
+spring.flyway.baseline-on-migrate=true
+
+# HikariCP — tuned for Render.com free tier
+spring.datasource.hikari.maximum-pool-size=5
+spring.datasource.hikari.minimum-idle=2
+spring.datasource.hikari.leak-detection-threshold=0
+
+# Swagger UI disabled in production
+springdoc.swagger-ui.enabled=false
+springdoc.api-docs.enabled=false
+```
+
 ### Environment Variables
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `PORT` | No | Server port (default: 8080) |
 | `OPENAI_API_KEY` | No | AI features (falls back to mock) |
+| `DATABASE_URL` | Prod | PostgreSQL JDBC connection URL |
+| `DB_USERNAME` | Prod | PostgreSQL username |
+| `DB_PASSWORD` | Prod | PostgreSQL password |
 | `cors.allowed-origins` | No | Comma-separated CORS origins (default: localhost dev ports) |
 | `rate-limit.requests-per-minute` | No | Rate limit per client (default: 60) |
 | `spring.profiles.active` | No | Set to `prod` for production profile |
@@ -536,10 +585,12 @@ CMD ["java", "-jar", "app.jar"]
 | Aspect | Details |
 |--------|---------|
 | Cold Start | Backend: ~30-60s on Render free tier |
-| Database | In-memory H2 (resets on restart) |
+| Database | H2 in-memory (dev), PostgreSQL (prod via Flyway migrations) |
+| Connection Pool | HikariCP: 10 max (dev), 5 max (prod/Render free tier) |
 | Caching | AI summaries cached 1 hour |
 | Health | `/actuator/health` monitored |
 | Updates | OTA via Expo Updates |
+| API Docs | Swagger UI at `/swagger-ui.html` (dev only, disabled in prod) |
 
 ---
 
@@ -664,6 +715,7 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 | Pagination | Server-side with configurable page size |
 | Lazy Loading | Reviews fetched separately from products |
 | Query Optimization | Custom JPQL for combined filters |
+| Connection Pooling | HikariCP with leak detection and environment-tuned sizing |
 
 ### Frontend Optimizations (React Native)
 
@@ -688,7 +740,7 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 
 ### Scalability Considerations
 
-- Database: H2 in-memory suitable only for demos; production needs PostgreSQL
+- Database: H2 in-memory for development; PostgreSQL with Flyway migrations for production
 - Caching: Caffeine is local; distributed cache (Redis) for multi-instance
 - AI Calls: Rate-limited by caching; consider queue for high volume
 
@@ -709,17 +761,24 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 ### API Security
 - **CORS:** Centralized `CorsConfig.java` with environment-based allowed origins (no `@CrossOrigin` on controllers)
 - **Rate Limiting:** Bucket4j filter — 60 requests/minute per client (keyed by X-User-ID or IP)
+- **API Versioning:** All endpoints prefixed with `/api/v1/` for forward compatibility
+- **API Documentation:** Swagger UI available in development, disabled in production
 - No sensitive data exposed in DTOs
 - Health endpoint restricted to authorized users
 
 ### Database Security
 - H2 console enabled in development, **disabled in production** (`application-prod.properties`)
 - Parameterized queries via JPA (SQL injection safe)
+- Flyway-managed schema migrations with `ddl-auto=validate` in production
 
 ### Production Profile (`application-prod.properties`)
+- PostgreSQL datasource with environment-variable credentials
+- Flyway migrations enabled, JPA schema validation only
 - H2 console disabled
+- Swagger UI and API docs disabled
 - Actuator restricted to health endpoint only
 - CORS origins restricted to production domains
+- HikariCP tuned for Render.com free tier (5 max connections)
 
 ### Container Security
 - Alpine-based images (minimal attack surface)
@@ -758,19 +817,19 @@ Backend (Spring Boot) ◄──────────────┘
 ### API Contract Summary
 
 **Products:**
-- `GET /api/products` - List (paginated, filterable)
-- `GET /api/products/{id}` - Details with AI summary
-- `GET /api/products/stats` - Global statistics
-- `GET /api/products/{id}/reviews` - Reviews (paginated)
-- `POST /api/products/{id}/reviews` - Submit review
-- `PUT /api/products/reviews/{id}/helpful` - Toggle helpful
-- `POST /api/products/{id}/chat` - AI chat
+- `GET /api/v1/products` - List (paginated, filterable)
+- `GET /api/v1/products/{id}` - Details with AI summary
+- `GET /api/v1/products/stats` - Global statistics
+- `GET /api/v1/products/{id}/reviews` - Reviews (paginated)
+- `POST /api/v1/products/{id}/reviews` - Submit review
+- `PUT /api/v1/products/reviews/{id}/helpful` - Toggle helpful
+- `POST /api/v1/products/{id}/chat` - AI chat
 
 **User:**
-- `GET /api/user/wishlist` - Wishlist IDs
-- `GET /api/user/wishlist/products` - Wishlist products
-- `POST /api/user/wishlist/{productId}` - Toggle wishlist
-- `GET /api/user/notifications` - List notifications
+- `GET /api/v1/user/wishlist` - Wishlist IDs
+- `GET /api/v1/user/wishlist/products` - Wishlist products
+- `POST /api/v1/user/wishlist/{productId}` - Toggle wishlist
+- `GET /api/v1/user/notifications` - List notifications
 - CRUD operations for notification management
 
 ---
@@ -807,6 +866,8 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 | Backend Entry | `backend/src/main/java/.../ProductReviewApplication.java` |
 | API Controllers | `backend/src/main/java/.../controller/` |
 | Backend Config | `backend/src/main/resources/application.properties` |
+| OpenAPI Config | `backend/src/main/java/.../config/OpenApiConfig.java` |
+| DB Migrations | `backend/src/main/resources/db/migration/` |
 | RN Frontend Entry | `mobile/App.tsx` |
 | RN API Client | `mobile/src/services/api.ts` |
 | RN Theme | `mobile/src/constants/theme.ts` |
