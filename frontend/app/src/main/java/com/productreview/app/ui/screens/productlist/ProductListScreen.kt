@@ -479,12 +479,12 @@ private fun StatItem(
     val colors = AppTheme.colors
 
     Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(28.dp)
                 .background(
                     Brush.linearGradient(GradientColors.Primary),
                     CircleShape
@@ -495,20 +495,22 @@ private fun StatItem(
                 imageVector = icon,
                 contentDescription = null,
                 tint = colors.primaryForeground,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(14.dp)
             )
         }
         Column {
             Text(
                 text = value,
-                fontSize = 18.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = colors.foreground
+                color = colors.foreground,
+                maxLines = 1
             )
             Text(
                 text = label,
-                fontSize = 14.sp,
-                color = colors.mutedForeground
+                fontSize = 12.sp,
+                color = colors.mutedForeground,
+                maxLines = 1
             )
         }
     }
