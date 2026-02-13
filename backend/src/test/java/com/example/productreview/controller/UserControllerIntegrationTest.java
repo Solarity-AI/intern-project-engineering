@@ -28,7 +28,7 @@ public class UserControllerIntegrationTest {
 
     @Test
     void getWishlist_WithValidHeader_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/user/wishlist")
+        mockMvc.perform(get("/api/v1/user/wishlist")
                 .header("X-User-ID", "wishlist-get-user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
@@ -36,7 +36,7 @@ public class UserControllerIntegrationTest {
 
     @Test
     void getWishlist_WithoutHeader_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/api/user/wishlist"))
+        mockMvc.perform(get("/api/v1/user/wishlist"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -45,23 +45,23 @@ public class UserControllerIntegrationTest {
         String userId = "wishlist-toggle-user";
 
         // Add to wishlist
-        mockMvc.perform(post("/api/user/wishlist/1")
+        mockMvc.perform(post("/api/v1/user/wishlist/1")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk());
 
         // Verify it's in the wishlist
-        mockMvc.perform(get("/api/user/wishlist")
+        mockMvc.perform(get("/api/v1/user/wishlist")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0]").value(1));
 
         // Toggle again to remove
-        mockMvc.perform(post("/api/user/wishlist/1")
+        mockMvc.perform(post("/api/v1/user/wishlist/1")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk());
 
         // Verify it's removed
-        mockMvc.perform(get("/api/user/wishlist")
+        mockMvc.perform(get("/api/v1/user/wishlist")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());
@@ -72,12 +72,12 @@ public class UserControllerIntegrationTest {
         String userId = "wishlist-products-user";
 
         // Add product to wishlist
-        mockMvc.perform(post("/api/user/wishlist/1")
+        mockMvc.perform(post("/api/v1/user/wishlist/1")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk());
 
         // Get wishlist products
-        mockMvc.perform(get("/api/user/wishlist/products")
+        mockMvc.perform(get("/api/v1/user/wishlist/products")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
@@ -86,7 +86,7 @@ public class UserControllerIntegrationTest {
 
     @Test
     void toggleWishlist_WithoutHeader_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(post("/api/user/wishlist/1"))
+        mockMvc.perform(post("/api/v1/user/wishlist/1"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -96,14 +96,14 @@ public class UserControllerIntegrationTest {
     void createAndGetNotifications_ShouldWork() throws Exception {
         String userId = "notif-create-user";
 
-        mockMvc.perform(post("/api/user/notifications")
+        mockMvc.perform(post("/api/v1/user/notifications")
                 .header("X-User-ID", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(
                         Map.of("title", "Test Notification", "message", "This is a test"))))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/user/notifications")
+        mockMvc.perform(get("/api/v1/user/notifications")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value("Test Notification"))
@@ -117,14 +117,14 @@ public class UserControllerIntegrationTest {
 
         // Create two notifications
         for (String title : List.of("Notif 1", "Notif 2")) {
-            mockMvc.perform(post("/api/user/notifications")
+            mockMvc.perform(post("/api/v1/user/notifications")
                     .header("X-User-ID", userId)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(Map.of("title", title, "message", "msg"))))
                     .andExpect(status().isOk());
         }
 
-        mockMvc.perform(get("/api/user/notifications/unread-count")
+        mockMvc.perform(get("/api/v1/user/notifications/unread-count")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(2));
@@ -135,14 +135,14 @@ public class UserControllerIntegrationTest {
         String userId = "notif-read-user";
 
         // Create notification
-        mockMvc.perform(post("/api/user/notifications")
+        mockMvc.perform(post("/api/v1/user/notifications")
                 .header("X-User-ID", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(Map.of("title", "Read Test", "message", "msg"))))
                 .andExpect(status().isOk());
 
         // Get notification ID
-        String response = mockMvc.perform(get("/api/user/notifications")
+        String response = mockMvc.perform(get("/api/v1/user/notifications")
                 .header("X-User-ID", userId))
                 .andReturn().getResponse().getContentAsString();
 
@@ -150,11 +150,11 @@ public class UserControllerIntegrationTest {
         int notificationId = (int) ((Map<?, ?>) notifications.get(0)).get("id");
 
         // Mark as read
-        mockMvc.perform(put("/api/user/notifications/" + notificationId + "/read"))
+        mockMvc.perform(put("/api/v1/user/notifications/" + notificationId + "/read"))
                 .andExpect(status().isOk());
 
         // Verify unread count is 0
-        mockMvc.perform(get("/api/user/notifications/unread-count")
+        mockMvc.perform(get("/api/v1/user/notifications/unread-count")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(0));
@@ -166,7 +166,7 @@ public class UserControllerIntegrationTest {
 
         // Create two notifications
         for (String title : List.of("First", "Second")) {
-            mockMvc.perform(post("/api/user/notifications")
+            mockMvc.perform(post("/api/v1/user/notifications")
                     .header("X-User-ID", userId)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(Map.of("title", title, "message", "msg"))))
@@ -174,12 +174,12 @@ public class UserControllerIntegrationTest {
         }
 
         // Mark all as read
-        mockMvc.perform(put("/api/user/notifications/read-all")
+        mockMvc.perform(put("/api/v1/user/notifications/read-all")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk());
 
         // Verify unread count is 0
-        mockMvc.perform(get("/api/user/notifications/unread-count")
+        mockMvc.perform(get("/api/v1/user/notifications/unread-count")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(0));
@@ -190,14 +190,14 @@ public class UserControllerIntegrationTest {
         String userId = "notif-delete-user";
 
         // Create notification
-        mockMvc.perform(post("/api/user/notifications")
+        mockMvc.perform(post("/api/v1/user/notifications")
                 .header("X-User-ID", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(Map.of("title", "Delete Me", "message", "msg"))))
                 .andExpect(status().isOk());
 
         // Get notification ID
-        String response = mockMvc.perform(get("/api/user/notifications")
+        String response = mockMvc.perform(get("/api/v1/user/notifications")
                 .header("X-User-ID", userId))
                 .andReturn().getResponse().getContentAsString();
 
@@ -205,11 +205,11 @@ public class UserControllerIntegrationTest {
         int notificationId = (int) ((Map<?, ?>) notifications.get(0)).get("id");
 
         // Delete
-        mockMvc.perform(delete("/api/user/notifications/" + notificationId))
+        mockMvc.perform(delete("/api/v1/user/notifications/" + notificationId))
                 .andExpect(status().isOk());
 
         // Verify it's gone
-        mockMvc.perform(get("/api/user/notifications")
+        mockMvc.perform(get("/api/v1/user/notifications")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());
@@ -221,7 +221,7 @@ public class UserControllerIntegrationTest {
 
         // Create two notifications
         for (String title : List.of("First", "Second")) {
-            mockMvc.perform(post("/api/user/notifications")
+            mockMvc.perform(post("/api/v1/user/notifications")
                     .header("X-User-ID", userId)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(Map.of("title", title, "message", "msg"))))
@@ -229,12 +229,12 @@ public class UserControllerIntegrationTest {
         }
 
         // Delete all
-        mockMvc.perform(delete("/api/user/notifications")
+        mockMvc.perform(delete("/api/v1/user/notifications")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk());
 
         // Verify all gone
-        mockMvc.perform(get("/api/user/notifications")
+        mockMvc.perform(get("/api/v1/user/notifications")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());
@@ -242,7 +242,7 @@ public class UserControllerIntegrationTest {
 
     @Test
     void getNotifications_WithoutHeader_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/api/user/notifications"))
+        mockMvc.perform(get("/api/v1/user/notifications"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -250,14 +250,14 @@ public class UserControllerIntegrationTest {
     void createNotification_WithProductId_ShouldWork() throws Exception {
         String userId = "notif-product-user";
 
-        mockMvc.perform(post("/api/user/notifications")
+        mockMvc.perform(post("/api/v1/user/notifications")
                 .header("X-User-ID", userId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(
                         Map.of("title", "Review Posted", "message", "Your review was posted", "productId", 1))))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/user/notifications")
+        mockMvc.perform(get("/api/v1/user/notifications")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].productId").value(1));
@@ -269,7 +269,7 @@ public class UserControllerIntegrationTest {
     void toggleWishlist_WithNonExistentProduct_ShouldStillReturn200() throws Exception {
         String userId = "wishlist-nonexist-user";
 
-        mockMvc.perform(post("/api/user/wishlist/99999")
+        mockMvc.perform(post("/api/v1/user/wishlist/99999")
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk());
     }
@@ -278,7 +278,7 @@ public class UserControllerIntegrationTest {
     void getWishlistProducts_WithPagination_ShouldRespectParams() throws Exception {
         String userId = "wishlist-page-user";
 
-        mockMvc.perform(get("/api/user/wishlist/products")
+        mockMvc.perform(get("/api/v1/user/wishlist/products")
                 .header("X-User-ID", userId)
                 .param("page", "0")
                 .param("size", "5"))
@@ -288,19 +288,19 @@ public class UserControllerIntegrationTest {
 
     @Test
     void markAsRead_WithNonExistentId_ShouldReturnOk() throws Exception {
-        mockMvc.perform(put("/api/user/notifications/99999/read"))
+        mockMvc.perform(put("/api/v1/user/notifications/99999/read"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void deleteNotification_WithNonExistentId_ShouldReturnOk() throws Exception {
-        mockMvc.perform(delete("/api/user/notifications/99999"))
+        mockMvc.perform(delete("/api/v1/user/notifications/99999"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void getNotifications_ShouldReturnEmptyArrayForNewUser() throws Exception {
-        mockMvc.perform(get("/api/user/notifications")
+        mockMvc.perform(get("/api/v1/user/notifications")
                 .header("X-User-ID", "brand-new-user-with-no-data"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
@@ -309,7 +309,7 @@ public class UserControllerIntegrationTest {
 
     @Test
     void getUnreadCount_ForNewUser_ShouldReturnZero() throws Exception {
-        mockMvc.perform(get("/api/user/notifications/unread-count")
+        mockMvc.perform(get("/api/v1/user/notifications/unread-count")
                 .header("X-User-ID", "fresh-user-zero-notifs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(0));
@@ -317,13 +317,13 @@ public class UserControllerIntegrationTest {
 
     @Test
     void markAllAsRead_WithoutHeader_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(put("/api/user/notifications/read-all"))
+        mockMvc.perform(put("/api/v1/user/notifications/read-all"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void deleteAllNotifications_WithoutHeader_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(delete("/api/user/notifications"))
+        mockMvc.perform(delete("/api/v1/user/notifications"))
                 .andExpect(status().isBadRequest());
     }
 }

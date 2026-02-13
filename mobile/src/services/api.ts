@@ -305,8 +305,8 @@ export function getGlobalStats(params?: { category?: string; search?: string }) 
 
   const queryString = q.toString();
   const url = queryString
-    ? `${BASE_URL}/api/products/stats?${queryString}`
-    : `${BASE_URL}/api/products/stats`;
+    ? `${BASE_URL}/api/v1/products/stats?${queryString}`
+    : `${BASE_URL}/api/v1/products/stats`;
 
   return requestWithRetry<GlobalStats>(url);
 }
@@ -326,11 +326,11 @@ export function getProducts(params?: { page?: number; size?: number; sort?: stri
     q.append('search', params.search);
   }
 
-  return requestWithRetry<Page<ApiProduct>>(`${BASE_URL}/api/products?${q.toString()}`);
+  return requestWithRetry<Page<ApiProduct>>(`${BASE_URL}/api/v1/products?${q.toString()}`);
 }
 
 export function getProduct(id: number | string) {
-  return requestWithRetry<ApiProduct>(`${BASE_URL}/api/products/${id}`);
+  return requestWithRetry<ApiProduct>(`${BASE_URL}/api/v1/products/${id}`);
 }
 
 export function getReviews(productId: number | string, params?: { page?: number; size?: number; sort?: string; rating?: number | null }) {
@@ -344,33 +344,33 @@ export function getReviews(productId: number | string, params?: { page?: number;
     q.append('rating', String(params.rating));
   }
 
-  return requestWithRetry<Page<ApiReview>>(`${BASE_URL}/api/products/${productId}/reviews?${q.toString()}`);
+  return requestWithRetry<Page<ApiReview>>(`${BASE_URL}/api/v1/products/${productId}/reviews?${q.toString()}`);
 }
 
 export async function postReview(productId: number | string, body: ApiReview) {
-  const result = await request<ApiReview>(`${BASE_URL}/api/products/${productId}/reviews`, {
+  const result = await request<ApiReview>(`${BASE_URL}/api/v1/products/${productId}/reviews`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  invalidateCache(`/api/products/${productId}`, '/api/products/stats');
+  invalidateCache(`/api/v1/products/${productId}`, '/api/v1/products/stats');
   return result;
 }
 
 export async function markReviewAsHelpful(reviewId: number | string) {
-  const result = await requestWithRetry<ApiReview>(`${BASE_URL}/api/products/reviews/${reviewId}/helpful`, {
+  const result = await requestWithRetry<ApiReview>(`${BASE_URL}/api/v1/products/reviews/${reviewId}/helpful`, {
     method: "PUT",
   });
-  invalidateCache('/api/products/reviews');
+  invalidateCache('/api/v1/products/reviews');
   return result;
 }
 
 export function getUserVotedReviews() {
-  return requestWithRetry<number[]>(`${BASE_URL}/api/products/reviews/voted`);
+  return requestWithRetry<number[]>(`${BASE_URL}/api/v1/products/reviews/voted`);
 }
 
 export function chatWithAI(productId: number | string, question: string) {
-  return request<{ answer: string }>(`${BASE_URL}/api/products/${productId}/chat`, {
+  return request<{ answer: string }>(`${BASE_URL}/api/v1/products/${productId}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question }),
@@ -381,7 +381,7 @@ export function chatWithAI(productId: number | string, question: string) {
 // --- User Persistence (Wishlist & Notifications) ---
 
 export function getWishlist() {
-  return requestWithRetry<number[]>(`${BASE_URL}/api/user/wishlist`);
+  return requestWithRetry<number[]>(`${BASE_URL}/api/v1/user/wishlist`);
 }
 
 // ✨ New function for paged wishlist products
@@ -392,39 +392,39 @@ export function getWishlistProducts(params?: { page?: number; size?: number; sor
     sort: params?.sort ?? "id,desc",
   });
 
-  return requestWithRetry<Page<ApiProduct>>(`${BASE_URL}/api/user/wishlist/products?${q.toString()}`);
+  return requestWithRetry<Page<ApiProduct>>(`${BASE_URL}/api/v1/user/wishlist/products?${q.toString()}`);
 }
 
 export async function toggleWishlistApi(productId: number) {
-  const result = await request<void>(`${BASE_URL}/api/user/wishlist/${productId}`, {
+  const result = await request<void>(`${BASE_URL}/api/v1/user/wishlist/${productId}`, {
     method: "POST",
   });
-  invalidateCache('/api/user/wishlist');
+  invalidateCache('/api/v1/user/wishlist');
   return result;
 }
 
 export function getNotifications() {
-  return requestWithRetry<ApiNotification[]>(`${BASE_URL}/api/user/notifications`);
+  return requestWithRetry<ApiNotification[]>(`${BASE_URL}/api/v1/user/notifications`);
 }
 
 export function getUnreadCount() {
-  return requestWithRetry<{ count: number }>(`${BASE_URL}/api/user/notifications/unread-count`);
+  return requestWithRetry<{ count: number }>(`${BASE_URL}/api/v1/user/notifications/unread-count`);
 }
 
 export function markNotificationAsRead(id: number) {
-  return requestWithRetry<void>(`${BASE_URL}/api/user/notifications/${id}/read`, {
+  return requestWithRetry<void>(`${BASE_URL}/api/v1/user/notifications/${id}/read`, {
     method: "PUT",
   });
 }
 
 export function markAllNotificationsAsRead() {
-  return requestWithRetry<void>(`${BASE_URL}/api/user/notifications/read-all`, {
+  return requestWithRetry<void>(`${BASE_URL}/api/v1/user/notifications/read-all`, {
     method: "PUT",
   });
 }
 
 export function createNotification(title: string, message: string, productId?: number) {
-  return request<void>(`${BASE_URL}/api/user/notifications`, {
+  return request<void>(`${BASE_URL}/api/v1/user/notifications`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, message, productId }),
@@ -432,13 +432,13 @@ export function createNotification(title: string, message: string, productId?: n
 }
 
 export function deleteNotification(id: number) {
-  return request<void>(`${BASE_URL}/api/user/notifications/${id}`, {
+  return request<void>(`${BASE_URL}/api/v1/user/notifications/${id}`, {
     method: "DELETE",
   });
 }
 
 export function deleteAllNotifications() {
-  return request<void>(`${BASE_URL}/api/user/notifications`, {
+  return request<void>(`${BASE_URL}/api/v1/user/notifications`, {
     method: "DELETE",
   });
 }
