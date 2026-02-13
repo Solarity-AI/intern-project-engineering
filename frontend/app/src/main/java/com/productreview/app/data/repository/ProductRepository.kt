@@ -252,10 +252,19 @@ class ProductRepository @Inject constructor(
 // ==================== EXTENSIONS ====================
 
 fun <T> PageResponse<T>.toPage(): Page<T> {
-    val nextCursor = if (last) null else PageCursor((number + 1).toString())
+    val items = content.ifEmpty { data }
+    val pageNumber = page?.number ?: number
+    val isLast = if (page != null) {
+        pageNumber + 1 >= page.totalPages || items.isEmpty()
+    } else {
+        last
+    }
+    val nextCursor = if (isLast) null else PageCursor((pageNumber + 1).toString())
     return Page(
-        items = content,
-        nextCursor = nextCursor
+        items = items,
+        nextCursor = nextCursor,
+        totalElements = page?.totalElements?.toInt() ?: totalElements,
+        totalPages = page?.totalPages ?: totalPages
     )
 }
 

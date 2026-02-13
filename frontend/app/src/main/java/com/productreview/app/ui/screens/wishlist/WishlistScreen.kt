@@ -1,5 +1,6 @@
 package com.productreview.app.ui.screens.wishlist
 
+import androidx.activity.compose.BackHandler
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -56,6 +57,10 @@ fun WishlistScreen(
 
     val (itemCount, avgRating, totalPrice) = remember(uiState.products, uiState.totalItems) {
         viewModel.getStats()
+    }
+
+    BackHandler(enabled = uiState.isSelectionMode) {
+        viewModel.cancelSelection()
     }
 
     Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {

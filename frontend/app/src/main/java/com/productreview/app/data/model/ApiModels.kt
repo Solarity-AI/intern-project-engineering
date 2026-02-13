@@ -3,15 +3,26 @@ package com.productreview.app.data.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-// Page Response wrapper
+// Nested page metadata (backend-fw format)
+@Serializable
+data class PageMeta(
+    val number: Int = 0,
+    val size: Int = 0,
+    val totalElements: Long = 0,
+    val totalPages: Int = 0
+)
+
+// Page Response wrapper — handles both Spring Page (content) and backend-fw (data + page)
 @Serializable
 data class PageResponse<T>(
     val content: List<T> = emptyList(),
+    val data: List<T> = emptyList(),
     val totalElements: Int = 0,
     val totalPages: Int = 0,
     val number: Int = 0,
     val size: Int = 0,
-    val last: Boolean = true
+    val last: Boolean = true,
+    val page: PageMeta? = null
 )
 
 // Product DTO

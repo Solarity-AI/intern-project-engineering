@@ -3,8 +3,9 @@ package com.productreview.app.ui.components
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +20,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,6 +29,7 @@ import coil.compose.AsyncImage
 import com.productreview.app.data.model.ApiProduct
 import com.productreview.app.ui.theme.AppTheme
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun WishlistCard(
     product: ApiProduct,
@@ -71,12 +72,10 @@ fun WishlistCard(
                     Modifier.border(2.dp, colors.primary, RoundedCornerShape(16.dp))
                 } else Modifier
             )
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { onClick() },
-                    onLongPress = { onLongPress() }
-                )
-            },
+            .combinedClickable(
+                onClick = { onClick() },
+                onLongClick = { onLongPress() }
+            ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = colors.card)
     ) {

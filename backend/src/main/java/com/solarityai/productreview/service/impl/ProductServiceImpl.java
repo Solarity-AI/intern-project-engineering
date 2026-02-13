@@ -91,7 +91,9 @@ public class ProductServiceImpl implements ProductService {
             throw new NotFoundException("Product not found with id: " + productId);
         }
 
-        Pageable pageable = createPageable(pageRequest);
+        int pg = pageRequest != null ? pageRequest.getPage() : 0;
+        int sz = pageRequest != null && pageRequest.getSize() > 0 ? pageRequest.getSize() : 10;
+        Pageable pageable = PageRequest.of(pg, sz, Sort.by(Sort.Direction.DESC, "reviewCreatedAt"));
         Page<ReviewEntity> reviewPage = reviewRepository.findByProductIdAndRating(productId, rating, pageable);
 
         List<ReviewDto> reviews = reviewPage.getContent().stream()
