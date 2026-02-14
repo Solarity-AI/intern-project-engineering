@@ -2,7 +2,13 @@ package com.example.productreview.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Schema(description = "Request body for creating a notification")
 public class CreateNotificationRequest {
 
@@ -16,36 +22,4 @@ public class CreateNotificationRequest {
 
     @Schema(description = "Optional associated product ID", example = "1")
     private Long productId;
-
-    public CreateNotificationRequest() {}
-
-    public CreateNotificationRequest(String title, String message, Long productId) {
-        this.title = title;
-        this.message = message;
-        this.productId = productId;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public Long getProductId() {
-        return productId;
-    }
-
-    public void setProductId(Long productId) {
-        this.productId = productId;
-    }
 }
