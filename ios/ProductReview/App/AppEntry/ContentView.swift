@@ -54,6 +54,11 @@ struct ContentView: View {
         }
     }
 
+    private var shouldShowRootTopBar: Bool {
+        let tabsWithoutRootTopBar: Set<AppTab> = [.products, .wishlist, .notifications]
+        return !(navigationRouter.path.isEmpty && tabsWithoutRootTopBar.contains(appState.selectedTab))
+    }
+
     var body: some View {
         ZStack {
             Color("AppBackground")
@@ -86,10 +91,10 @@ struct ContentView: View {
                         }
                         .tag(AppTab.settings)
                 }
-                .navigationTitle(currentTabTitle)
+                .navigationTitle(shouldShowRootTopBar ? currentTabTitle : "")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    if navigationRouter.path.isEmpty {
+                    if navigationRouter.path.isEmpty && shouldShowRootTopBar {
                         ToolbarItem(placement: .principal) {
                             if appState.selectedTab == .products {
                                 BrandTopBarTitle(title: AppConstants.UI.appDisplayName)
@@ -101,8 +106,8 @@ struct ContentView: View {
                         }
                     }
                 }
-                .toolbar(.visible, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
+                .toolbar(shouldShowRootTopBar ? .visible : .hidden, for: .navigationBar)
+                .toolbarBackground(shouldShowRootTopBar ? .visible : .hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in
                     switch route {
                     case .productDetail(let productId):

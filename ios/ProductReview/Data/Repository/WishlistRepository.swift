@@ -36,7 +36,7 @@ final class WishlistRepository: WishlistRepositoryProtocol {
     }
 
     func getWishlistIds() async throws -> [Int] {
-        let ids: [Int] = try await apiClient.request(endpoint: "/api/user/wishlist")
+        let ids: [Int] = try await apiClient.request(endpoint: "/api/v1/user/wishlist")
         cachedIds = Set(ids)
         saveCachedIds()
         return ids
@@ -57,7 +57,7 @@ final class WishlistRepository: WishlistRepositoryProtocol {
         }
 
         let response: PageResponse<ProductDTO> = try await apiClient.request(
-            endpoint: "/api/user/wishlist/products",
+            endpoint: "/api/v1/user/wishlist/products",
             queryParams: params
         )
 
@@ -67,13 +67,13 @@ final class WishlistRepository: WishlistRepositoryProtocol {
 
     func toggleWishlist(productId: Int) async throws {
         try await apiClient.requestVoid(
-            endpoint: "/api/user/wishlist/\(productId)",
+            endpoint: "/api/v1/user/wishlist/\(productId)",
             method: .post
         )
 
         // Re-sync from server to avoid stale cache drift across repository instances.
         do {
-            let ids: [Int] = try await apiClient.request(endpoint: "/api/user/wishlist")
+            let ids: [Int] = try await apiClient.request(endpoint: "/api/v1/user/wishlist")
             cachedIds = Set(ids)
         } catch {
             // Fall back to local toggle if server refresh fails after a successful toggle call.

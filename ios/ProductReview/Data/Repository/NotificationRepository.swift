@@ -15,27 +15,27 @@ final class NotificationRepository: NotificationRepositoryProtocol {
     }
 
     func getNotifications() async throws -> [AppNotification] {
-        let dtos: [NotificationDTO] = try await apiClient.request(endpoint: "/api/user/notifications")
+        let dtos: [NotificationDTO] = try await apiClient.request(endpoint: "/api/v1/user/notifications")
         return NotificationMapper.map(dtos)
     }
 
     func getUnreadCount() async throws -> Int {
         let response: UnreadCountResponse = try await apiClient.request(
-            endpoint: "/api/user/notifications/unread-count"
+            endpoint: "/api/v1/user/notifications/unread-count"
         )
         return response.count
     }
 
     func markAsRead(notificationId: Int) async throws {
         try await apiClient.requestVoid(
-            endpoint: "/api/user/notifications/\(notificationId)/read",
+            endpoint: "/api/v1/user/notifications/\(notificationId)/read",
             method: .put
         )
     }
 
     func markAllAsRead() async throws {
         try await apiClient.requestVoid(
-            endpoint: "/api/user/notifications/read-all",
+            endpoint: "/api/v1/user/notifications/read-all",
             method: .put
         )
     }
@@ -43,7 +43,7 @@ final class NotificationRepository: NotificationRepositoryProtocol {
     func createNotification(title: String, message: String, productId: Int?) async throws {
         let request = NotificationCreateRequest(title: title, message: message, productId: productId)
         try await apiClient.requestVoid(
-            endpoint: "/api/user/notifications",
+            endpoint: "/api/v1/user/notifications",
             method: .post,
             body: request
         )
@@ -51,14 +51,14 @@ final class NotificationRepository: NotificationRepositoryProtocol {
 
     func deleteNotification(notificationId: Int) async throws {
         try await apiClient.requestVoid(
-            endpoint: "/api/user/notifications/\(notificationId)",
+            endpoint: "/api/v1/user/notifications/\(notificationId)",
             method: .delete
         )
     }
 
     func deleteAllNotifications() async throws {
         try await apiClient.requestVoid(
-            endpoint: "/api/user/notifications",
+            endpoint: "/api/v1/user/notifications",
             method: .delete
         )
     }
