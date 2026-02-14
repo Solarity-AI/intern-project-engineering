@@ -8,7 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build": "node -e \"if (!process.env.EXPO_PUBLIC_API_URL) { console.error('\\nError: EXPO_PUBLIC_API_URL is not set\\n'); process.exit(1); }\" && expo export --platform web",
-    "postbuild": "cp -r public/. dist/",
+    "postbuild": "node -e \"const fs = require('fs'); if (fs.existsSync('public')) { fs.cpSync('public', 'dist', { recursive: true }); }\"",
     "export": "expo export --platform web",
     "test": "jest --config jest.config.js",
     "test:unit": "jest --config jest.node.config.js",

@@ -9,6 +9,7 @@ module.exports = {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
+  setupFiles: ['<rootDir>/jest.setup.env.js'],
   moduleNameMapper: {
     '^@react-native-async-storage/async-storage$': '<rootDir>/src/services/__tests__/__mocks__/async-storage.ts',
     '^react-native-get-random-values$': '<rootDir>/src/services/__tests__/__mocks__/empty.ts',
