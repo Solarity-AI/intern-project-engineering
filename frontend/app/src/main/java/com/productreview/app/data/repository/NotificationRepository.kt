@@ -1,8 +1,8 @@
 package com.productreview.app.data.repository
 
-import com.productreview.app.core.FWError
-import com.productreview.app.core.FWResult
-import com.productreview.app.core.RetryPolicy
+import fw.core.FWError
+import fw.core.FWResult
+import com.productreview.app.core.*
 import com.productreview.app.core.logging.LogCategory
 import com.productreview.app.core.logging.LogEvent
 import com.productreview.app.core.logging.LogLevel

@@ -2,7 +2,8 @@ package com.productreview.app.ui.screens.aiassistant
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.productreview.app.core.FWResult
+import fw.core.FWResult
+import com.productreview.app.core.*
 import com.productreview.app.core.logging.*
 import com.productreview.app.data.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel

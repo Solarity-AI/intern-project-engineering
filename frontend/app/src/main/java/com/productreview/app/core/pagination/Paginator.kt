@@ -1,8 +1,8 @@
 package com.productreview.app.core.pagination
 
-import com.productreview.app.core.FWError
-import com.productreview.app.core.FWResult
-import com.productreview.app.core.RefreshController
+import fw.core.FWError
+import fw.core.FWResult
+import com.productreview.app.core.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

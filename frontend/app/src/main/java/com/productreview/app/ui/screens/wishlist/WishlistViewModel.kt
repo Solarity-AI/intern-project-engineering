@@ -2,8 +2,9 @@ package com.productreview.app.ui.screens.wishlist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.productreview.app.core.FWError
-import com.productreview.app.core.FWResult
+import fw.core.FWError
+import fw.core.FWResult
+import com.productreview.app.core.*
 import com.productreview.app.core.logging.*
 import com.productreview.app.data.local.UserPreferencesManager
 import com.productreview.app.data.model.ApiProduct

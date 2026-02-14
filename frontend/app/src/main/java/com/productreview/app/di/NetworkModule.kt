@@ -1,9 +1,9 @@
 package com.productreview.app.di
 
 import com.productreview.app.BuildConfig
-import com.productreview.app.core.DispatcherProvider
-import com.productreview.app.core.DefaultDispatcherProvider
-import com.productreview.app.core.RetryPolicy
+import fw.core.DefaultDispatcherProvider
+import fw.core.DispatcherProvider
+import com.productreview.app.core.*
 import com.productreview.app.core.logging.DefaultLogger
 import com.productreview.app.core.logging.LogLevel
 import com.productreview.app.core.logging.Logger

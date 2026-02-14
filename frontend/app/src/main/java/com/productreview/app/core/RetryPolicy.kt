@@ -1,5 +1,7 @@
 package com.productreview.app.core
 
+import fw.core.FWError
+import fw.core.FWResult
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 

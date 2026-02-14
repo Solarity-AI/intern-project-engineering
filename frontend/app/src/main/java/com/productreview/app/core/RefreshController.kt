@@ -1,5 +1,6 @@
 package com.productreview.app.core
 
+import fw.core.FWResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

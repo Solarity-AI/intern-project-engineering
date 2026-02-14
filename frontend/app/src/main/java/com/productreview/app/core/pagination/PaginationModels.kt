@@ -1,6 +1,6 @@
 package com.productreview.app.core.pagination
 
-import com.productreview.app.core.FWError
+import fw.core.FWError
 
 @JvmInline
 value class PageCursor(val value: String) {

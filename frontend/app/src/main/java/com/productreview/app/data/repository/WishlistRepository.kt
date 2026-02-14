@@ -1,7 +1,8 @@
 package com.productreview.app.data.repository
 
-import com.productreview.app.core.FWError
-import com.productreview.app.core.FWResult
+import fw.core.FWError
+import fw.core.FWResult
+import com.productreview.app.core.*
 import com.productreview.app.core.pagination.Page
 import com.productreview.app.core.pagination.PageCursor
 import com.productreview.app.core.logging.LogCategory
