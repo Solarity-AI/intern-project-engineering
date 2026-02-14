@@ -16,15 +16,24 @@ struct ProductListView: View {
     @State private var selectedCategory: String? = nil
     @FocusState private var isSearchFieldFocused: Bool
 
+    @State private var isSelectionMode = false
+    @State private var selectedProductIDs: Set<Int> = []
+    @State private var containerWidth: CGFloat = UIScreen.main.bounds.width
+
     private let categories = ["All", "Electronics", "Smartphones", "Laptops", "Tablets", "Gaming", "Wearables", "Audio", "Accessories"]
-    private let contentHorizontalPadding: CGFloat = 16
+
+    private let contentHorizontalPadding: CGFloat = AppSpacing.lg
     private let gridHorizontalSpacing: CGFloat = 20
-    private let gridVerticalSpacing: CGFloat = 16
+    private let gridVerticalSpacing: CGFloat = AppSpacing.lg
+    private let heroHeight: CGFloat = 260
+
     private var cardWidth: CGFloat {
-        let availableWidth = UIScreen.main.bounds.width - (contentHorizontalPadding * 2) - gridHorizontalSpacing
+        let availableWidth = containerWidth - (contentHorizontalPadding * 2) - gridHorizontalSpacing
         return max(140, floor(availableWidth / 2))
     }
-    private let cardHeight: CGFloat = 260
+
+    private let cardHeight: CGFloat = 290
+
     private var columns: [GridItem] {
         [
             GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing),
@@ -48,55 +57,238 @@ struct ProductListView: View {
         }
     }
 
+    private var newToWishlistCount: Int {
+        selectedProductIDs.reduce(into: 0) { result, id in
+            if !viewModel.isInWishlist(productId: id) {
+                result += 1
+            }
+        }
+    }
+
     private func saveCurrentSearchToHistory() {
         searchHistoryManager.addSearch(searchText)
     }
 
-    private var selectedCategoryTitle: String {
-        selectedCategory ?? "All Categories"
+    private func startSelection(with productID: Int) {
+        isSelectionMode = true
+        selectedProductIDs.insert(productID)
+    }
+
+    private func toggleSelection(for productID: Int) {
+        if selectedProductIDs.contains(productID) {
+            selectedProductIDs.remove(productID)
+        } else {
+            selectedProductIDs.insert(productID)
+        }
+
+        if selectedProductIDs.isEmpty {
+            isSelectionMode = false
+        }
+    }
+
+    private func cancelSelectionMode() {
+        isSelectionMode = false
+        selectedProductIDs.removeAll()
+    }
+
+    private func addSelectedToWishlist() async {
+        let idsToAdd = selectedProductIDs.filter { !viewModel.isInWishlist(productId: $0) }
+
+        for id in idsToAdd {
+            await viewModel.toggleWishlist(productId: id)
+        }
+
+        cancelSelectionMode()
+    }
+
+    @ViewBuilder
+    private var heroBackground: some View {
+        ZStack {
+            LinearGradient(
+                stops: [
+                    .init(color: AppColors.orderBlue.opacity(0.36), location: 0.0),
+                    .init(color: AppColors.meshTeal.opacity(0.24), location: 0.26),
+                    .init(color: AppColors.aiPurple.opacity(0.16), location: 0.62),
+                    .init(color: .clear, location: 1.0)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            AppGradients.meshOrb(color: AppColors.primary, opacity: 0.16)
+                .frame(width: 300, height: 300)
+                .offset(x: -120, y: -130)
+
+            AppGradients.meshOrb(color: AppColors.aiPurple, opacity: 0.10)
+                .frame(width: 250, height: 250)
+                .offset(x: 130, y: -30)
+
+            AppGradients.meshOrb(color: AppColors.meshTeal, opacity: 0.10)
+                .frame(width: 200, height: 200)
+                .offset(x: 0, y: 110)
+        }
+    }
+
+    @ViewBuilder
+    private var heroSection: some View {
+        ZStack {
+            VStack(spacing: AppSpacing.sm) {
+                Image("TopBarLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 54, height: 54)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color("Border"), lineWidth: 1)
+                    }
+
+                Text("ProductReview")
+                    .font(.system(size: AppFontSize.x3l, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppColors.foreground)
+
+            }
+            .padding(.top, AppSpacing.xl)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: heroHeight)
+    }
+
+    @ViewBuilder
+    private var searchSection: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(AppColors.primary)
+
+                TextField(
+                    "",
+                    text: $searchText,
+                    prompt: Text("Search products...")
+                        .foregroundStyle(AppColors.foreground.opacity(0.4))
+                )
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
+                .submitLabel(.search)
+                .focused($isSearchFieldFocused)
+                .foregroundStyle(AppColors.foreground)
+                .onSubmit {
+                    saveCurrentSearchToHistory()
+                }
+
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(AppColors.primary)
+                    }
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .glassCard(AppGlass.subtle, cornerRadius: AppRadius.full)
+
+            if isSearchFieldFocused && !searchHistoryManager.recentSearches.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        Text("Recent Searches")
+                            .font(.caption)
+                            .foregroundStyle(AppColors.foreground.opacity(0.65))
+
+                        Spacer()
+
+                        Button("Clear") {
+                            searchHistoryManager.clearHistory()
+                        }
+                        .font(.caption)
+                        .foregroundStyle(AppColors.primary)
+                        .accessibilityLabel("Clear search history")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                    .padding(.bottom, 6)
+
+                    if recentSearchSuggestions.isEmpty {
+                        Text("No matching recent searches")
+                            .font(.caption)
+                            .foregroundStyle(AppColors.foreground.opacity(0.65))
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 8)
+                    } else {
+                        ForEach(recentSearchSuggestions, id: \.self) { query in
+                            Button {
+                                searchText = query
+                                isSearchFieldFocused = false
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "clock.arrow.circlepath")
+                                        .foregroundStyle(AppColors.foreground.opacity(0.65))
+                                    Text(query)
+                                        .foregroundStyle(AppColors.foreground)
+                                        .lineLimit(1)
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.bottom, 6)
+                .glassCard(AppGlass.subtle, cornerRadius: AppRadius.lg)
+            }
+        }
+        .padding(.horizontal, contentHorizontalPadding)
+    }
+
+    @ViewBuilder
+    private func categoryChip(_ category: String) -> some View {
+        let categoryValue = category == "All" ? nil : category
+        let isActive = selectedCategory == categoryValue
+
+        Button {
+            selectedCategory = categoryValue
+            Task {
+                await viewModel.filterByCategory(categoryValue)
+            }
+        } label: {
+            Text(category)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(isActive ? Color.white : AppColors.foreground.opacity(0.7))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background {
+                    if isActive {
+                        Capsule().fill(AppGradients.brand)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .modifier(
+            CategoryChipStyleModifier(
+                isActive: isActive
+            )
+        )
+        .accessibilityLabel("Filter by \(category)")
     }
 
     @ViewBuilder
     private var filterSortSection: some View {
-        HStack {
-            Menu {
-                ForEach(categories, id: \.self) { category in
-                    let categoryValue = category == "All" ? nil : category
-                    Button {
-                        selectedCategory = categoryValue
-                        Task {
-                            await viewModel.filterByCategory(categoryValue)
-                        }
-                    } label: {
-                        if selectedCategory == categoryValue {
-                            Label(category, systemImage: "checkmark")
-                        } else {
-                            Text(category)
-                        }
+        VStack(spacing: AppSpacing.sm) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(categories, id: \.self) { category in
+                        categoryChip(category)
                     }
                 }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "line.3.horizontal.decrease.circle")
-                    Text(selectedCategoryTitle)
-                        .lineLimit(1)
-                }
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Color("PrimaryText"))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color("CardBackground"), in: Capsule())
-                .overlay {
-                    Capsule()
-                        .stroke(Color("Border"), lineWidth: 1)
-                }
+                .padding(.horizontal, contentHorizontalPadding)
             }
-            .accessibilityLabel("Filter by category")
-            .accessibilityHint("Select a category to filter products")
 
-            Spacer(minLength: 24)
-
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Menu {
                     ForEach(ProductSortCriterion.allCases) { criterion in
                         Button {
@@ -117,15 +309,11 @@ struct ProductListView: View {
                         Text(viewModel.selectedSortCriterion.label)
                             .lineLimit(1)
                     }
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color("PrimaryText"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppColors.foreground)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color("CardBackground"), in: Capsule())
-                    .overlay {
-                        Capsule()
-                            .stroke(Color("Border"), lineWidth: 1)
-                    }
+                    .glassCard(AppGlass.subtle, cornerRadius: AppRadius.full)
                 }
                 .accessibilityLabel("Sort products")
                 .accessibilityHint("Select sorting criterion for product list")
@@ -137,212 +325,217 @@ struct ProductListView: View {
                 } label: {
                     Image(systemName: viewModel.sortDirection.icon)
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(Color.black)
+                        .foregroundStyle(AppColors.foreground)
                         .animation(.easeInOut(duration: 0.2), value: viewModel.sortDirection)
-                        .frame(width: 34, height: 34)
-                        .background(Color("CardBackground"), in: Circle())
-                        .overlay {
-                            Circle()
-                                .stroke(Color("Border"), lineWidth: 1)
-                        }
+                        .frame(width: 36, height: 36)
+                        .glassCard(AppGlass.subtle, cornerRadius: AppRadius.full)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Sort direction: \(viewModel.sortDirection.label)")
                 .accessibilityHint("Double tap to toggle sort direction")
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, contentHorizontalPadding)
+        }
+    }
+
+    @ViewBuilder
+    private var productGridSection: some View {
+        LazyVGrid(columns: columns, spacing: gridVerticalSpacing) {
+            if shouldShowSkeleton {
+                ForEach(0..<6, id: \.self) { _ in
+                    ProductCardSkeleton()
+                        .frame(width: cardWidth, height: cardHeight)
+                }
+            } else {
+                ForEach(viewModel.products) { product in
+                    ZStack(alignment: .topTrailing) {
+                        ProductCardView(
+                            product: product,
+                            cardWidth: cardWidth,
+                            isSelectionMode: isSelectionMode,
+                            isSelected: selectedProductIDs.contains(product.id)
+                        )
+                        .frame(width: cardWidth, height: cardHeight)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if isSelectionMode {
+                                toggleSelection(for: product.id)
+                            } else {
+                                saveCurrentSearchToHistory()
+                                navigationRouter.navigate(to: .productDetail(productId: product.id))
+                            }
+                        }
+                        .onLongPressGesture {
+                            startSelection(with: product.id)
+                        }
+
+                        AnimatedHeartButton(
+                            isLiked: Binding(
+                                get: { viewModel.isInWishlist(productId: product.id) },
+                                set: { _ in
+                                    Task {
+                                        await viewModel.toggleWishlist(productId: product.id)
+                                    }
+                                }
+                            ),
+                            onToggle: {},
+                            activeColor: AppColors.primary,
+                            inactiveColor: AppColors.foreground.opacity(0.65),
+                            size: 14
+                        )
+                        .padding(8)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .padding(.top, 8)
+                        .padding(.trailing, 2)
+                        .offset(x: -16, y: 6)
+                        .opacity(0.9)
+                    }
+                    .frame(width: cardWidth, height: cardHeight)
+                    .onAppear {
+                        if product.id == viewModel.products.last?.id {
+                            Task { await viewModel.loadMore() }
+                        }
+                    }
+                }
             }
         }
+        .id(shouldShowSkeleton ? "product-list-skeleton" : "product-list-cards")
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, contentHorizontalPadding)
     }
 
     @ViewBuilder
-    private var searchSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
-
-                TextField("Search products...", text: $searchText)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-                    .submitLabel(.search)
-                    .focused($isSearchFieldFocused)
-                    .onSubmit {
-                        saveCurrentSearchToHistory()
-                    }
-
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
-                    }
-                    .accessibilityLabel("Clear search")
+    private var selectionActionBar: some View {
+        if isSelectionMode && !selectedProductIDs.isEmpty {
+            HStack(spacing: AppSpacing.sm) {
+                Button("Cancel") {
+                    cancelSelectionMode()
                 }
+                .font(.system(size: AppFontSize.sm, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.9))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.12), in: Capsule())
+
+                Spacer(minLength: 0)
+
+                Text("\(selectedProductIDs.count) selected")
+                    .font(.system(size: AppFontSize.sm, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.95))
+
+                Spacer(minLength: 0)
+
+                Button {
+                    Task {
+                        await addSelectedToWishlist()
+                    }
+                } label: {
+                    Text("Add \(newToWishlistCount) to Wishlist")
+                        .font(.system(size: AppFontSize.sm, weight: .semibold))
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.15), in: Capsule())
+                }
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(Color("CardBackground"))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-
-            if isSearchFieldFocused && !searchHistoryManager.recentSearches.isEmpty {
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack {
-                        Text("Recent Searches")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        Spacer()
-
-                        Button("Clear") {
-                            searchHistoryManager.clearHistory()
-                        }
-                        .font(.caption)
-                        .accessibilityLabel("Clear search history")
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
-                    .padding(.bottom, 4)
-
-                    if recentSearchSuggestions.isEmpty {
-                        Text("No matching recent searches")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 12)
-                            .padding(.bottom, 8)
-                    } else {
-                        ForEach(recentSearchSuggestions, id: \.self) { query in
-                            Button {
-                                searchText = query
-                                isSearchFieldFocused = false
-                            } label: {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "clock.arrow.circlepath")
-                                        .foregroundColor(.secondary)
-                                    Text(query)
-                                        .lineLimit(1)
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                .background(Color("CardBackground"))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color(.separator).opacity(0.2))
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(
+                AppGradients.brand,
+                in: RoundedRectangle(cornerRadius: AppRadius.xl, style: .continuous)
+            )
+            .padding(.horizontal, contentHorizontalPadding)
+            .padding(.bottom, 12)
+            .shadow(color: AppGlow.primarySoft.color.opacity(AppGlow.primarySoft.opacity), radius: AppGlow.primarySoft.radius, x: 0, y: 6)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
-        .padding(.horizontal, contentHorizontalPadding)
     }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: AppSpacing.lg) {
+                heroSection
+
+                if let stats = viewModel.globalStats {
+                    StatsHeaderView(stats: stats)
+                        .padding(.horizontal, contentHorizontalPadding)
+                        .offset(y: -20)
+                        .padding(.bottom, -20)
+                }
+
                 searchSection
+                filterSortSection
 
                 if viewModel.products.isEmpty && !viewModel.isLoading && viewModel.error != nil {
-                    // Error state
                     EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
                         Task { await viewModel.loadProducts() }
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, contentHorizontalPadding)
                 } else if viewModel.products.isEmpty && !viewModel.isLoading {
-                    // Empty state (no results)
-                    VStack(spacing: 16) {
+                    VStack(spacing: AppSpacing.lg) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 60))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(AppColors.foreground.opacity(0.6))
                         Text("No products found")
                             .font(.title2)
                             .fontWeight(.medium)
+                            .foregroundStyle(AppColors.foreground)
+
                         if searchText.isEmpty && selectedCategory == nil {
                             Text("Try refreshing the page")
                                 .font(.body)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(AppColors.foreground.opacity(0.65))
                         } else {
                             Text("Try adjusting your search or filter")
                                 .font(.body)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(AppColors.foreground.opacity(0.65))
                         }
                     }
-                    .padding()
+                    .padding(contentHorizontalPadding)
                 } else {
-                    // Global Stats Header
-                    if let stats = viewModel.globalStats {
-                        StatsHeaderView(stats: stats)
-                    }
+                    productGridSection
 
-                    filterSortSection
-
-                    // Products Grid or Skeleton Loading
-                    LazyVGrid(columns: columns, spacing: gridVerticalSpacing) {
-                        if shouldShowSkeleton {
-                            // Show shimmer skeletons during initial load
-                            ForEach(0..<6, id: \.self) { _ in
-                                ProductCardSkeleton()
-                                    .frame(width: cardWidth, height: cardHeight)
-                            }
-                        } else {
-                            // Show actual products
-                            ForEach(viewModel.products) { product in
-                                ZStack(alignment: .topTrailing) {
-                                    ProductCardView(product: product, cardWidth: cardWidth)
-                                        .frame(width: cardWidth, height: cardHeight)
-                                        .onTapGesture {
-                                            saveCurrentSearchToHistory()
-                                            navigationRouter.navigate(to: .productDetail(productId: product.id))
-                                        }
-
-                                    Button {
-                                        Task {
-                                            await viewModel.toggleWishlist(productId: product.id)
-                                        }
-                                    } label: {
-                                        Image(systemName: viewModel.isInWishlist(productId: product.id) ? "heart.fill" : "heart")
-                                            .font(.system(size: 14, weight: .semibold))
-                                            .foregroundColor(viewModel.isInWishlist(productId: product.id) ? .red : .primary)
-                                            .padding(8)
-                                            .background(.ultraThinMaterial, in: Circle())
-                                    }
-                                    .buttonStyle(.plain)
-                                    .padding(.top, 8)
-                                    .padding(.trailing, 2)
-                                    .offset(x: -16, y: 6)
-                                    .opacity(0.75)
-                                    .accessibilityLabel(viewModel.isInWishlist(productId: product.id) ? "Remove from wishlist" : "Add to wishlist")
-                                    .accessibilityHint("Double tap to \(viewModel.isInWishlist(productId: product.id) ? "remove from" : "add to") wishlist")
-                                }
-                                .frame(width: cardWidth, height: cardHeight)
-                                    .onAppear {
-                                        // Load more when reaching end
-                                        if product.id == viewModel.products.last?.id {
-                                            Task { await viewModel.loadMore() }
-                                        }
-                                    }
-                            }
-                        }
-                    }
-                    .id(shouldShowSkeleton ? "product-list-skeleton" : "product-list-cards")
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, contentHorizontalPadding)
-
-                    // Loading indicator for pagination (load more)
                     if viewModel.isLoading && !viewModel.products.isEmpty {
                         ProgressView()
-                            .padding()
+                            .tint(AppColors.primary)
+                            .padding(.bottom, AppSpacing.sm)
                     }
                 }
             }
+            .padding(.bottom, isSelectionMode && !selectedProductIDs.isEmpty ? 92 : AppSpacing.md)
         }
-        .background(Color("AppBackground"))
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { containerWidth = proxy.size.width }
+                    .onChange(of: proxy.size.width) { _, newWidth in containerWidth = newWidth }
+            }
+        }
+        .background {
+            ZStack(alignment: .top) {
+                AppColors.background
+                    .ignoresSafeArea()
+
+                GeometryReader { proxy in
+                    heroBackground
+                        .frame(height: heroHeight + proxy.safeAreaInsets.top)
+                        .ignoresSafeArea(edges: .top)
+                }
+            }
+        }
+        .overlay(alignment: .bottom) {
+            selectionActionBar
+        }
         .navigationTitle("Products")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(AppColors.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(AppColors.background, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .toolbar(.visible, for: .tabBar)
         .onChange(of: searchText) { _, newValue in
             Task {
                 await viewModel.search(query: newValue)
@@ -363,158 +556,103 @@ struct ProductListView: View {
     }
 }
 
+private struct CategoryChipStyleModifier: ViewModifier {
+    let isActive: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isActive {
+            content
+                .glow(AppGlow.primarySoft)
+        } else {
+            content
+                .glassCard(AppGlass.subtle, cornerRadius: AppRadius.full)
+        }
+    }
+}
+
 // MARK: - Stats Header View
 struct StatsHeaderView: View {
     let stats: GlobalStats
 
-    private var statItems: [StatItemModel] {
-        [
-            StatItemModel(
-                id: "products",
-                value: stats.totalProducts.formatted(.number.notation(.compactName)),
-                label: "Products",
-                icon: "cube.fill",
-                iconColors: [Color("AccentColor"), Color("AccentColor").opacity(0.65)],
-                badgeText: "Catalog",
-                accessibilityLabel: "\(stats.totalProducts) products"
-            ),
-            StatItemModel(
-                id: "reviews",
-                value: stats.totalReviews.formatted(.number.notation(.compactName)),
-                label: "Reviews",
-                icon: "text.bubble.fill",
-                iconColors: [Color.indigo, Color.blue],
-                badgeText: "Voices",
-                accessibilityLabel: "\(stats.totalReviews) reviews"
-            ),
-            StatItemModel(
-                id: "avg-rating",
+    var body: some View {
+        HStack(spacing: AppSpacing.md) {
+            StatsColumn(
+                label: "AVG. RATING",
                 value: String(format: "%.1f", stats.averageRating),
-                label: "Avg Rating",
-                icon: "star.fill",
-                iconColors: [Color.orange, Color.yellow],
-                badgeText: "Out of 5",
-                accessibilityLabel: "Average rating \(String(format: "%.1f", stats.averageRating))"
+                iconName: "star.fill",
+                highlighted: false
             )
-        ]
-    }
 
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) {
-                ForEach(statItems) { item in
-                    StatItemView(item: item)
-                }
-            }
+            Divider()
+                .overlay(AppColors.foreground.opacity(0.18))
 
-            VStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    StatItemView(item: statItems[0])
-                    StatItemView(item: statItems[1])
-                }
-                StatItemView(item: statItems[2])
-            }
+            StatsColumn(
+                label: "REVIEWS",
+                value: stats.totalReviews.formatted(.number.notation(.compactName)),
+                iconName: "text.bubble.fill",
+                highlighted: false
+            )
+
+            Divider()
+                .overlay(AppColors.foreground.opacity(0.18))
+
+            StatsColumn(
+                label: "PRODUCTS",
+                value: stats.totalProducts.formatted(.number.notation(.compactName)),
+                iconName: "cube.box.fill",
+                highlighted: false
+            )
         }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [Color("CardBackground"), Color("SurfaceMuted").opacity(0.7)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, AppSpacing.md)
+        .padding(.vertical, AppSpacing.md)
+        .glassCard(AppGlass.card, cornerRadius: AppRadius.x2l)
+        .shadow(
+            color: AppGlow.primarySoft.color.opacity(AppGlow.primarySoft.opacity),
+            radius: AppGlow.primarySoft.radius,
+            x: 0,
+            y: 5
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(
-                    LinearGradient(
-                        colors: [Color("Border"), Color("AccentColor").opacity(0.35)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
-        }
-        .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 3)
-        .padding(.horizontal)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(stats.totalProducts) products, \(stats.totalReviews) reviews, average rating \(String(format: "%.1f", stats.averageRating))")
+        .accessibilityLabel("Average rating \(String(format: "%.1f", stats.averageRating)), \(stats.totalReviews) reviews, \(stats.totalProducts) products")
     }
 }
 
-struct StatItemModel: Identifiable {
-    let id: String
-    let value: String
+private struct StatsColumn: View {
     let label: String
-    let icon: String
-    let iconColors: [Color]
-    let badgeText: String
-    let accessibilityLabel: String
-}
-
-struct StatItemView: View {
-    let item: StatItemModel
+    let value: String
+    let iconName: String
+    let highlighted: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: item.iconColors,
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                    Image(systemName: item.icon)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
-                .frame(width: 22, height: 22)
+        VStack(spacing: 2) {
+            HStack(spacing: 5) {
+                Image(systemName: iconName)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AppColors.foreground.opacity(0.75))
+                    .accessibilityHidden(true)
 
-                Spacer(minLength: 0)
-
-                Text(item.badgeText)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Color("SecondaryText"))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(Color("SurfaceMuted"), in: Capsule())
-            }
-
-            HStack(alignment: .firstTextBaseline, spacing: 0) {
-                Text(item.value)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                Text(value)
+                    .font(.system(size: AppFontSize.xl, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppColors.foreground)
                     .monospacedDigit()
-                    .foregroundStyle(Color("PrimaryText"))
-
-                Spacer(minLength: 6)
-
-                Text(item.label)
-                    .font(.caption2)
-                    .foregroundStyle(Color("SecondaryText"))
-                    .lineLimit(1)
-                    .multilineTextAlignment(.trailing)
+                    .multilineTextAlignment(.center)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(label)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(AppColors.foreground.opacity(0.6))
+                .lineLimit(1)
+                .multilineTextAlignment(.center)
+
+            Rectangle()
+                .fill(AppColors.primary)
+                .frame(height: 2)
+                .opacity(highlighted ? 1 : 0)
+                .padding(.top, 1)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, 6)
-        .padding(.trailing, 8)
-        .padding(.vertical, 7)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color("CardBackground").opacity(0.85))
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color("Border").opacity(0.9), lineWidth: 1)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(item.accessibilityLabel)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 }
 
@@ -522,30 +660,48 @@ struct StatItemView: View {
 struct ProductCardView: View {
     let product: Product
     let cardWidth: CGFloat
+    let isSelectionMode: Bool
+    let isSelected: Bool
 
     private var cardInnerPadding: CGFloat {
         max(10, floor(cardWidth * 0.07))
     }
 
     private var imageSize: CGFloat {
-        max(140, cardWidth - (cardInnerPadding * 2))
+        max(130, cardWidth - (cardInnerPadding * 2))
     }
 
     private var resolvedImageURL: URL? {
         product.resolvedImageURL
     }
 
+    private var primaryCategory: String {
+        product.categories.first ?? "General"
+    }
+
+    @ViewBuilder
+    private var categoryBadge: some View {
+        Text(primaryCategory.uppercased())
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(AppGradients.brand, in: Capsule())
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     @ViewBuilder
     private var imageFallbackView: some View {
         ZStack {
-            Color("CardBackground")
+            AppColors.background.opacity(0.65)
+
             VStack(spacing: 8) {
                 Image(systemName: "photo.fill")
                     .font(.title)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(AppColors.foreground.opacity(0.65))
                 Text("No Image")
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(AppColors.foreground.opacity(0.65))
             }
         }
     }
@@ -561,8 +717,9 @@ struct ProductCardView: View {
                     .clipped()
             } placeholder: {
                 ProgressView()
+                    .tint(AppColors.primary)
                     .frame(width: imageSize, height: imageSize)
-                    .background(Color("CardBackground"))
+                    .background(AppColors.background.opacity(0.45))
             } failure: {
                 imageFallbackView
                     .frame(width: imageSize, height: imageSize)
@@ -574,16 +731,19 @@ struct ProductCardView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            categoryBadge
+
             productImageView
-            .frame(width: imageSize, height: imageSize)
-            .contentShape(Rectangle())
-            .cornerRadius(8)
-            .accessibilityHidden(true)
+                .frame(width: imageSize, height: imageSize)
+                .contentShape(Rectangle())
+                .cornerRadius(AppRadius.md)
+                .accessibilityHidden(true)
 
             Text(product.name)
                 .font(.subheadline)
                 .fontWeight(.medium)
+                .foregroundStyle(AppColors.foreground)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -591,14 +751,15 @@ struct ProductCardView: View {
 
             HStack(spacing: 2) {
                 Image(systemName: "star.fill")
-                    .foregroundColor(.yellow)
+                    .foregroundStyle(AppColors.starFilled)
                     .font(.caption)
                     .accessibilityHidden(true)
                 Text(product.formattedRating)
                     .font(.caption)
+                    .foregroundStyle(AppColors.foreground)
                 Text("(\(product.reviewCount))")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(AppColors.foreground.opacity(0.65))
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(product.formattedRating) stars, \(product.reviewCount) reviews")
@@ -606,16 +767,34 @@ struct ProductCardView: View {
             Text(product.formattedPrice)
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundColor(.blue)
+                .foregroundStyle(AppColors.primary)
         }
         .padding(cardInnerPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color("CardBackground"))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .glassCard(AppGlass.card, cornerRadius: AppRadius.lg)
         .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color(.separator), lineWidth: 1)
+            RoundedRectangle(cornerRadius: AppRadius.lg, style: .continuous)
+                .stroke(isSelected ? AppColors.primary : Color.white.opacity(0.07), lineWidth: isSelected ? 1.5 : 1)
         }
+        .overlay(alignment: .topTrailing) {
+            if isSelectionMode {
+                Circle()
+                    .fill(isSelected ? AppColors.primary : AppColors.background.opacity(0.55))
+                    .frame(width: 20, height: 20)
+                    .overlay {
+                        Image(systemName: isSelected ? "checkmark" : "circle")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.white)
+                    }
+                    .padding(8)
+            }
+        }
+        .shadow(
+            color: AppShadow.soft.color.opacity(AppShadow.soft.opacity),
+            radius: AppShadow.soft.radius,
+            x: AppShadow.soft.x,
+            y: AppShadow.soft.y
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(product.name), \(product.formattedPrice), \(product.formattedRating) stars")
         .accessibilityHint("Double tap to view details")
