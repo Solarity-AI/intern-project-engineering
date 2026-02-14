@@ -7,7 +7,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build": "expo export --platform web",
+    "build": "node -e \"if (!process.env.EXPO_PUBLIC_API_URL) { console.error('\\nError: EXPO_PUBLIC_API_URL is not set\\n'); process.exit(1); }\" && expo export --platform web",
+    "postbuild": "node -e \"const fs = require('fs'); if (fs.existsSync('public')) { fs.cpSync('public', 'dist', { recursive: true }); }\"",
     "export": "expo export --platform web",
     "test": "jest --config jest.config.js",
     "test:unit": "jest --config jest.node.config.js",
@@ -18,8 +19,6 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/native": "^7.1.26",
     "@react-navigation/native-stack": "^7.9.0",
-    "@vercel/analytics": "^1.6.1",
-    "@vercel/speed-insights": "^1.3.1",
     "expo": "~54.0.31",
     "expo-font": "~14.0.10",
     "expo-linear-gradient": "~15.0.8",
@@ -37,14 +36,15 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.1.0",
     "@types/uuid": "^10.0.0",
     "jest": "^30.2.0",
     "jest-expo": "~54.0.0",
+    "react-test-renderer": "^19.1.0",
     "ts-jest": "^29.4.6",
-    "typescript": "~5.9.2",
-    "vercel": "^50.8.1"
+    "typescript": "~5.9.2"
   },
   "private": true
 }

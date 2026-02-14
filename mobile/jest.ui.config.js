@@ -7,6 +7,7 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|expo-modules-core))',
   ],
+  setupFiles: ['<rootDir>/jest.setup.env.js'],
   moduleNameMapper: {
     '^@react-native-async-storage/async-storage$': '<rootDir>/src/services/__tests__/__mocks__/async-storage.ts',
     '^react-native-get-random-values$': '<rootDir>/src/services/__tests__/__mocks__/empty.ts',
