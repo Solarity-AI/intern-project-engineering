@@ -336,7 +336,7 @@ public class UserControllerIntegrationTest {
         // Try to mark as read with a different user
         mockMvc.perform(put("/api/v1/user/notifications/" + notificationId + "/read")
                 .header("X-User-ID", "different-user"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -361,7 +361,7 @@ public class UserControllerIntegrationTest {
         // Try to delete with a different user
         mockMvc.perform(delete("/api/v1/user/notifications/" + notificationId)
                 .header("X-User-ID", "different-user"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 
     @Test

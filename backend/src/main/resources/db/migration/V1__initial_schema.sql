@@ -30,7 +30,8 @@ CREATE TABLE reviews (
     rating          INTEGER,
     helpful_count   INTEGER DEFAULT 0,
     created_at      TIMESTAMP,
-    product_id      BIGINT REFERENCES products(id) ON DELETE CASCADE
+    product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    CONSTRAINT check_rating_range CHECK (rating BETWEEN 1 AND 5)
 );
 
 CREATE INDEX idx_review_product ON reviews(product_id);

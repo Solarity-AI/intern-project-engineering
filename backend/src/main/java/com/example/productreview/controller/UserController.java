@@ -143,7 +143,7 @@ public class UserController {
             description = "Marks a single notification as read by its ID. The notification must belong to the requesting user.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Notification marked as read"),
-            @ApiResponse(responseCode = "401", description = "Notification does not belong to user"),
+            @ApiResponse(responseCode = "403", description = "Notification does not belong to user"),
             @ApiResponse(responseCode = "404", description = "Notification not found")
     })
     @PutMapping("/notifications/{id}/read")
@@ -199,7 +199,7 @@ public class UserController {
             description = "Permanently deletes a single notification by its ID. The notification must belong to the requesting user.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Notification deleted successfully"),
-            @ApiResponse(responseCode = "401", description = "Notification does not belong to user"),
+            @ApiResponse(responseCode = "403", description = "Notification does not belong to user"),
             @ApiResponse(responseCode = "404", description = "Notification not found")
     })
     @DeleteMapping("/notifications/{id}")
