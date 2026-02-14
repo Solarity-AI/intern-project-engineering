@@ -13,12 +13,21 @@ struct AIAssistantView: View {
 
     @StateObject private var viewModel: AIAssistantViewModel
     @State private var inputText = ""
+    @State private var reviewCount = 0
+    @State private var dotOpacity: [Double] = [1, 1, 1]
     @FocusState private var isInputFocused: Bool
 
-    init(productId: Int, productName: String) {
+    private let repository: ProductRepositoryProtocol
+
+    init(
+        productId: Int,
+        productName: String,
+        repository: ProductRepositoryProtocol = ProductRepository()
+    ) {
         self.productId = productId
         self.productName = productName
-        _viewModel = StateObject(wrappedValue: AIAssistantViewModel(productId: productId))
+        self.repository = repository
+        _viewModel = StateObject(wrappedValue: AIAssistantViewModel(productId: productId, repository: repository))
     }
 
     private let preDefinedQuestions = [
@@ -28,94 +37,188 @@ struct AIAssistantView: View {
         "What are the main praises?"
     ]
 
+    private let questionColumns = [
+        GridItem(.flexible(), spacing: AppSpacing.sm),
+        GridItem(.flexible(), spacing: AppSpacing.sm)
+    ]
+
+    private var followupOptions: [String] {
+        viewModel.messages.reversed().compactMap(\.options).first ?? ["Yes", "No"]
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            // Messages
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(viewModel.messages) { message in
-                            MessageBubble(message: message)
-                                .id(message.id)
-                        }
+        ZStack {
+            AppColors.background
+                .ignoresSafeArea()
 
-                        if viewModel.isLoading {
-                            HStack {
-                                ProgressView()
-                                    .padding()
-                                Spacer()
+            VStack(spacing: 0) {
+                headerView
+
+                ScrollViewReader { proxy in
+                    ZStack {
+                        DecorativeOrbsView()
+
+                        ScrollView {
+                            LazyVStack(spacing: AppSpacing.md) {
+                                ForEach(viewModel.messages) { message in
+                                    MessageBubble(message: message)
+                                        .id(message.id)
+                                }
+
+                                if viewModel.isLoading {
+                                    TypingIndicatorBubble(dotOpacity: dotOpacity)
+                                        .id("typing-indicator")
+                                }
                             }
-                            .padding(.horizontal)
+                            .padding(.horizontal, AppSpacing.lg)
+                            .padding(.vertical, AppSpacing.lg)
                         }
                     }
-                    .padding()
-                }
-                .onChange(of: viewModel.messages.count) { _, _ in
-                    if let lastId = viewModel.messages.last?.id {
-                        withAnimation {
-                            proxy.scrollTo(lastId, anchor: .bottom)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onChange(of: viewModel.messages.count) { _, _ in
+                        if let lastId = viewModel.messages.last?.id {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                proxy.scrollTo(lastId, anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: viewModel.isLoading) { _, isLoading in
+                        guard isLoading else { return }
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            proxy.scrollTo("typing-indicator", anchor: .bottom)
                         }
                     }
                 }
+
+                if viewModel.messages.isEmpty || viewModel.waitingForMore {
+                    quickQuestionsView
+                        .padding(.horizontal, AppSpacing.lg)
+                        .padding(.top, AppSpacing.sm)
+                }
+
+                inputBar
             }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .alert("Error", isPresented: Binding(get: { viewModel.error != nil }, set: { if !$0 { viewModel.error = nil } })) {
+            Button("OK") { viewModel.error = nil }
+        } message: {
+            Text(viewModel.error ?? "")
+        }
+        .task {
+            await loadReviewCount()
+        }
+        .task(id: viewModel.isLoading) {
+            await animateTypingDots()
+        }
+    }
 
-            // Quick questions
-            if viewModel.messages.isEmpty {
-                VStack(spacing: 12) {
-                    Text("Ask about \(productName)")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
+    @ViewBuilder
+    private var headerView: some View {
+        VStack(spacing: AppSpacing.xs) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 32, weight: .semibold))
+                .foregroundStyle(.white)
 
+            Text("AI Assistant")
+                .font(.system(size: AppFontSize.xl, weight: .bold))
+                .foregroundStyle(.white)
+
+            Text(productName)
+                .font(.system(size: AppFontSize.sm, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+
+            Text("Based on \(reviewCount) reviews")
+                .font(.system(size: AppFontSize.xs, weight: .medium))
+                .foregroundStyle(Color.white.opacity(0.55))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, AppSpacing.lg)
+        .padding(.top, AppSpacing.md)
+        .padding(.bottom, AppSpacing.lg)
+        .background(AppGradients.ai)
+        .glow(AppGlow.ai)
+    }
+
+    @ViewBuilder
+    private var quickQuestionsView: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            if viewModel.waitingForMore {
+                HStack(spacing: AppSpacing.sm) {
+                    ForEach(followupOptions, id: \.self) { option in
+                        Button {
+                            viewModel.handleFollowupChoice(option)
+                        } label: {
+                            OptionButtonLabel(text: option)
+                        }
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity)
+                        .opacity(viewModel.isLoading ? 0.5 : 1)
+                        .disabled(viewModel.isLoading)
+                    }
+                }
+            } else {
+                Text("Ask about \(productName)")
+                    .font(.system(size: AppFontSize.sm, weight: .semibold))
+                    .foregroundStyle(AppColors.foreground.opacity(0.7))
+
+                LazyVGrid(columns: questionColumns, spacing: AppSpacing.sm) {
                     ForEach(preDefinedQuestions, id: \.self) { question in
                         Button {
                             Task {
                                 await viewModel.sendMessage(question)
                             }
                         } label: {
-                            Text(question)
-                                .font(.subheadline)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(Color.blue.opacity(0.1))
-                                .cornerRadius(20)
+                            OptionButtonLabel(text: question)
                         }
+                        .buttonStyle(.plain)
+                        .opacity(viewModel.isLoading ? 0.5 : 1)
                         .disabled(viewModel.isLoading)
                     }
                 }
-                .padding()
+            }
+        }
+        .padding(.bottom, AppSpacing.sm)
+    }
+
+    @ViewBuilder
+    private var inputBar: some View {
+        HStack(spacing: AppSpacing.sm) {
+            TextField(
+                "",
+                text: $inputText,
+                prompt: Text("Ask about this product...")
+                    .foregroundStyle(AppColors.foreground.opacity(0.4))
+            )
+            .focused($isInputFocused)
+            .disabled(viewModel.isLoading)
+            .foregroundStyle(AppColors.foreground)
+            .onSubmit {
+                sendMessage()
             }
 
-            Divider()
-
-            // Input area
-            HStack(spacing: 12) {
-                TextField("Ask about this product...", text: $inputText)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($isInputFocused)
-                    .disabled(viewModel.isLoading)
-                    .onSubmit {
-                        sendMessage()
-                    }
-
-                Button {
-                    sendMessage()
-                } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(inputText.isEmpty || viewModel.isLoading ? .gray : .blue)
-                }
-                .disabled(inputText.isEmpty || viewModel.isLoading)
+            Button {
+                sendMessage()
+            } label: {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(AppGradients.brand, in: Circle())
             }
-            .padding()
-            .background(Color(.systemBackground))
+            .buttonStyle(.plain)
+            .opacity(viewModel.isLoading ? 0.4 : 1)
+            .disabled(inputText.isEmpty || viewModel.isLoading)
         }
-        .navigationTitle("AI Assistant")
-        .navigationBarTitleDisplayMode(.inline)
-        .alert("Error", isPresented: Binding(get: { viewModel.error != nil }, set: { if !$0 { viewModel.error = nil } })) {
-            Button("OK") { viewModel.error = nil }
-        } message: {
-            Text(viewModel.error ?? "")
-        }
+        .padding(.horizontal, AppSpacing.md)
+        .padding(.vertical, AppSpacing.sm)
+        .glassCard(AppGlass.subtle, cornerRadius: AppRadius.x2l)
+        .padding(.horizontal, AppSpacing.lg)
+        .padding(.top, AppSpacing.sm)
+        .padding(.bottom, AppSpacing.md)
     }
 
     private func sendMessage() {
@@ -126,6 +229,123 @@ struct AIAssistantView: View {
             await viewModel.sendMessage(message)
         }
     }
+
+    private func loadReviewCount() async {
+        guard reviewCount == 0 else { return }
+
+        do {
+            let product = try await repository.getProduct(id: productId)
+            reviewCount = product.reviewCount
+        } catch {
+            reviewCount = 0
+        }
+    }
+
+    private func animateTypingDots() async {
+        guard viewModel.isLoading else {
+            dotOpacity = [1, 1, 1]
+            return
+        }
+
+        while viewModel.isLoading {
+            for activeIndex in 0..<3 {
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    for index in 0..<3 {
+                        dotOpacity[index] = index == activeIndex ? 1.0 : 0.3
+                    }
+                }
+
+                try? await Task.sleep(nanoseconds: 170_000_000)
+
+                if !viewModel.isLoading {
+                    break
+                }
+            }
+        }
+
+        dotOpacity = [1, 1, 1]
+    }
+}
+
+private struct DecorativeOrbsView: View {
+    var body: some View {
+        ZStack {
+            RadialGradient(
+                colors: [AppColors.aiPurple.opacity(0.08), .clear],
+                center: .center,
+                startRadius: 0,
+                endRadius: 280
+            )
+            .frame(width: 560, height: 560)
+            .offset(x: 180, y: -260)
+
+            RadialGradient(
+                colors: [AppColors.primary.opacity(0.05), .clear],
+                center: .center,
+                startRadius: 0,
+                endRadius: 220
+            )
+            .frame(width: 440, height: 440)
+            .offset(x: -180, y: 300)
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+private struct OptionButtonLabel: View {
+    let text: String
+
+    var body: some View {
+        HStack {
+            Text(text)
+                .font(.system(size: AppFontSize.sm, weight: .medium))
+                .foregroundStyle(AppColors.foreground)
+                .multilineTextAlignment(.leading)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.leading, AppSpacing.md)
+        .padding(.trailing, AppSpacing.sm)
+        .padding(.vertical, AppSpacing.md)
+        .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
+        .glassCard(AppGlass.subtle, cornerRadius: AppRadius.lg)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(AppColors.primary)
+                .frame(width: 2)
+                .padding(.vertical, 10)
+        }
+    }
+}
+
+private struct TypingIndicatorBubble: View {
+    let dotOpacity: [Double]
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: AppSpacing.sm) {
+                    ForEach(0..<3, id: \.self) { index in
+                        Circle()
+                            .fill(AppColors.aiPurple)
+                            .frame(width: 8, height: 8)
+                            .opacity(dotOpacity[index])
+                    }
+                }
+                .padding(.horizontal, AppSpacing.md)
+                .padding(.vertical, AppSpacing.md)
+                .background(alignment: .leading) {
+                    Rectangle()
+                        .fill(AppColors.aiPurple)
+                        .frame(width: 3)
+                }
+                .glassCard(AppGlass.card, cornerRadius: AppRadius.xl)
+                .clipShape(RoundedRectangle(cornerRadius: AppRadius.xl, style: .continuous))
+            }
+
+            Spacer(minLength: 56)
+        }
+    }
 }
 
 // MARK: - Message Model
@@ -134,6 +354,14 @@ struct ChatMessage: Identifiable {
     let content: String
     let isUser: Bool
     let timestamp: Date
+    let options: [String]?
+
+    init(content: String, isUser: Bool, timestamp: Date, options: [String]? = nil) {
+        self.content = content
+        self.isUser = isUser
+        self.timestamp = timestamp
+        self.options = options
+    }
 
     var formattedTime: String {
         let formatter = DateFormatter()
@@ -148,31 +376,67 @@ struct MessageBubble: View {
 
     var body: some View {
         HStack {
-            if message.isUser { Spacer() }
-
-            VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    if !message.isUser {
-                        Image(systemName: "sparkles")
-                            .foregroundColor(.purple)
-                    }
-
-                    Text(message.content)
-                        .font(.body)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(message.isUser ? Color.blue : Color(.systemGray5))
-                .foregroundColor(message.isUser ? .white : .primary)
-                .cornerRadius(20)
-
-                Text(message.formattedTime)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+            if message.isUser {
+                Spacer(minLength: 56)
             }
 
-            if !message.isUser { Spacer() }
+            VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
+                if message.isUser {
+                    Text("You")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(AppColors.foreground.opacity(0.5))
+                }
+
+                if message.isUser {
+                    Text(message.content)
+                        .font(.system(size: 15, weight: .regular))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, AppSpacing.md)
+                        .padding(.vertical, 10)
+                        .background {
+                            UnevenRoundedRectangle(
+                                cornerRadii: RectangleCornerRadii(
+                                    topLeading: AppRadius.xl,
+                                    bottomLeading: AppRadius.xl,
+                                    bottomTrailing: 4,
+                                    topTrailing: AppRadius.xl
+                                ),
+                                style: .continuous
+                            )
+                            .fill(AppGradients.brand)
+                        }
+                } else {
+                    HStack(alignment: .top, spacing: AppSpacing.sm) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(AppColors.aiPurple)
+
+                        Text(message.content)
+                            .font(.system(size: 15, weight: .regular))
+                            .foregroundStyle(AppColors.foreground)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.horizontal, AppSpacing.md)
+                    .padding(.vertical, 10)
+                    .background(alignment: .leading) {
+                        Rectangle()
+                            .fill(AppColors.aiPurple)
+                            .frame(width: 3)
+                    }
+                    .glassCard(AppGlass.card, cornerRadius: AppRadius.xl)
+                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.xl, style: .continuous))
+                }
+
+                Text(message.formattedTime)
+                    .font(.system(size: 10, weight: .regular))
+                    .foregroundStyle(AppColors.foreground.opacity(0.4))
+            }
+
+            if !message.isUser {
+                Spacer(minLength: 56)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: message.isUser ? .trailing : .leading)
     }
 }
 
@@ -182,6 +446,7 @@ class AIAssistantViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var isLoading = false
     @Published var error: String?
+    @Published var waitingForMore = false
 
     private let productId: Int
     private let repository: ProductRepositoryProtocol
@@ -198,6 +463,7 @@ class AIAssistantViewModel: ObservableObject {
 
         isLoading = true
         error = nil
+        waitingForMore = false
 
         do {
             let response = try await repository.chatWithAI(productId: productId, question: content)
@@ -217,7 +483,38 @@ class AIAssistantViewModel: ObservableObject {
             messages.append(errorMessage)
         }
 
+        let followupMessage = ChatMessage(
+            content: "Do you have more questions?",
+            isUser: false,
+            timestamp: Date(),
+            options: ["Yes", "No"]
+        )
+        messages.append(followupMessage)
+        waitingForMore = true
+
         isLoading = false
+    }
+
+    func handleFollowupChoice(_ choice: String) {
+        let userMessage = ChatMessage(content: choice, isUser: true, timestamp: Date())
+        messages.append(userMessage)
+        waitingForMore = false
+
+        if choice.lowercased() == "yes" {
+            let continueMessage = ChatMessage(
+                content: "Great! What would you like to know?",
+                isUser: false,
+                timestamp: Date()
+            )
+            messages.append(continueMessage)
+        } else {
+            let closingMessage = ChatMessage(
+                content: "Thanks for chatting. Feel free to ask another question anytime.",
+                isUser: false,
+                timestamp: Date()
+            )
+            messages.append(closingMessage)
+        }
     }
 }
 
