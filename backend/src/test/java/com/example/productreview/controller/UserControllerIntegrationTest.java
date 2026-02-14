@@ -150,7 +150,8 @@ public class UserControllerIntegrationTest {
         int notificationId = (int) ((Map<?, ?>) notifications.get(0)).get("id");
 
         // Mark as read
-        mockMvc.perform(put("/api/v1/user/notifications/" + notificationId + "/read"))
+        mockMvc.perform(put("/api/v1/user/notifications/" + notificationId + "/read")
+                .header("X-User-ID", userId))
                 .andExpect(status().isOk());
 
         // Verify unread count is 0
@@ -205,7 +206,8 @@ public class UserControllerIntegrationTest {
         int notificationId = (int) ((Map<?, ?>) notifications.get(0)).get("id");
 
         // Delete
-        mockMvc.perform(delete("/api/v1/user/notifications/" + notificationId))
+        mockMvc.perform(delete("/api/v1/user/notifications/" + notificationId)
+                .header("X-User-ID", userId))
                 .andExpect(status().isOk());
 
         // Verify it's gone
@@ -287,15 +289,79 @@ public class UserControllerIntegrationTest {
     }
 
     @Test
-    void markAsRead_WithNonExistentId_ShouldReturnOk() throws Exception {
-        mockMvc.perform(put("/api/v1/user/notifications/99999/read"))
-                .andExpect(status().isOk());
+    void markAsRead_WithNonExistentId_ShouldReturn404() throws Exception {
+        mockMvc.perform(put("/api/v1/user/notifications/99999/read")
+                .header("X-User-ID", "some-user"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
-    void deleteNotification_WithNonExistentId_ShouldReturnOk() throws Exception {
-        mockMvc.perform(delete("/api/v1/user/notifications/99999"))
+    void markAsRead_WithoutHeader_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(put("/api/v1/user/notifications/1/read"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void deleteNotification_WithNonExistentId_ShouldReturn404() throws Exception {
+        mockMvc.perform(delete("/api/v1/user/notifications/99999")
+                .header("X-User-ID", "some-user"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteNotification_WithoutHeader_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(delete("/api/v1/user/notifications/1"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void markAsRead_WrongUser_ShouldReturnUnauthorized() throws Exception {
+        String ownerId = "notif-owner-markread";
+
+        // Create notification as owner
+        mockMvc.perform(post("/api/v1/user/notifications")
+                .header("X-User-ID", ownerId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("title", "Owner Only", "message", "msg"))))
                 .andExpect(status().isOk());
+
+        // Get notification ID
+        String response = mockMvc.perform(get("/api/v1/user/notifications")
+                .header("X-User-ID", ownerId))
+                .andReturn().getResponse().getContentAsString();
+
+        List<?> notifications = objectMapper.readValue(response, List.class);
+        int notificationId = (int) ((Map<?, ?>) notifications.get(0)).get("id");
+
+        // Try to mark as read with a different user
+        mockMvc.perform(put("/api/v1/user/notifications/" + notificationId + "/read")
+                .header("X-User-ID", "different-user"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deleteNotification_WrongUser_ShouldReturnUnauthorized() throws Exception {
+        String ownerId = "notif-owner-delete";
+
+        // Create notification as owner
+        mockMvc.perform(post("/api/v1/user/notifications")
+                .header("X-User-ID", ownerId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("title", "Owner Only", "message", "msg"))))
+                .andExpect(status().isOk());
+
+        // Get notification ID
+        String response = mockMvc.perform(get("/api/v1/user/notifications")
+                .header("X-User-ID", ownerId))
+                .andReturn().getResponse().getContentAsString();
+
+        List<?> notifications = objectMapper.readValue(response, List.class);
+        int notificationId = (int) ((Map<?, ?>) notifications.get(0)).get("id");
+
+        // Try to delete with a different user
+        mockMvc.perform(delete("/api/v1/user/notifications/" + notificationId)
+                .header("X-User-ID", "different-user"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

@@ -195,7 +195,7 @@ public class ProductController {
             @Parameter(description = "Review ID", example = "1")
             @PathVariable Long reviewId,
             @Parameter(description = "User ID for vote tracking", required = true)
-            @RequestHeader(value = "X-User-ID", required = false) String userId) {
+            @RequestHeader(value = "X-User-ID", required = true) String userId) {
         return ResponseEntity.ok(productService.markReviewAsHelpful(reviewId, userId));
     }
 

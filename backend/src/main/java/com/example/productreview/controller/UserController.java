@@ -140,16 +140,19 @@ public class UserController {
     @Operation(
             tags = "Notifications",
             summary = "Mark notification as read",
-            description = "Marks a single notification as read by its ID.")
+            description = "Marks a single notification as read by its ID. The notification must belong to the requesting user.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Notification marked as read"),
+            @ApiResponse(responseCode = "401", description = "Notification does not belong to user"),
             @ApiResponse(responseCode = "404", description = "Notification not found")
     })
     @PutMapping("/notifications/{id}/read")
     public ResponseEntity<Void> markAsRead(
+            @Parameter(description = "User ID", required = true)
+            @RequestHeader("X-User-ID") String userId,
             @Parameter(description = "Notification ID", example = "1")
             @PathVariable Long id) {
-        userService.markAsRead(id);
+        userService.markAsRead(id, userId);
         return ResponseEntity.ok().build();
     }
 
@@ -193,16 +196,19 @@ public class UserController {
     @Operation(
             tags = "Notifications",
             summary = "Delete a notification",
-            description = "Permanently deletes a single notification by its ID.")
+            description = "Permanently deletes a single notification by its ID. The notification must belong to the requesting user.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Notification deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Notification does not belong to user"),
             @ApiResponse(responseCode = "404", description = "Notification not found")
     })
     @DeleteMapping("/notifications/{id}")
     public ResponseEntity<Void> deleteNotification(
+            @Parameter(description = "User ID", required = true)
+            @RequestHeader("X-User-ID") String userId,
             @Parameter(description = "Notification ID", example = "1")
             @PathVariable Long id) {
-        userService.deleteNotification(id);
+        userService.deleteNotification(id, userId);
         return ResponseEntity.ok().build();
     }
 

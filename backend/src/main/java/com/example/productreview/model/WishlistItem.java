@@ -4,10 +4,10 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "wishlist_items", indexes = {
-    @Index(name = "idx_wishlist_user", columnList = "userId"),
-    @Index(name = "idx_wishlist_product", columnList = "productId")
+    @Index(name = "idx_wishlist_user", columnList = "user_id"),
+    @Index(name = "idx_wishlist_product", columnList = "product_id")
 }, uniqueConstraints = {
-    @UniqueConstraint(name = "uk_wishlist_user_product", columnNames = {"userId", "productId"})
+    @UniqueConstraint(name = "uk_wishlist_user_product", columnNames = {"user_id", "product_id"})
 })
 public class WishlistItem {
     

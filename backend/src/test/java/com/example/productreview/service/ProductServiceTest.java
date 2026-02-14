@@ -155,7 +155,7 @@ public class ProductServiceTest {
         review.setProduct(product);
 
         when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
-        when(reviewVoteRepository.findByUserIdAndReviewId("user1", 1L)).thenReturn(Optional.empty());
+        when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.empty());
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
         productService.markReviewAsHelpful(1L, "user1");
@@ -170,10 +170,10 @@ public class ProductServiceTest {
         review.setId(1L);
         review.setHelpfulCount(1);
         review.setProduct(product);
-        ReviewVote existingVote = new ReviewVote("user1", 1L);
+        ReviewVote existingVote = new ReviewVote("user1", review);
 
         when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
-        when(reviewVoteRepository.findByUserIdAndReviewId("user1", 1L)).thenReturn(Optional.of(existingVote));
+        when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.of(existingVote));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
         productService.markReviewAsHelpful(1L, "user1");
@@ -208,8 +208,12 @@ public class ProductServiceTest {
 
     @Test
     void getUserVotedReviewIds_ShouldReturnVotedIds() {
-        ReviewVote vote1 = new ReviewVote("user1", 10L);
-        ReviewVote vote2 = new ReviewVote("user1", 20L);
+        Review review10 = new Review();
+        review10.setId(10L);
+        Review review20 = new Review();
+        review20.setId(20L);
+        ReviewVote vote1 = new ReviewVote("user1", review10);
+        ReviewVote vote2 = new ReviewVote("user1", review20);
         when(reviewVoteRepository.findByUserId("user1")).thenReturn(Arrays.asList(vote1, vote2));
 
         List<Long> result = productService.getUserVotedReviewIds("user1");
@@ -480,10 +484,10 @@ public class ProductServiceTest {
         review.setId(1L);
         review.setHelpfulCount(0);
         review.setProduct(product);
-        ReviewVote existingVote = new ReviewVote("user1", 1L);
+        ReviewVote existingVote = new ReviewVote("user1", review);
 
         when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
-        when(reviewVoteRepository.findByUserIdAndReviewId("user1", 1L)).thenReturn(Optional.of(existingVote));
+        when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.of(existingVote));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
         productService.markReviewAsHelpful(1L, "user1");
@@ -499,7 +503,7 @@ public class ProductServiceTest {
         review.setProduct(product);
 
         when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
-        when(reviewVoteRepository.findByUserIdAndReviewId("user1", 1L)).thenReturn(Optional.empty());
+        when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.empty());
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
         productService.markReviewAsHelpful(1L, "user1");

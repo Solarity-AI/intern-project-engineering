@@ -163,7 +163,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         if (userId != null) {
-            Optional<ReviewVote> existingVote = reviewVoteRepository.findByUserIdAndReviewId(userId, reviewId);
+            Optional<ReviewVote> existingVote = reviewVoteRepository.findByUserIdAndReview_Id(userId, reviewId);
             
             if (existingVote.isPresent()) {
                 reviewVoteRepository.delete(existingVote.get());
@@ -171,7 +171,7 @@ public class ProductServiceImpl implements ProductService {
                     review.setHelpfulCount(review.getHelpfulCount() - 1);
                 }
             } else {
-                reviewVoteRepository.save(new ReviewVote(userId, reviewId));
+                reviewVoteRepository.save(new ReviewVote(userId, review));
                 review.setHelpfulCount(review.getHelpfulCount() + 1);
             }
         } else {

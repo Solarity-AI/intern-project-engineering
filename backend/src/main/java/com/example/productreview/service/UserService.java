@@ -1,6 +1,8 @@
 package com.example.productreview.service;
 
 import com.example.productreview.dto.ProductDTO;
+import com.example.productreview.exception.ResourceNotFoundException;
+import com.example.productreview.exception.UnauthorizedException;
 import com.example.productreview.model.AppNotification;
 import com.example.productreview.model.WishlistItem;
 import com.example.productreview.repository.NotificationRepository;
@@ -79,11 +81,14 @@ public class UserService {
         return notificationRepository.countByUserIdAndIsReadFalse(userId);
     }
 
-    public void markAsRead(Long notificationId) {
-        notificationRepository.findById(notificationId).ifPresent(n -> {
-            n.setRead(true);
-            notificationRepository.save(n);
-        });
+    public void markAsRead(Long notificationId, String userId) {
+        AppNotification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found with id: " + notificationId));
+        if (!notification.getUserId().equals(userId)) {
+            throw new UnauthorizedException("Notification does not belong to user");
+        }
+        notification.setRead(true);
+        notificationRepository.save(notification);
     }
     
     public void markAllAsRead(String userId) {
@@ -100,14 +105,15 @@ public class UserService {
     }
     
     @Transactional
-    public void deleteNotification(Long notificationId) {
+    public void deleteNotification(Long notificationId, String userId) {
         log.info("Deleting notification with ID: {}", notificationId);
-        if (notificationRepository.existsById(notificationId)) {
-            notificationRepository.deleteById(notificationId);
-            log.info("Deleted notification {}", notificationId);
-        } else {
-            log.warn("Notification {} not found for deletion", notificationId);
+        AppNotification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found with id: " + notificationId));
+        if (!notification.getUserId().equals(userId)) {
+            throw new UnauthorizedException("Notification does not belong to user");
         }
+        notificationRepository.delete(notification);
+        log.info("Deleted notification {}", notificationId);
     }
     
     @Transactional

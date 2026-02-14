@@ -42,7 +42,8 @@ CREATE TABLE review_votes (
     id          BIGSERIAL PRIMARY KEY,
     user_id     VARCHAR(255) NOT NULL,
     review_id   BIGINT NOT NULL,
-    CONSTRAINT uk_review_vote_user_review UNIQUE (user_id, review_id)
+    CONSTRAINT uk_review_vote_user_review UNIQUE (user_id, review_id),
+    CONSTRAINT fk_review_votes_review FOREIGN KEY (review_id) REFERENCES reviews(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_review_vote_user ON review_votes(user_id);
@@ -53,7 +54,8 @@ CREATE TABLE wishlist_items (
     id          BIGSERIAL PRIMARY KEY,
     user_id     VARCHAR(255) NOT NULL,
     product_id  BIGINT NOT NULL,
-    CONSTRAINT uk_wishlist_user_product UNIQUE (user_id, product_id)
+    CONSTRAINT uk_wishlist_user_product UNIQUE (user_id, product_id),
+    CONSTRAINT fk_wishlist_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_wishlist_user ON wishlist_items(user_id);
@@ -67,7 +69,8 @@ CREATE TABLE notifications (
     message     TEXT NOT NULL,
     is_read     BOOLEAN DEFAULT FALSE,
     created_at  TIMESTAMP DEFAULT NOW(),
-    product_id  BIGINT
+    product_id  BIGINT,
+    CONSTRAINT fk_notification_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_notification_user ON notifications(user_id);
