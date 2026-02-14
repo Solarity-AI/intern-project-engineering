@@ -8,6 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build": "expo export --platform web",
+    "postbuild": "cp -r public/. dist/",
     "export": "expo export --platform web",
     "test": "jest --config jest.config.js",
     "test:unit": "jest --config jest.node.config.js",
