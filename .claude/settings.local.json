@@ -6,7 +6,9 @@
       "Bash(git -C \"c:/Users/ERENCAN/Solary/ProductReviewApp-Kotlin-FW\" log --all --full-history -- \"backend/src/main/java/com/solarityai/productreview/config/SecurityConfig.java\")",
       "Bash(git -C \"c:/Users/ERENCAN/Solary/ProductReviewApp-Kotlin-FW\" show HEAD:backend/src/main/java/com/solarityai/productreview/config/SecurityConfig.java)",
       "Bash(./gradlew assembleDebug:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(for module in analytics billing cache checklist clock codegen config constants context device domain eventbus exception explain foundation governance i18n idempotency integrations introspection logger messaging metrics ping privacy query ranking reactor referral retention retry rewards scenario scheduler security timeline upload user validation)",
+      "Bash(do find \"c:/Users/ERENCAN/Solary/backend-fw/src/main/java/com/solarityai/backendfw/$module\" -type f -name \"*.java\" -exec grep -H \"^package \\\\|^public \" {} + done)"
     ]
   }
 }

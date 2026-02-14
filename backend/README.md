@@ -14,14 +14,61 @@ A Spring Boot backend application for product reviews, built using the backend-f
 
 ## Technology Stack
 
-- **Framework**: Spring Boot 3.2.1
+- **Framework**: Spring Boot 4.0.1
 - **Backend-FW**: Solarity AI Backend Framework 1.0.0.0
 - **Database**: H2 (in-memory)
 - **ORM**: Spring Data JPA
 - **Mapping**: MapStruct 1.5.5
 - **Caching**: Caffeine
 - **Validation**: Jakarta Validation
-- **Java**: 17
+- **Java**: 21
+
+## Framework Integration
+
+### Dependency
+Declared in `pom.xml`:
+```xml
+<dependency>
+    <groupId>com.solarityai</groupId>
+    <artifactId>backend-fw</artifactId>
+    <version>1.0.0.0</version>
+</dependency>
+```
+
+The framework source lives at `../backend-fw`. It must be installed in your local Maven repository before building this project (`cd ../backend-fw && mvn install`).
+
+### Usage rules
+1. **Import framework types directly** from `com.solarityai.backendfw.*`. Do not recreate framework patterns locally.
+2. **Extend framework base classes** for entities (`BaseEntity`), DTOs (`BaseDto`), repositories (`BaseRepository`), and controllers (`BaseController`).
+3. **Use framework query types** (`PageRequestDto`, `PageResponse`, `PageMetadata`) for pagination.
+4. **Use framework exceptions** (`NotFoundException`) and error responses (`ApiErrorResponse`) for consistent error handling.
+
+### Framework modules currently used
+
+| Module | Types used | Files |
+|--------|-----------|-------|
+| `foundation.entity` | `BaseEntity` | 5 entities: `ProductEntity`, `ReviewEntity`, `ReviewVoteEntity`, `WishlistItemEntity`, `AppNotificationEntity` |
+| `foundation.model` | `BaseDto`, `ApiErrorResponse` | 3 DTOs (`ProductDto`, `ReviewDto`, `AppNotificationDto`) + `GlobalExceptionHandler` |
+| `foundation.repository` | `BaseRepository` | 5 repos: `ProductRepository`, `ReviewRepository`, `ReviewVoteRepository`, `WishlistItemRepository`, `AppNotificationRepository` |
+| `foundation.controller` | `BaseController` | 2 controllers: `ProductController`, `UserController` |
+| `query.model` | `PageRequestDto` | `ProductService`, `UserService`, `ProductServiceImpl`, `UserServiceImpl`, `ProductController`, `UserController` |
+| `query.response` | `PageResponse`, `PageMetadata` | `ProductService`, `ProductServiceImpl`, `ProductController` |
+| `exception` | `NotFoundException` | `ProductServiceImpl`, `UserServiceImpl`, `GlobalExceptionHandler` |
+
+**Coverage**: 20 of 36 source files (56%) import from backend-fw.
+
+### Known gaps (not yet adopted)
+
+| Module | What it provides | Current approach |
+|--------|-----------------|-----------------|
+| `validation` | `ValidationResult`, `SpringValidatorEngine` | Jakarta `@Valid`/`@NotBlank` on DTOs directly |
+| `cache` | `QueryCache`, `CachePolicy`, event-driven invalidation | Spring `@Cacheable` + Caffeine directly |
+| `security` | JWT auth, `AuthService`, Spring Security integration | Custom `SecurityConfig.java` |
+| `logger` | Structured logging | Standard SLF4J |
+| `domain` | `DomainEvent`, `DomainEventPublisher` | No domain events |
+| `metrics` | Micrometer-based framework metrics | Not used |
+| `retry` | Circuit breaker, retry policies | Not used |
+| `governance` | Feature flags, kill switches, audit | Not used |
 
 ## Project Structure
 
@@ -30,10 +77,10 @@ src/main/java/com/solarityai/productreview/
 ├── entity/              # JPA entities (extends BaseEntity)
 ├── dto/                 # Data Transfer Objects (extends BaseDto)
 ├── mapper/              # MapStruct mappers
-├── repository/          # Spring Data repositories
-├── service/             # Business logic layer
+├── repository/          # Spring Data repositories (extends BaseRepository)
+├── service/             # Business logic interfaces
 │   └── impl/           # Service implementations
-├── controller/          # REST controllers
+├── controller/          # REST controllers (extends BaseController)
 ├── config/              # Configuration classes
 └── ProductReviewApplication.java
 ```
@@ -42,28 +89,26 @@ src/main/java/com/solarityai/productreview/
 
 ### Prerequisites
 
-- Java 17 or higher
+- Java 21 or higher
 - Maven 3.6+
 - backend-fw framework installed in local Maven repository
 
-### Installation
+### Build & Run
 
-1. Navigate to the project directory:
 ```bash
-cd ProductReviewApp-Backend-FW
-```
-
-2. Build the project:
-```bash
+cd backend
 mvn clean install
-```
-
-3. Run the application:
-```bash
 mvn spring-boot:run
 ```
 
-The server will start on `http://localhost:8080`
+The server starts at `http://localhost:8080`.
+
+### Running Tests
+
+```bash
+cd backend
+mvn test
+```
 
 ### H2 Console
 
@@ -147,10 +192,10 @@ By default, the app runs in test mode with mock AI responses. To enable real AI:
 
 ## Error Handling
 
-The application uses backend-fw's global exception handling:
-- All exceptions are caught and returned in a standard format
+The application uses backend-fw's exception handling:
+- `NotFoundException` mapped to HTTP 404 via `GlobalExceptionHandler`
+- `ApiErrorResponse` provides a standard JSON error envelope
 - Validation errors include field-level details
-- 404 errors for not found resources
 - Proper HTTP status codes for all scenarios
 
 ## Caching
@@ -170,12 +215,6 @@ AI summaries are cached using Caffeine:
 4. Create repository in `repository/` package (extend `BaseRepository`)
 5. Create service interface and implementation in `service/`
 6. Create controller in `controller/` package (extend `BaseController`)
-
-### Running Tests
-
-```bash
-mvn test
-```
 
 ## License
 
