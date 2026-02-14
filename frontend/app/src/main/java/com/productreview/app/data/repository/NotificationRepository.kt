@@ -2,6 +2,7 @@ package com.productreview.app.data.repository
 
 import com.productreview.app.core.FWError
 import com.productreview.app.core.FWResult
+import com.productreview.app.core.RetryPolicy
 import com.productreview.app.core.logging.LogCategory
 import com.productreview.app.core.logging.LogEvent
 import com.productreview.app.core.logging.LogLevel
@@ -26,7 +27,8 @@ import javax.inject.Singleton
 @Singleton
 class NotificationRepository @Inject constructor(
     private val api: ProductReviewApi,
-    private val logger: Logger
+    private val logger: Logger,
+    private val retryPolicy: RetryPolicy
 ) {
     private val _notifications = MutableStateFlow<List<Notification>>(emptyList())
     val notifications: StateFlow<List<Notification>> = _notifications.asStateFlow()
@@ -45,7 +47,7 @@ class NotificationRepository @Inject constructor(
             level = LogLevel.DEBUG
         ))
 
-        return safeApiCall {
+        return safeGetCall {
             val apiNotifications = api.getNotifications()
             _notifications.value = apiNotifications.map { it.toDomain() }
             _unreadCount.value = _notifications.value.count { !it.isRead }
@@ -59,7 +61,7 @@ class NotificationRepository @Inject constructor(
     }
 
     suspend fun refreshUnreadCount(): FWResult<Unit> {
-        return safeApiCall {
+        return safeGetCall {
             val response = api.getUnreadCount()
             _unreadCount.value = response.count
         }
@@ -168,6 +170,10 @@ class NotificationRepository @Inject constructor(
 
     fun getNotificationById(id: String): Notification? {
         return _notifications.value.find { it.id == id }
+    }
+
+    private suspend inline fun <T> safeGetCall(crossinline block: suspend () -> T): FWResult<T> {
+        return retryPolicy.executeWithRetry { safeApiCall(block) }
     }
 
     private suspend inline fun <T> safeApiCall(crossinline block: suspend () -> T): FWResult<T> {

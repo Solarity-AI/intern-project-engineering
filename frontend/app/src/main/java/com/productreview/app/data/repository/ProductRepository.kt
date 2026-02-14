@@ -2,6 +2,7 @@ package com.productreview.app.data.repository
 
 import com.productreview.app.core.FWError
 import com.productreview.app.core.FWResult
+import com.productreview.app.core.RetryPolicy
 import com.productreview.app.core.pagination.Page
 import com.productreview.app.core.pagination.PageCursor
 import com.productreview.app.core.logging.LogCategory
@@ -25,7 +26,8 @@ import javax.inject.Singleton
 @Singleton
 class ProductRepository @Inject constructor(
     private val api: ProductReviewApi,
-    private val logger: Logger
+    private val logger: Logger,
+    private val retryPolicy: RetryPolicy
 ) {
     // ==================== PRODUCTS ====================
 
@@ -51,7 +53,7 @@ class ProductRepository @Inject constructor(
             metadata = metadata
         ))
 
-        return safeApiCall {
+        return safeGetCall {
             val response = api.getProducts(
                 page = page,
                 size = size,
@@ -82,14 +84,14 @@ class ProductRepository @Inject constructor(
             metadata = mapOf("productId" to id)
         ))
 
-        return safeApiCall { api.getProduct(id) }
+        return safeGetCall { api.getProduct(id) }
     }
 
     suspend fun getGlobalStats(
         category: String? = null,
         search: String? = null
     ): FWResult<GlobalStats> {
-        return safeApiCall {
+        return safeGetCall {
             api.getGlobalStats(
                 category = category?.takeIf { it != "All" },
                 search = search?.takeIf { it.isNotBlank() }
@@ -116,7 +118,7 @@ class ProductRepository @Inject constructor(
             )
         ))
 
-        return safeApiCall {
+        return safeGetCall {
             val response = api.getReviews(productId, page, size, sort, rating)
             response.toPage()
         }
@@ -201,7 +203,7 @@ class ProductRepository @Inject constructor(
     }
 
     suspend fun getUserVotedReviews(): FWResult<List<String>> {
-        return safeApiCall { api.getUserVotedReviews() }
+        return safeGetCall { api.getUserVotedReviews() }
     }
 
     // ==================== AI CHAT ====================
@@ -218,6 +220,11 @@ class ProductRepository @Inject constructor(
     }
 
     // ==================== HELPERS ====================
+
+    /** safeApiCall + retry for idempotent GET requests only. */
+    private suspend inline fun <T> safeGetCall(crossinline block: suspend () -> T): FWResult<T> {
+        return retryPolicy.executeWithRetry { safeApiCall(block) }
+    }
 
     private suspend inline fun <T> safeApiCall(crossinline block: suspend () -> T): FWResult<T> {
         return try {

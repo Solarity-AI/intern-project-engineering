@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import org.hibernate.annotations.BatchSize;
+
 import java.math.BigDecimal;
 import java.util.*;
 
@@ -23,6 +25,7 @@ public class ProductEntity extends BaseEntity {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "product_categories", joinColumns = @JoinColumn(name = "product_id"))
     @Column(name = "category")
+    @BatchSize(size = 20)
     private Set<String> categories = new HashSet<>();
 
     @Column(nullable = false)
