@@ -1,9 +1,11 @@
 package com.example.productreview.controller;
 
+import com.example.productreview.dto.CreateNotificationRequest;
 import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.exception.ValidationException;
 import com.example.productreview.model.AppNotification;
 import com.example.productreview.service.UserService;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -183,13 +185,9 @@ public class UserController {
     public ResponseEntity<Void> createNotification(
             @Parameter(description = "User ID", required = true)
             @RequestHeader("X-User-ID") String userId,
-            @RequestBody Map<String, Object> payload) {
+            @Valid @RequestBody CreateNotificationRequest request) {
 
-        String title = (String) payload.get("title");
-        String message = (String) payload.get("message");
-        Long productId = payload.get("productId") != null ? ((Number) payload.get("productId")).longValue() : null;
-
-        userService.createNotification(userId, title, message, productId);
+        userService.createNotification(userId, request.getTitle(), request.getMessage(), request.getProductId());
         return ResponseEntity.ok().build();
     }
 

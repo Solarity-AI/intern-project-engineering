@@ -7,9 +7,9 @@ CREATE TABLE products (
     id              BIGSERIAL PRIMARY KEY,
     name            VARCHAR(255) NOT NULL,
     description     TEXT NOT NULL,
-    price           DOUBLE PRECISION NOT NULL,
+    price           NUMERIC(10,2) NOT NULL,
     image_url       VARCHAR(512),
-    average_rating  DOUBLE PRECISION DEFAULT 0.0,
+    average_rating  NUMERIC(3,2) DEFAULT 0.0,
     review_count    INTEGER DEFAULT 0
 );
 
@@ -29,7 +29,7 @@ CREATE TABLE reviews (
     comment         TEXT,
     rating          INTEGER,
     helpful_count   INTEGER DEFAULT 0,
-    created_at      TIMESTAMP,
+    created_at      TIMESTAMP DEFAULT NOW(),
     product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     CONSTRAINT check_rating_range CHECK (rating BETWEEN 1 AND 5)
 );

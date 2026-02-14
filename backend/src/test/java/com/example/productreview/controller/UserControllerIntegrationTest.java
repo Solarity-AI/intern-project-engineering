@@ -315,7 +315,7 @@ public class UserControllerIntegrationTest {
     }
 
     @Test
-    void markAsRead_WrongUser_ShouldReturnUnauthorized() throws Exception {
+    void markAsRead_WrongUser_ShouldReturnForbidden() throws Exception {
         String ownerId = "notif-owner-markread";
 
         // Create notification as owner
@@ -340,7 +340,7 @@ public class UserControllerIntegrationTest {
     }
 
     @Test
-    void deleteNotification_WrongUser_ShouldReturnUnauthorized() throws Exception {
+    void deleteNotification_WrongUser_ShouldReturnForbidden() throws Exception {
         String ownerId = "notif-owner-delete";
 
         // Create notification as owner
