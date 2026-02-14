@@ -7,7 +7,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build": "expo export --platform web",
+    "build": "node -e \"if (!process.env.EXPO_PUBLIC_API_URL) { console.error('\\nError: EXPO_PUBLIC_API_URL is not set\\n'); process.exit(1); }\" && expo export --platform web",
     "postbuild": "cp -r public/. dist/",
     "export": "expo export --platform web",
     "test": "jest --config jest.config.js",
@@ -36,11 +36,13 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.1.0",
     "@types/uuid": "^10.0.0",
     "jest": "^30.2.0",
     "jest-expo": "~54.0.0",
+    "react-test-renderer": "^19.1.0",
     "ts-jest": "^29.4.6",
     "typescript": "~5.9.2"
   },

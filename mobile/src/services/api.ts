@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
-export const BASE_URL = "https://product-review-app-ybmf.onrender.com";
-// export const BASE_URL = "http://localhost:8080"; // Local development
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+if (!BASE_URL) throw new Error("EXPO_PUBLIC_API_URL is not set");
 
 const USER_ID_KEY = 'device_user_id';
 
