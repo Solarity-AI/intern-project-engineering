@@ -10,4 +10,6 @@ services:
         value: 17
       - key: OPENAI_API_KEY
         sync: false
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
     healthCheckPath: /actuator/health
