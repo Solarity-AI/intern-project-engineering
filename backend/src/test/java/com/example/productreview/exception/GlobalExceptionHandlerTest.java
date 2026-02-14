@@ -23,7 +23,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void resourceNotFound_shouldReturn404() throws Exception {
-        mockMvc.perform(get("/api/products/999999"))
+        mockMvc.perform(get("/api/v1/products/999999"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(404))
                 .andExpect(jsonPath("$.message").value("Product not found with id: 999999"))
@@ -34,7 +34,7 @@ class GlobalExceptionHandlerTest {
     void validationError_shouldReturn400WithDetails() throws Exception {
         String invalidReview = "{\"reviewerName\":\"J\",\"comment\":\"Short\",\"rating\":6}";
 
-        mockMvc.perform(post("/api/products/1/reviews")
+        mockMvc.perform(post("/api/v1/products/1/reviews")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidReview))
                 .andExpect(status().isBadRequest())

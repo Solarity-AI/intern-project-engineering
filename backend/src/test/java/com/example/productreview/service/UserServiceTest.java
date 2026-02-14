@@ -1,6 +1,8 @@
 package com.example.productreview.service;
 
 import com.example.productreview.dto.ProductDTO;
+import com.example.productreview.exception.ResourceNotFoundException;
+import com.example.productreview.exception.UnauthorizedException;
 import com.example.productreview.model.AppNotification;
 import com.example.productreview.model.Product;
 import com.example.productreview.model.WishlistItem;
@@ -155,18 +157,28 @@ public class UserServiceTest {
         notification.setId(1L);
         when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
 
-        userService.markAsRead(1L);
+        userService.markAsRead(1L, USER_ID);
 
         assertTrue(notification.isRead());
         verify(notificationRepository).save(notification);
     }
 
     @Test
-    void markAsRead_WhenNotFound_ShouldDoNothing() {
+    void markAsRead_WhenNotFound_ShouldThrowException() {
         when(notificationRepository.findById(999L)).thenReturn(Optional.empty());
 
-        userService.markAsRead(999L);
+        assertThrows(ResourceNotFoundException.class, () -> userService.markAsRead(999L, USER_ID));
+        verify(notificationRepository, never()).save(any());
+    }
 
+    @Test
+    void markAsRead_WrongUser_ShouldThrowUnauthorized() {
+        AppNotification notification = new AppNotification(USER_ID, "Title", "Msg", null);
+        notification.setId(1L);
+        when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
+
+        assertThrows(UnauthorizedException.class, () -> userService.markAsRead(1L, "wrong-user"));
+        assertFalse(notification.isRead());
         verify(notificationRepository, never()).save(any());
     }
 
@@ -198,20 +210,31 @@ public class UserServiceTest {
 
     @Test
     void deleteNotification_WhenExists_ShouldDelete() {
-        when(notificationRepository.existsById(1L)).thenReturn(true);
+        AppNotification notification = new AppNotification(USER_ID, "Title", "Msg", null);
+        notification.setId(1L);
+        when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
 
-        userService.deleteNotification(1L);
+        userService.deleteNotification(1L, USER_ID);
 
-        verify(notificationRepository).deleteById(1L);
+        verify(notificationRepository).delete(notification);
     }
 
     @Test
-    void deleteNotification_WhenNotExists_ShouldNotDelete() {
-        when(notificationRepository.existsById(999L)).thenReturn(false);
+    void deleteNotification_WhenNotExists_ShouldThrowException() {
+        when(notificationRepository.findById(999L)).thenReturn(Optional.empty());
 
-        userService.deleteNotification(999L);
+        assertThrows(ResourceNotFoundException.class, () -> userService.deleteNotification(999L, USER_ID));
+        verify(notificationRepository, never()).delete(any());
+    }
 
-        verify(notificationRepository, never()).deleteById(any());
+    @Test
+    void deleteNotification_WrongUser_ShouldThrowUnauthorized() {
+        AppNotification notification = new AppNotification(USER_ID, "Title", "Msg", null);
+        notification.setId(1L);
+        when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
+
+        assertThrows(UnauthorizedException.class, () -> userService.deleteNotification(1L, "wrong-user"));
+        verify(notificationRepository, never()).delete(any());
     }
 
     @Test

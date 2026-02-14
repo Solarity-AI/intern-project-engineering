@@ -9,7 +9,8 @@
 ### Backend (Java/Spring Boot)
 - **Framework:** Spring Boot 3.2.1
 - **JDK:** Java 17
-- **Database:** H2 (in-memory)
+- **Database:** H2 (in-memory, dev) / PostgreSQL (prod)
+- **Migrations:** Flyway
 - **ORM:** Spring Data JPA
 - **AI:** OpenAI GPT-4o-mini via simple-openai
 - **Caching:** Caffeine
@@ -123,8 +124,8 @@ cd mobile && eas build --platform android
 - `backend/src/main/resources/application-prod.properties` - Production overrides
 
 ### Frontend
-- `mobile/src/services/api.ts` - API client (retry, cache, dedup, structured errors)
-- `mobile/src/context/` - State management (Theme, Wishlist, Notifications)
+- `mobile/src/services/api.ts` - API client (retry, cache, dedup, structured errors, mutation cache invalidation)
+- `mobile/src/context/` - State management (Theme, Wishlist, Notifications, Network)
 - `mobile/src/screens/ProductListScreen.tsx` - Main product list
 - `mobile/src/constants/theme.ts` - Theme tokens (Colors, Gradients, Glass, Glow, Shadow)
 
@@ -153,10 +154,14 @@ cd mobile && eas build --platform android
 - `OPENAI_API_KEY` - OpenAI API key for AI features
 - `cors.allowed-origins` - Comma-separated allowed CORS origins (default: localhost dev ports)
 - `rate-limit.requests-per-minute` - Rate limit per client (default: 60)
-- `spring.profiles.active=prod` - Activate production profile (disables H2 console, restricts actuator)
+- `spring.profiles.active=prod` - Activate production profile (PostgreSQL, Flyway, restricted actuator)
+- `DATABASE_URL` - PostgreSQL JDBC URL (prod only, e.g. `jdbc:postgresql://host:5432/dbname`)
+- `DB_USERNAME` - PostgreSQL username (prod only)
+- `DB_PASSWORD` - PostgreSQL password (prod only)
 
 ### Frontend
-- API base URL configured in `mobile/src/services/api.ts`
+- API base URL exported from `mobile/src/services/api.ts` (`export const BASE_URL`)
+- Shared by `NetworkContext.tsx` for health checks
 - Currently: `https://product-review-app-ybmf.onrender.com`
 
 ## Testing
@@ -174,10 +179,12 @@ cd backend && ./mvnw test
 
 ## Notes
 
-- Backend uses in-memory H2 database (data resets on restart)
+- Dev profile uses in-memory H2 (`ddl-auto=create-drop`, Flyway disabled, data resets on restart)
+- Prod profile uses PostgreSQL (`ddl-auto=validate`, Flyway enabled, persistent data)
 - AI summaries are cached for 1 hour (Caffeine)
 - User persistence via device ID (X-User-ID header)
 - Frontend defaults to dark mode with glassmorphism UI (Glass cards, Gradients, Glow effects)
+- GET cache is automatically invalidated after successful mutations (postReview, markReviewAsHelpful, toggleWishlist)
 - H2 console is disabled in production profile (`application-prod.properties`)
 - Rate limiting: 60 requests/minute per client (keyed by X-User-ID or IP)
 - CORS: configured via properties, not controller annotations

@@ -19,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -110,7 +111,7 @@ public class ProductServiceTest {
 
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
-        when(reviewRepository.findByProductId(1L)).thenReturn(Arrays.asList(review));
+        when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.singletonList(new Object[]{1L, 5.0}));
 
         ReviewDTO result = productService.addReview(1L, reviewDTO);
 
@@ -154,7 +155,7 @@ public class ProductServiceTest {
         review.setProduct(product);
 
         when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
-        when(reviewVoteRepository.findByUserIdAndReviewId("user1", 1L)).thenReturn(Optional.empty());
+        when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.empty());
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
         productService.markReviewAsHelpful(1L, "user1");
@@ -169,10 +170,10 @@ public class ProductServiceTest {
         review.setId(1L);
         review.setHelpfulCount(1);
         review.setProduct(product);
-        ReviewVote existingVote = new ReviewVote("user1", 1L);
+        ReviewVote existingVote = new ReviewVote("user1", review);
 
         when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
-        when(reviewVoteRepository.findByUserIdAndReviewId("user1", 1L)).thenReturn(Optional.of(existingVote));
+        when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.of(existingVote));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
         productService.markReviewAsHelpful(1L, "user1");
@@ -207,8 +208,12 @@ public class ProductServiceTest {
 
     @Test
     void getUserVotedReviewIds_ShouldReturnVotedIds() {
-        ReviewVote vote1 = new ReviewVote("user1", 10L);
-        ReviewVote vote2 = new ReviewVote("user1", 20L);
+        Review review10 = new Review();
+        review10.setId(10L);
+        Review review20 = new Review();
+        review20.setId(20L);
+        ReviewVote vote1 = new ReviewVote("user1", review10);
+        ReviewVote vote2 = new ReviewVote("user1", review20);
         when(reviewVoteRepository.findByUserId("user1")).thenReturn(Arrays.asList(vote1, vote2));
 
         List<Long> result = productService.getUserVotedReviewIds("user1");
@@ -231,56 +236,36 @@ public class ProductServiceTest {
 
     @Test
     void getGlobalStats_NoFilter_ShouldReturnAllStats() {
-        Product p1 = new Product();
-        p1.setReviewCount(5);
-        p1.setAverageRating(4.0);
-        Product p2 = new Product();
-        p2.setReviewCount(3);
-        p2.setAverageRating(3.0);
-        when(productRepository.findAll()).thenReturn(Arrays.asList(p1, p2));
+        // SUM(reviewCount)=8, AVG(averageRating)=3.5, COUNT(p)=2
+        when(productRepository.getGlobalStats()).thenReturn(Collections.singletonList(new Object[]{8L, 3.5, 2L}));
 
         Map<String, Object> stats = productService.getGlobalStats(null, null);
 
         assertEquals(2L, stats.get("totalProducts"));
         assertEquals(8L, stats.get("totalReviews"));
+        assertEquals(3.5, stats.get("averageRating"));
     }
 
     @Test
     void getGlobalStats_WithCategory_ShouldFilterByCategory() {
-        Product p1 = new Product();
-        p1.setCategories(new HashSet<>(Arrays.asList("Electronics")));
-        p1.setReviewCount(5);
-        p1.setAverageRating(4.0);
-        Product p2 = new Product();
-        p2.setCategories(new HashSet<>(Arrays.asList("Audio")));
-        p2.setReviewCount(3);
-        p2.setAverageRating(3.0);
-        when(productRepository.findAll()).thenReturn(Arrays.asList(p1, p2));
+        when(productRepository.getCategoryStats("Electronics")).thenReturn(Collections.singletonList(new Object[]{5L, 4.0, 1L}));
 
         Map<String, Object> stats = productService.getGlobalStats("Electronics", null);
 
         assertEquals(1L, stats.get("totalProducts"));
         assertEquals(5L, stats.get("totalReviews"));
+        assertEquals(4.0, stats.get("averageRating"));
     }
 
     @Test
     void getGlobalStats_WithSearch_ShouldFilterByName() {
-        Product p1 = new Product();
-        p1.setName("Samsung Galaxy");
-        p1.setCategories(new HashSet<>());
-        p1.setReviewCount(5);
-        p1.setAverageRating(4.0);
-        Product p2 = new Product();
-        p2.setName("iPhone");
-        p2.setCategories(new HashSet<>());
-        p2.setReviewCount(3);
-        p2.setAverageRating(3.0);
-        when(productRepository.findAll()).thenReturn(Arrays.asList(p1, p2));
+        when(productRepository.getSearchStats("Samsung")).thenReturn(Collections.singletonList(new Object[]{5L, 4.0, 1L}));
 
         Map<String, Object> stats = productService.getGlobalStats(null, "Samsung");
 
         assertEquals(1L, stats.get("totalProducts"));
         assertEquals(5L, stats.get("totalReviews"));
+        assertEquals(4.0, stats.get("averageRating"));
     }
 
     // --- getAllProducts Filter Tests ---
@@ -339,7 +324,7 @@ public class ProductServiceTest {
 
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
-        when(reviewRepository.findByProductId(1L)).thenReturn(Arrays.asList(review));
+        when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.singletonList(new Object[]{1L, 1.0}));
 
         ReviewDTO result = productService.addReview(1L, reviewDTO);
 
@@ -363,7 +348,7 @@ public class ProductServiceTest {
 
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
-        when(reviewRepository.findByProductId(1L)).thenReturn(Arrays.asList(review));
+        when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.singletonList(new Object[]{1L, 5.0}));
 
         ReviewDTO result = productService.addReview(1L, reviewDTO);
 
@@ -460,22 +445,14 @@ public class ProductServiceTest {
 
     @Test
     void getGlobalStats_WithCategoryAndSearch_ShouldFilterByBoth() {
-        Product p1 = new Product();
-        p1.setName("Samsung Galaxy");
-        p1.setCategories(new HashSet<>(Arrays.asList("Electronics")));
-        p1.setReviewCount(5);
-        p1.setAverageRating(4.0);
-        Product p2 = new Product();
-        p2.setName("Samsung Watch");
-        p2.setCategories(new HashSet<>(Arrays.asList("Wearables")));
-        p2.setReviewCount(3);
-        p2.setAverageRating(3.0);
-        when(productRepository.findAll()).thenReturn(Arrays.asList(p1, p2));
+        when(productRepository.getCategoryAndSearchStats("Electronics", "Samsung"))
+                .thenReturn(Collections.singletonList(new Object[]{5L, 4.0, 1L}));
 
         Map<String, Object> stats = productService.getGlobalStats("Electronics", "Samsung");
 
         assertEquals(1L, stats.get("totalProducts"));
         assertEquals(5L, stats.get("totalReviews"));
+        assertEquals(4.0, stats.get("averageRating"));
     }
 
     @Test
@@ -507,10 +484,10 @@ public class ProductServiceTest {
         review.setId(1L);
         review.setHelpfulCount(0);
         review.setProduct(product);
-        ReviewVote existingVote = new ReviewVote("user1", 1L);
+        ReviewVote existingVote = new ReviewVote("user1", review);
 
         when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
-        when(reviewVoteRepository.findByUserIdAndReviewId("user1", 1L)).thenReturn(Optional.of(existingVote));
+        when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.of(existingVote));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
         productService.markReviewAsHelpful(1L, "user1");
@@ -526,7 +503,7 @@ public class ProductServiceTest {
         review.setProduct(product);
 
         when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
-        when(reviewVoteRepository.findByUserIdAndReviewId("user1", 1L)).thenReturn(Optional.empty());
+        when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.empty());
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
         productService.markReviewAsHelpful(1L, "user1");

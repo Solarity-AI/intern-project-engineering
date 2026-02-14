@@ -6,6 +6,6 @@ import java.util.Optional;
 import java.util.List;
 
 public interface ReviewVoteRepository extends JpaRepository<ReviewVote, Long> {
-    Optional<ReviewVote> findByUserIdAndReviewId(String userId, Long reviewId);
+    Optional<ReviewVote> findByUserIdAndReview_Id(String userId, Long reviewId);
     List<ReviewVote> findByUserId(String userId);
 }

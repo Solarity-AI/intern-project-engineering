@@ -26,14 +26,14 @@ public class ProductControllerIntegrationTest {
 
     @Test
     void getAllProducts_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/products"))
+        mockMvc.perform(get("/api/v1/products"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
     }
 
     @Test
     void getProductById_WhenExists_ShouldReturnProduct() throws Exception {
-        mockMvc.perform(get("/api/products/1"))
+        mockMvc.perform(get("/api/v1/products/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1));
     }
@@ -45,7 +45,7 @@ public class ProductControllerIntegrationTest {
         reviewDTO.setComment("This is a very good product and I like it.");
         reviewDTO.setRating(5);
 
-        mockMvc.perform(post("/api/products/1/reviews")
+        mockMvc.perform(post("/api/v1/products/1/reviews")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(reviewDTO)))
                 .andExpect(status().isOk())
@@ -59,7 +59,7 @@ public class ProductControllerIntegrationTest {
         reviewDTO.setComment("Short"); // Too short
         reviewDTO.setRating(6); // Invalid rating
 
-        mockMvc.perform(post("/api/products/1/reviews")
+        mockMvc.perform(post("/api/v1/products/1/reviews")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(reviewDTO)))
                 .andExpect(status().isBadRequest());

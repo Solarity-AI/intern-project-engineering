@@ -22,17 +22,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE :category MEMBER OF p.categories AND LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
     Page<Product> findByCategoryAndNameContainingIgnoreCase(@Param("category") String category, @Param("name") String name, Pageable pageable);
 
-    @Query("SELECT SUM(p.reviewCount), AVG(p.averageRating) FROM Product p")
-    Object[] getGlobalStats();
-    
-    @Query("SELECT SUM(p.reviewCount), AVG(p.averageRating) FROM Product p WHERE :category MEMBER OF p.categories")
-    Object[] getCategoryStats(@Param("category") String category);
-    
-    @Query("SELECT SUM(p.reviewCount), AVG(p.averageRating) FROM Product p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
-    Object[] getSearchStats(@Param("name") String name);
-    
-    @Query("SELECT SUM(p.reviewCount), AVG(p.averageRating) FROM Product p WHERE :category MEMBER OF p.categories AND LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
-    Object[] getCategoryAndSearchStats(@Param("category") String category, @Param("name") String name);
+    @Query("SELECT SUM(p.reviewCount), AVG(p.averageRating), COUNT(p) FROM Product p")
+    List<Object[]> getGlobalStats();
+
+    @Query("SELECT SUM(p.reviewCount), AVG(p.averageRating), COUNT(p) FROM Product p WHERE :category MEMBER OF p.categories")
+    List<Object[]> getCategoryStats(@Param("category") String category);
+
+    @Query("SELECT SUM(p.reviewCount), AVG(p.averageRating), COUNT(p) FROM Product p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
+    List<Object[]> getSearchStats(@Param("name") String name);
+
+    @Query("SELECT SUM(p.reviewCount), AVG(p.averageRating), COUNT(p) FROM Product p WHERE :category MEMBER OF p.categories AND LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
+    List<Object[]> getCategoryAndSearchStats(@Param("category") String category, @Param("name") String name);
 
     // ✨ New method for paged find by IDs
     Page<Product> findByIdIn(List<Long> ids, Pageable pageable);

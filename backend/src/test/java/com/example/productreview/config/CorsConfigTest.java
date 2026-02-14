@@ -20,7 +20,7 @@ class CorsConfigTest {
 
     @Test
     void allowedOrigin_shouldReturnCorsHeaders() throws Exception {
-        mockMvc.perform(options("/api/products")
+        mockMvc.perform(options("/api/v1/products")
                         .header("Origin", "http://localhost:19006")
                         .header("Access-Control-Request-Method", "GET"))
                 .andExpect(status().isOk())
@@ -29,7 +29,7 @@ class CorsConfigTest {
 
     @Test
     void disallowedOrigin_shouldNotReturnCorsHeaders() throws Exception {
-        mockMvc.perform(options("/api/products")
+        mockMvc.perform(options("/api/v1/products")
                         .header("Origin", "https://evil-site.com")
                         .header("Access-Control-Request-Method", "GET"))
                 .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
@@ -37,7 +37,7 @@ class CorsConfigTest {
 
     @Test
     void allowedOrigin_actualRequest_shouldIncludeCorsHeaders() throws Exception {
-        mockMvc.perform(get("/api/products")
+        mockMvc.perform(get("/api/v1/products")
                         .header("Origin", "http://localhost:8081"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:8081"));
