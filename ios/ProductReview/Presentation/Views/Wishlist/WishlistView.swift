@@ -18,8 +18,10 @@ struct WishlistView: View {
 
     private let categories = ["All", "Electronics", "Smartphones", "Laptops", "Tablets", "Gaming", "Wearables", "Audio", "Accessories"]
     private let contentHorizontalPadding: CGFloat = AppSpacing.lg
-    private let gridHorizontalSpacing: CGFloat = AppSpacing.md
+    private let gridHorizontalSpacing: CGFloat = 20
     private let gridVerticalSpacing: CGFloat = AppSpacing.lg
+    private let twoColumnCardHeight: CGFloat = 290
+    private let singleColumnVerticalSpacing: CGFloat = AppSpacing.md
 
     private var itemCount: Int {
         viewModel.products.count
@@ -49,19 +51,21 @@ struct WishlistView: View {
     }
 
     private func cardWidth(for totalWidth: CGFloat) -> CGFloat {
-        let columnCount = isTwoColumnGrid ? 2.0 : 1.0
-        let spacing = isTwoColumnGrid ? gridHorizontalSpacing : 0
-        let availableWidth = totalWidth - (contentHorizontalPadding * 2) - spacing
-        return max(160, floor(availableWidth / columnCount))
+        if isTwoColumnGrid {
+            let availableWidth = totalWidth - (contentHorizontalPadding * 2) - gridHorizontalSpacing
+            return max(140, floor(availableWidth / 2))
+        } else {
+            return max(160, floor(totalWidth - (contentHorizontalPadding * 2)))
+        }
     }
 
-    private func cardHeight(for cardWidth: CGFloat) -> CGFloat {
-        isTwoColumnGrid ? max(250, cardWidth + 70) : max(240, min(300, cardWidth * 0.72))
+    private var currentGridVerticalSpacing: CGFloat {
+        isTwoColumnGrid ? gridVerticalSpacing : singleColumnVerticalSpacing
     }
 
-    private var columns: [GridItem] {
+    private func columns(for cardWidth: CGFloat) -> [GridItem] {
         isTwoColumnGrid
-            ? [GridItem(.flexible(), spacing: gridHorizontalSpacing), GridItem(.flexible(), spacing: gridHorizontalSpacing)]
+            ? [GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing), GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing)]
             : [GridItem(.flexible())]
     }
 
@@ -402,13 +406,12 @@ struct WishlistView: View {
                                             filteredEmptyState
                                         } else {
                                             let currentCardWidth = cardWidth(for: geometry.size.width)
-                                            let currentCardHeight = cardHeight(for: currentCardWidth)
-
-                                            LazyVGrid(columns: columns, spacing: gridVerticalSpacing) {
+                                            LazyVGrid(columns: columns(for: currentCardWidth), spacing: currentGridVerticalSpacing) {
                                                 ForEach(viewModel.products) { product in
                                                     WishlistProductCard(
                                                         product: product,
                                                         cardWidth: currentCardWidth,
+                                                        isTwoColumnGrid: isTwoColumnGrid,
                                                         isSelectionMode: isSelectionMode,
                                                         isSelected: selectedProductIDs.contains(product.id),
                                                         onTap: {
@@ -425,7 +428,10 @@ struct WishlistView: View {
                                                             Task { await viewModel.removeFromWishlist(productId: product.id) }
                                                         }
                                                     )
-                                                    .frame(width: currentCardWidth, height: currentCardHeight)
+                                                    .frame(
+                                                        width: isTwoColumnGrid ? currentCardWidth : nil,
+                                                        height: isTwoColumnGrid ? twoColumnCardHeight : nil
+                                                    )
                                                     .onAppear {
                                                         if product.id == viewModel.products.last?.id {
                                                             Task { await viewModel.loadMore() }
@@ -538,6 +544,7 @@ private struct WishlistChipStyleModifier: ViewModifier {
 struct WishlistProductCard: View {
     let product: Product
     let cardWidth: CGFloat
+    let isTwoColumnGrid: Bool
     let isSelectionMode: Bool
     let isSelected: Bool
     let onTap: () -> Void
@@ -545,11 +552,20 @@ struct WishlistProductCard: View {
     let onRemove: () -> Void
 
     private var cardInnerPadding: CGFloat {
-        max(10, floor(cardWidth * 0.07))
+        if isTwoColumnGrid {
+            return max(10, floor(cardWidth * 0.07))
+        } else {
+            return max(10, floor(cardWidth * 0.05))
+        }
     }
 
     private var imageSize: CGFloat {
-        max(130, min(180, cardWidth - (cardInnerPadding * 2)))
+        let maxImageWidth = cardWidth - (cardInnerPadding * 2)
+        if isTwoColumnGrid {
+            return max(140, min(195, maxImageWidth))
+        } else {
+            return min(340, maxImageWidth)
+        }
     }
 
     private var resolvedImageURL: URL? {
