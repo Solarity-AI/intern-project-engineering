@@ -24,10 +24,10 @@ enum ToastType {
 
     var color: Color {
         switch self {
-        case .success: return .green
-        case .error: return .red
-        case .warning: return .orange
-        case .info: return .blue
+        case .success: return AppColors.primary
+        case .error: return AppColors.destructive
+        case .warning: return AppColors.premiumGold
+        case .info: return AppColors.orderBlue
         }
     }
 }
@@ -62,7 +62,12 @@ struct ToastView: View {
         .padding()
         .background(.ultraThinMaterial)
         .cornerRadius(12)
-        .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+        .shadow(
+            color: AppShadow.soft.color.opacity(AppShadow.soft.opacity),
+            radius: AppShadow.soft.radius,
+            x: AppShadow.soft.x,
+            y: AppShadow.soft.y
+        )
         .padding(.horizontal)
     }
 }

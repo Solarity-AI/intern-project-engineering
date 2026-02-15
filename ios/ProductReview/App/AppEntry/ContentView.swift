@@ -54,6 +54,11 @@ struct ContentView: View {
         }
     }
 
+    private var shouldShowRootTopBar: Bool {
+        let tabsWithoutRootTopBar: Set<AppTab> = [.products, .wishlist, .notifications, .settings]
+        return !(navigationRouter.path.isEmpty && tabsWithoutRootTopBar.contains(appState.selectedTab))
+    }
+
     var body: some View {
         ZStack {
             Color("AppBackground")
@@ -86,10 +91,10 @@ struct ContentView: View {
                         }
                         .tag(AppTab.settings)
                 }
-                .navigationTitle(currentTabTitle)
+                .navigationTitle(shouldShowRootTopBar ? currentTabTitle : "")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    if navigationRouter.path.isEmpty {
+                    if navigationRouter.path.isEmpty && shouldShowRootTopBar {
                         ToolbarItem(placement: .principal) {
                             if appState.selectedTab == .products {
                                 BrandTopBarTitle(title: AppConstants.UI.appDisplayName)
@@ -101,8 +106,8 @@ struct ContentView: View {
                         }
                     }
                 }
-                .toolbar(.visible, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
+                .toolbar(shouldShowRootTopBar ? .visible : .hidden, for: .navigationBar)
+                .toolbarBackground(shouldShowRootTopBar ? .visible : .hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in
                     switch route {
                     case .productDetail(let productId):
@@ -147,63 +152,79 @@ private struct SettingsView: View {
     }
 
     var body: some View {
-        Form {
-            // MARK: - Appearance
-            Section("Appearance") {
-                Picker("Theme", selection: $themeManager.currentTheme) {
-                    ForEach(AppTheme.allCases, id: \.self) { theme in
-                        Label(theme.displayName, systemImage: theme.icon)
-                            .tag(theme)
-                    }
-                }
-                .pickerStyle(.menu)
-                .listRowBackground(Color("CardBackground"))
-            }
+        ZStack {
+            Color("AppBackground")
+                .ignoresSafeArea()
 
-            // MARK: - About
-            Section("About") {
-                // App Version
-                HStack {
-                    Label("Version", systemImage: "info.circle")
+            VStack(spacing: 0) {
+                HStack(alignment: .center, spacing: AppSpacing.sm) {
+                    Text("Settings")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(AppColors.foreground)
                     Spacer()
-                    Text(appVersion)
-                        .foregroundStyle(.secondary)
                 }
-                .listRowBackground(Color("CardBackground"))
+                .padding(.horizontal, AppSpacing.lg)
+                .padding(.top, AppSpacing.sm)
+                .padding(.bottom, AppSpacing.md)
 
-                // Feedback
-                Link(destination: URL(string: "https://github.com/anthropics/claude-code/issues")!) {
-                    HStack {
-                        Label("Send Feedback", systemImage: "envelope")
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
+                Form {
+                    // MARK: - Appearance
+                    Section("Appearance") {
+                        Picker("Theme", selection: $themeManager.currentTheme) {
+                            ForEach(AppTheme.allCases, id: \.self) { theme in
+                                Label(theme.displayName, systemImage: theme.icon)
+                                    .tag(theme)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .listRowBackground(Color("CardBackground"))
                     }
-                }
-                .listRowBackground(Color("CardBackground"))
 
-                // Rate App
-                Button {
-                    if let url = URL(string: "https://apps.apple.com/app/id123456789?action=write-review") {
-                        UIApplication.shared.open(url)
-                    }
-                } label: {
-                    HStack {
-                        Label("Rate on App Store", systemImage: "star")
-                        Spacer()
-                        Image(systemName: "arrow.up.right")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
+                    // MARK: - About
+                    Section("About") {
+                        // App Version
+                        HStack {
+                            Label("Version", systemImage: "info.circle")
+                            Spacer()
+                            Text(appVersion)
+                                .foregroundStyle(.secondary)
+                        }
+                        .listRowBackground(Color("CardBackground"))
+
+                        // Feedback
+                        Link(destination: URL(string: "https://github.com/anthropics/claude-code/issues")!) {
+                            HStack {
+                                Label("Send Feedback", systemImage: "envelope")
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .listRowBackground(Color("CardBackground"))
+
+                        // Rate App
+                        Button {
+                            if let url = URL(string: "https://apps.apple.com/app/id123456789?action=write-review") {
+                                UIApplication.shared.open(url)
+                            }
+                        } label: {
+                            HStack {
+                                Label("Rate on App Store", systemImage: "star")
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .foregroundStyle(.primary)
+                        .listRowBackground(Color("CardBackground"))
                     }
                 }
-                .foregroundStyle(.primary)
-                .listRowBackground(Color("CardBackground"))
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
             }
         }
-        .scrollContentBackground(.hidden)
-        .background(Color("AppBackground"))
-        .navigationTitle("Settings")
     }
 }
 

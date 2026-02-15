@@ -20,9 +20,9 @@ struct LoadingButton: View {
 
         var backgroundColor: Color {
             switch self {
-            case .primary: return .blue
+            case .primary: return AppColors.primary
             case .secondary: return .gray.opacity(0.2)
-            case .destructive: return .red
+            case .destructive: return AppColors.destructive
             }
         }
 

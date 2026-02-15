@@ -22,6 +22,16 @@ struct AppNotification: Identifiable, Hashable {
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: date, relativeTo: Date())
     }
+
+    // Derived notification type from title
+    var notificationType: String {
+        let lower = title.lowercased()
+        if lower.contains("review") { return "review" }
+        if lower.contains("order") || lower.contains("ship") || lower.contains("price") || lower.contains("drop") {
+            return "order"
+        }
+        return "system"
+    }
 }
 
 // MARK: - Mock Data

@@ -12,66 +12,214 @@ struct WishlistView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var viewModel = WishlistViewModel()
 
+    @State private var isTwoColumnGrid = true
+    @State private var isSelectionMode = false
+    @State private var selectedProductIDs: Set<Int> = []
+
     private let categories = ["All", "Electronics", "Smartphones", "Laptops", "Tablets", "Gaming", "Wearables", "Audio", "Accessories"]
-    private let contentHorizontalPadding: CGFloat = 16
+    private let contentHorizontalPadding: CGFloat = AppSpacing.lg
     private let gridHorizontalSpacing: CGFloat = 20
-    private let gridVerticalSpacing: CGFloat = 16
-    private var cardWidth: CGFloat {
-        let availableWidth = UIScreen.main.bounds.width - (contentHorizontalPadding * 2) - gridHorizontalSpacing
-        return max(140, floor(availableWidth / 2))
-    }
-    private let cardHeight: CGFloat = 260
-    private var columns: [GridItem] {
-        [
-            GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing),
-            GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing)
-        ]
+    private let gridVerticalSpacing: CGFloat = AppSpacing.lg
+    private let twoColumnCardHeight: CGFloat = 290
+    private let singleColumnVerticalSpacing: CGFloat = AppSpacing.md
+
+    private var itemCount: Int {
+        viewModel.products.count
     }
 
-    private var selectedCategoryTitle: String {
-        viewModel.selectedCategory ?? "All Categories"
+    private var averageRating: Double {
+        guard !viewModel.products.isEmpty else { return 0 }
+        let sum = viewModel.products.reduce(0) { partialResult, product in
+            partialResult + product.averageRating
+        }
+        return sum / Double(viewModel.products.count)
+    }
+
+    private var totalValue: Double {
+        viewModel.products.reduce(0) { partialResult, product in
+            partialResult + product.price
+        }
+    }
+
+    private var totalValueText: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        formatter.maximumFractionDigits = 0
+        formatter.minimumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: totalValue)) ?? String(format: "$%.0f", totalValue)
+    }
+
+    private func cardWidth(for totalWidth: CGFloat) -> CGFloat {
+        if isTwoColumnGrid {
+            let availableWidth = totalWidth - (contentHorizontalPadding * 2) - gridHorizontalSpacing
+            return max(140, floor(availableWidth / 2))
+        } else {
+            return max(160, floor(totalWidth - (contentHorizontalPadding * 2)))
+        }
+    }
+
+    private var currentGridVerticalSpacing: CGFloat {
+        isTwoColumnGrid ? gridVerticalSpacing : singleColumnVerticalSpacing
+    }
+
+    private func columns(for cardWidth: CGFloat) -> [GridItem] {
+        isTwoColumnGrid
+            ? [GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing), GridItem(.fixed(cardWidth), spacing: gridHorizontalSpacing)]
+            : [GridItem(.flexible())]
+    }
+
+    private func startSelection(with productID: Int) {
+        isSelectionMode = true
+        selectedProductIDs.insert(productID)
+    }
+
+    private func toggleSelection(for productID: Int) {
+        if selectedProductIDs.contains(productID) {
+            selectedProductIDs.remove(productID)
+        } else {
+            selectedProductIDs.insert(productID)
+        }
+
+        if selectedProductIDs.isEmpty {
+            isSelectionMode = false
+        }
+    }
+
+    private func cancelSelectionMode() {
+        isSelectionMode = false
+        selectedProductIDs.removeAll()
+    }
+
+    private func removeSelectedProducts() {
+        let ids = Array(selectedProductIDs)
+        guard !ids.isEmpty else { return }
+        Task {
+            await viewModel.removeMultiple(productIds: ids)
+        }
+        cancelSelectionMode()
+    }
+
+    private func clearAllProducts() {
+        let ids = viewModel.products.map(\.id)
+        guard !ids.isEmpty else { return }
+        Task {
+            await viewModel.removeMultiple(productIds: ids)
+        }
+        cancelSelectionMode()
+    }
+
+    private var selectedItemCountText: String {
+        selectedProductIDs.count == 1 ? "item" : "items"
+    }
+
+    @ViewBuilder
+    private var pageHeader: some View {
+        HStack(alignment: .center, spacing: AppSpacing.sm) {
+            Text("Wishlist")
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(AppColors.foreground)
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: AppSpacing.sm) {
+                Button {
+                    isTwoColumnGrid.toggle()
+                } label: {
+                    Image(systemName: isTwoColumnGrid ? "square.grid.2x2" : "rectangle.grid.1x2")
+                        .font(.system(size: AppFontSize.base, weight: .semibold))
+                        .foregroundStyle(AppColors.primary)
+                        .frame(width: 38, height: 38)
+                        .glassCard(AppGlass.subtle, cornerRadius: AppRadius.full)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Toggle grid columns")
+
+                if !viewModel.products.isEmpty {
+                    Button("Clear All") {
+                        clearAllProducts()
+                    }
+                    .font(.system(size: AppFontSize.sm, weight: .semibold))
+                    .foregroundStyle(AppColors.destructive)
+                }
+            }
+        }
+        .padding(.horizontal, contentHorizontalPadding)
+        .padding(.top, AppSpacing.sm)
+        .padding(.bottom, AppSpacing.md)
+    }
+
+    @ViewBuilder
+    private var bentoStatsSection: some View {
+        VStack(spacing: AppSpacing.md) {
+            HStack(spacing: AppSpacing.md) {
+                WishlistStatTile(
+                    icon: "heart.fill",
+                    iconColor: AppColors.primary,
+                    value: "\(itemCount)",
+                    label: "Items"
+                )
+                .frame(maxWidth: .infinity)
+
+                WishlistStatTile(
+                    icon: "star.fill",
+                    iconColor: AppColors.starFilled,
+                    value: String(format: "%.1f", averageRating),
+                    label: "Avg Rating"
+                )
+                .frame(maxWidth: .infinity)
+            }
+
+            WishlistStatTile(
+                icon: "banknote",
+                iconColor: AppColors.primary,
+                value: totalValueText,
+                label: "Total Value"
+            )
+            .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, contentHorizontalPadding)
+    }
+
+    @ViewBuilder
+    private func categoryChip(_ category: String) -> some View {
+        let categoryValue = category == "All" ? nil : category
+        let isActive = viewModel.selectedCategory == categoryValue
+
+        Button {
+            Task {
+                await viewModel.filterByCategory(categoryValue)
+            }
+        } label: {
+            Text(category)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(isActive ? Color.white : AppColors.foreground.opacity(0.75))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background {
+                    if isActive {
+                        Capsule().fill(AppGradients.brand)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .modifier(WishlistChipStyleModifier(isActive: isActive))
+        .accessibilityLabel("Filter by \(category)")
     }
 
     @ViewBuilder
     private var filterSortSection: some View {
-        HStack {
-            Menu {
-                ForEach(categories, id: \.self) { category in
-                    let categoryValue = category == "All" ? nil : category
-                    Button {
-                        Task {
-                            await viewModel.filterByCategory(categoryValue)
-                        }
-                    } label: {
-                        if viewModel.selectedCategory == categoryValue {
-                            Label(category, systemImage: "checkmark")
-                        } else {
-                            Text(category)
-                        }
+        VStack(spacing: AppSpacing.sm) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(categories, id: \.self) { category in
+                        categoryChip(category)
                     }
                 }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "line.3.horizontal.decrease.circle")
-                    Text(selectedCategoryTitle)
-                        .lineLimit(1)
-                }
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Color("PrimaryText"))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color("CardBackground"), in: Capsule())
-                .overlay {
-                    Capsule()
-                        .stroke(Color("Border"), lineWidth: 1)
-                }
+                .padding(.horizontal, contentHorizontalPadding)
             }
-            .accessibilityLabel("Filter by category")
-            .accessibilityHint("Select a category to filter wishlist products")
 
-            Spacer(minLength: 24)
-
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Menu {
                     ForEach(ProductSortCriterion.allCases) { criterion in
                         Button {
@@ -92,15 +240,11 @@ struct WishlistView: View {
                         Text(viewModel.selectedSortCriterion.label)
                             .lineLimit(1)
                     }
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color("PrimaryText"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppColors.foreground)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color("CardBackground"), in: Capsule())
-                    .overlay {
-                        Capsule()
-                            .stroke(Color("Border"), lineWidth: 1)
-                    }
+                    .glassCard(AppGlass.subtle, cornerRadius: AppRadius.full)
                 }
                 .accessibilityLabel("Sort wishlist")
                 .accessibilityHint("Select sorting criterion for wishlist products")
@@ -112,124 +256,223 @@ struct WishlistView: View {
                 } label: {
                     Image(systemName: viewModel.sortDirection.icon)
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(Color.black)
+                        .foregroundStyle(AppColors.foreground)
                         .animation(.easeInOut(duration: 0.2), value: viewModel.sortDirection)
-                        .frame(width: 34, height: 34)
-                        .background(Color("CardBackground"), in: Circle())
-                        .overlay {
-                            Circle()
-                                .stroke(Color("Border"), lineWidth: 1)
-                        }
+                        .frame(width: 36, height: 36)
+                        .glassCard(AppGlass.subtle, cornerRadius: AppRadius.full)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Sort direction: \(viewModel.sortDirection.label)")
                 .accessibilityHint("Double tap to toggle sort direction")
+
+                Spacer(minLength: 0)
             }
+            .padding(.horizontal, contentHorizontalPadding)
         }
-        .padding(.horizontal, contentHorizontalPadding)
     }
 
     @ViewBuilder
     private var filteredEmptyState: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: AppSpacing.md) {
             Image(systemName: "line.3.horizontal.decrease.circle")
                 .font(.system(size: 42))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppColors.foreground.opacity(0.7))
             Text("No wishlist products match this category")
                 .font(.headline)
                 .multilineTextAlignment(.center)
+                .foregroundStyle(AppColors.foreground)
             Button("Clear Category Filter") {
                 Task { await viewModel.filterByCategory(nil) }
             }
-            .buttonStyle(.bordered)
+            .font(.system(size: AppFontSize.sm, weight: .semibold))
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, AppSpacing.md)
+            .padding(.vertical, AppSpacing.sm)
+            .background(AppGradients.brand, in: Capsule())
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, contentHorizontalPadding)
-        .padding(.top, 24)
+        .padding(.top, AppSpacing.lg)
+    }
+
+    @ViewBuilder
+    private var wishlistEmptyState: some View {
+        VStack(spacing: AppSpacing.lg) {
+            Image(systemName: "heart.slash")
+                .font(.system(size: 58))
+                .foregroundStyle(AppColors.primary)
+
+            VStack(spacing: AppSpacing.sm) {
+                Text("Your wishlist is empty")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(AppColors.foreground)
+
+                Text("Add products you love to see them here")
+                    .font(.body)
+                    .foregroundStyle(AppColors.foreground.opacity(0.7))
+                    .multilineTextAlignment(.center)
+            }
+
+            Button {
+                appState.selectedTab = .products
+                navigationRouter.popToRoot()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                    Text("Browse Products")
+                        .fontWeight(.semibold)
+                }
+                .foregroundStyle(Color.white)
+                .padding(.horizontal, AppSpacing.xl)
+                .padding(.vertical, AppSpacing.md)
+                .background(AppGradients.brand, in: Capsule())
+                .glow(AppGlow.primarySoft)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, AppSpacing.xl)
+        .padding(.top, AppSpacing.x3l)
+    }
+
+    @ViewBuilder
+    private var selectionActionBar: some View {
+        if isSelectionMode && !selectedProductIDs.isEmpty {
+            HStack(spacing: AppSpacing.sm) {
+                Button("Cancel") {
+                    cancelSelectionMode()
+                }
+                .font(.system(size: AppFontSize.sm, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.9))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.16), in: Capsule())
+
+                Spacer(minLength: 0)
+
+                Button {
+                    removeSelectedProducts()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: AppFontSize.sm, weight: .semibold))
+                        Text("Remove \(selectedProductIDs.count) \(selectedItemCountText)")
+                            .font(.system(size: AppFontSize.sm, weight: .semibold))
+                    }
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, AppSpacing.md)
+                    .padding(.vertical, AppSpacing.sm)
+                    .background(Color.white.opacity(0.14), in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, AppSpacing.md)
+            .padding(.vertical, AppSpacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: AppRadius.xl, style: .continuous)
+                    .fill(AppColors.destructive.opacity(0.92))
+            )
+            .padding(.horizontal, contentHorizontalPadding)
+            .padding(.bottom, AppSpacing.lg)
+        }
     }
 
     var body: some View {
-        ZStack {
-            Color("AppBackground")
-                .ignoresSafeArea()
+        GeometryReader { geometry in
+            ZStack {
+                AppColors.background
+                    .ignoresSafeArea()
 
-            Group {
-                if viewModel.products.isEmpty && !viewModel.isLoading && viewModel.error != nil {
-                    EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
-                        Task { await viewModel.loadWishlist() }
-                    }
-                } else if viewModel.products.isEmpty && !viewModel.isLoading && viewModel.selectedCategory == nil {
-                    EmptyStateView.wishlist {
-                        appState.selectedTab = .products
-                        navigationRouter.popToRoot()
-                    }
-                } else {
-                    VStack(spacing: 12) {
-                        filterSortSection
+                Group {
+                    if viewModel.products.isEmpty && !viewModel.isLoading && viewModel.error != nil {
+                        EmptyStateView.error(message: viewModel.error ?? "Unknown error") {
+                            Task { await viewModel.loadWishlist() }
+                        }
+                    } else {
+                        VStack(spacing: AppSpacing.md) {
+                            pageHeader
 
-                        ScrollView {
-                            VStack(spacing: 0) {
-                                if viewModel.products.isEmpty && !viewModel.isLoading {
-                                    filteredEmptyState
-                                } else {
-                                    LazyVGrid(columns: columns, spacing: gridVerticalSpacing) {
-                                        ForEach(viewModel.products) { product in
-                                            ZStack(alignment: .topTrailing) {
-                                                WishlistProductCard(
-                                                    product: product,
-                                                    cardWidth: cardWidth,
-                                                    onTap: {
-                                                        navigationRouter.navigate(to: .productDetail(productId: product.id))
+                            if viewModel.products.isEmpty && !viewModel.isLoading && viewModel.selectedCategory == nil {
+                                wishlistEmptyState
+                            } else {
+                                ScrollView(showsIndicators: false) {
+                                    VStack(spacing: AppSpacing.md) {
+                                        if !viewModel.products.isEmpty {
+                                            bentoStatsSection
+                                        }
+
+                                        filterSortSection
+
+                                        if viewModel.products.isEmpty && !viewModel.isLoading {
+                                            filteredEmptyState
+                                        } else {
+                                            let currentCardWidth = cardWidth(for: geometry.size.width)
+                                            LazyVGrid(columns: columns(for: currentCardWidth), spacing: currentGridVerticalSpacing) {
+                                                ForEach(viewModel.products) { product in
+                                                    WishlistProductCard(
+                                                        product: product,
+                                                        cardWidth: currentCardWidth,
+                                                        isTwoColumnGrid: isTwoColumnGrid,
+                                                        isSelectionMode: isSelectionMode,
+                                                        isSelected: selectedProductIDs.contains(product.id),
+                                                        onTap: {
+                                                            if isSelectionMode {
+                                                                toggleSelection(for: product.id)
+                                                            } else {
+                                                                navigationRouter.navigate(to: .productDetail(productId: product.id))
+                                                            }
+                                                        },
+                                                        onLongPress: {
+                                                            startSelection(with: product.id)
+                                                        },
+                                                        onRemove: {
+                                                            Task { await viewModel.removeFromWishlist(productId: product.id) }
+                                                        }
+                                                    )
+                                                    .frame(
+                                                        width: isTwoColumnGrid ? currentCardWidth : nil,
+                                                        height: isTwoColumnGrid ? twoColumnCardHeight : nil
+                                                    )
+                                                    .onAppear {
+                                                        if product.id == viewModel.products.last?.id {
+                                                            Task { await viewModel.loadMore() }
+                                                        }
                                                     }
-                                                )
-                                                .frame(width: cardWidth, height: cardHeight)
+                                                }
+                                            }
+                                            .padding(.top, AppSpacing.lg)
+                                            .padding(.horizontal, contentHorizontalPadding)
+                                        }
 
-                                                Button {
-                                                    Task { await viewModel.removeFromWishlist(productId: product.id) }
-                                                } label: {
-                                                    Image(systemName: "heart.fill")
-                                                        .font(.system(size: 14, weight: .semibold))
-                                                        .foregroundColor(.red)
-                                                        .padding(8)
-                                                        .background(.ultraThinMaterial, in: Circle())
-                                                }
-                                                .buttonStyle(.plain)
-                                                .padding(.top, 8)
-                                                .padding(.trailing, 2)
-                                                .offset(x: -16, y: 6)
-                                                .opacity(0.75)
-                                                .accessibilityLabel("Remove from wishlist")
-                                                .accessibilityHint("Double tap to remove from wishlist")
-                                            }
-                                            .frame(width: cardWidth, height: cardHeight)
-                                            .onAppear {
-                                                if product.id == viewModel.products.last?.id {
-                                                    Task { await viewModel.loadMore() }
-                                                }
-                                            }
+                                        if viewModel.isLoading {
+                                            ProgressView()
+                                                .tint(AppColors.primary)
+                                                .padding()
                                         }
                                     }
-                                }
-
-                                if viewModel.isLoading {
-                                    ProgressView()
-                                        .padding()
+                                    .padding(.bottom, isSelectionMode && !selectedProductIDs.isEmpty ? 100 : AppSpacing.lg)
                                 }
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.horizontal, contentHorizontalPadding)
                         }
-                        .background(Color("AppBackground"))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     }
                 }
             }
+            .overlay(alignment: .bottom) {
+                selectionActionBar
+            }
         }
-        .navigationTitle("Wishlist")
-        .navigationBarTitleDisplayMode(.inline)
         .refreshable {
             await viewModel.refresh()
         }
         .task {
             await viewModel.loadWishlist()
+        }
+        .onChange(of: viewModel.products.map(\.id)) { _, ids in
+            let validIDs = Set(ids)
+            selectedProductIDs = selectedProductIDs.intersection(validIDs)
+            if selectedProductIDs.isEmpty {
+                isSelectionMode = false
+            }
         }
         .toast(
             isPresented: $viewModel.showToast,
@@ -250,21 +493,79 @@ struct WishlistView: View {
             Text(viewModel.error ?? "")
         }
     }
+}
 
+private struct WishlistStatTile: View {
+    let icon: String
+    let iconColor: Color
+    let value: String
+    let label: String
+
+    var body: some View {
+        HStack(spacing: AppSpacing.md) {
+            Image(systemName: icon)
+                .font(.system(size: AppFontSize.base, weight: .semibold))
+                .foregroundStyle(iconColor)
+                .frame(width: 30, height: 30)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value)
+                    .font(.system(size: AppFontSize.xl, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppColors.foreground)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+
+                Text(label)
+                    .font(.system(size: AppFontSize.xs, weight: .medium))
+                    .foregroundStyle(AppColors.foreground.opacity(0.65))
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(AppSpacing.lg)
+        .glassCard(AppGlass.card, cornerRadius: AppRadius.xl)
+    }
+}
+
+private struct WishlistChipStyleModifier: ViewModifier {
+    let isActive: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isActive {
+            content.glow(AppGlow.primarySoft)
+        } else {
+            content.glassCard(AppGlass.subtle, cornerRadius: AppRadius.full)
+        }
+    }
 }
 
 // MARK: - Wishlist Product Card
 struct WishlistProductCard: View {
     let product: Product
     let cardWidth: CGFloat
+    let isTwoColumnGrid: Bool
+    let isSelectionMode: Bool
+    let isSelected: Bool
     let onTap: () -> Void
+    let onLongPress: () -> Void
+    let onRemove: () -> Void
 
     private var cardInnerPadding: CGFloat {
-        max(10, floor(cardWidth * 0.07))
+        if isTwoColumnGrid {
+            return max(10, floor(cardWidth * 0.07))
+        } else {
+            return max(10, floor(cardWidth * 0.05))
+        }
     }
 
     private var imageSize: CGFloat {
-        max(140, cardWidth - (cardInnerPadding * 2))
+        let maxImageWidth = cardWidth - (cardInnerPadding * 2)
+        if isTwoColumnGrid {
+            return max(140, min(195, maxImageWidth))
+        } else {
+            return min(340, maxImageWidth)
+        }
     }
 
     private var resolvedImageURL: URL? {
@@ -274,14 +575,14 @@ struct WishlistProductCard: View {
     @ViewBuilder
     private var imageFallbackView: some View {
         ZStack {
-            Color("CardBackground")
+            AppColors.card
             VStack(spacing: 8) {
                 Image(systemName: "photo.fill")
                     .font(.title)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(AppColors.foreground.opacity(0.7))
                 Text("No Image")
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(AppColors.foreground.opacity(0.65))
             }
         }
     }
@@ -297,8 +598,9 @@ struct WishlistProductCard: View {
                     .clipped()
             } placeholder: {
                 ProgressView()
+                    .tint(AppColors.primary)
                     .frame(width: imageSize, height: imageSize)
-                    .background(Color("CardBackground"))
+                    .background(AppColors.card)
             } failure: {
                 imageFallbackView
                     .frame(width: imageSize, height: imageSize)
@@ -310,52 +612,93 @@ struct WishlistProductCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            productImageView
-            .frame(width: imageSize, height: imageSize)
-            .contentShape(Rectangle())
-            .cornerRadius(8)
-            .accessibilityHidden(true)
+        ZStack(alignment: .topTrailing) {
+            VStack(alignment: .leading, spacing: AppSpacing.sm) {
+                if let category = product.categories.first {
+                    Text(category)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(AppGradients.brand, in: Capsule())
+                }
 
-            Text(product.name)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Spacer(minLength: 0)
-
-            HStack(spacing: 2) {
-                Image(systemName: "star.fill")
-                    .foregroundColor(.yellow)
-                    .font(.caption)
+                productImageView
+                    .frame(width: imageSize, height: imageSize)
+                    .contentShape(Rectangle())
+                    .cornerRadius(AppRadius.md)
                     .accessibilityHidden(true)
-                Text(product.formattedRating)
-                    .font(.caption)
-                Text("(\(product.reviewCount))")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(product.formattedRating) stars, \(product.reviewCount) reviews")
 
-            Text(product.formattedPrice)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundColor(.blue)
+                Text(product.name)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(AppColors.foreground)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 2) {
+                    Image(systemName: "star.fill")
+                        .foregroundStyle(AppColors.starFilled)
+                        .font(.caption)
+                        .accessibilityHidden(true)
+                    Text(product.formattedRating)
+                        .font(.caption)
+                        .foregroundStyle(AppColors.foreground)
+                    Text("(\(product.reviewCount))")
+                        .font(.caption)
+                        .foregroundStyle(AppColors.foreground.opacity(0.65))
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(product.formattedRating) stars, \(product.reviewCount) reviews")
+
+                Text(product.formattedPrice)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(AppColors.primary)
+            }
+            .padding(cardInnerPadding)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .glassCard(AppGlass.card, cornerRadius: AppRadius.lg)
+            .overlay {
+                RoundedRectangle(cornerRadius: AppRadius.lg, style: .continuous)
+                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { onTap() }
+            .onLongPressGesture { onLongPress() }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(product.name), \(product.formattedPrice), \(product.formattedRating) stars")
+            .accessibilityHint("Double tap to view details")
+
+            Button {
+                onRemove()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(AppColors.destructive)
+                    .frame(width: 24, height: 24)
+                    .glassCard(AppGlass.subtle, cornerRadius: AppRadius.full)
+            }
+            .buttonStyle(.plain)
+            .padding(8)
+            .accessibilityLabel("Remove from wishlist")
+            .accessibilityHint("Double tap to remove from wishlist")
+
+            if isSelectionMode {
+                Circle()
+                    .fill(isSelected ? AppColors.primary : AppColors.background.opacity(0.6))
+                    .frame(width: 22, height: 22)
+                    .overlay {
+                        Image(systemName: isSelected ? "checkmark" : "circle")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.white)
+                    }
+                    .padding(8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
         }
-        .padding(cardInnerPadding)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color("CardBackground"))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color(.separator), lineWidth: 1)
-        }
-        .onTapGesture { onTap() }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(product.name), \(product.formattedPrice), \(product.formattedRating) stars")
-        .accessibilityHint("Double tap to view details")
     }
 }
 

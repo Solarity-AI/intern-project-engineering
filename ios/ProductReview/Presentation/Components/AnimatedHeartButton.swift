@@ -10,8 +10,25 @@ import SwiftUI
 struct AnimatedHeartButton: View {
     @Binding var isLiked: Bool
     let onToggle: () -> Void
+    let activeColor: Color
+    let inactiveColor: Color
+    let size: CGFloat
 
     @State private var scale: CGFloat = 1.0
+
+    init(
+        isLiked: Binding<Bool>,
+        onToggle: @escaping () -> Void,
+        activeColor: Color = AppColors.primary,
+        inactiveColor: Color = AppColors.foreground.opacity(0.7),
+        size: CGFloat = 20
+    ) {
+        _isLiked = isLiked
+        self.onToggle = onToggle
+        self.activeColor = activeColor
+        self.inactiveColor = inactiveColor
+        self.size = size
+    }
 
     var body: some View {
         Button {
@@ -30,8 +47,8 @@ struct AnimatedHeartButton: View {
             onToggle()
         } label: {
             Image(systemName: isLiked ? "heart.fill" : "heart")
-                .font(.title2)
-                .foregroundColor(isLiked ? .red : .gray)
+                .font(.system(size: size, weight: .semibold))
+                .foregroundColor(isLiked ? activeColor : inactiveColor)
                 .scaleEffect(scale)
         }
         .buttonStyle(.plain)
@@ -50,7 +67,7 @@ struct HeartToggle: View {
     var body: some View {
         Image(systemName: isLiked ? "heart.fill" : "heart")
             .font(.system(size: size))
-            .foregroundColor(isLiked ? .red : .gray)
+            .foregroundColor(isLiked ? AppColors.primary : AppColors.foreground.opacity(0.7))
             .scaleEffect(animate ? 1.2 : 1.0)
             .onChange(of: isLiked) { _, newValue in
                 if newValue {
