@@ -112,14 +112,9 @@ struct WishlistView: View {
     @ViewBuilder
     private var pageHeader: some View {
         HStack(alignment: .center, spacing: AppSpacing.sm) {
-            HStack(spacing: AppSpacing.sm) {
-                Image(systemName: "heart.fill")
-                    .font(.system(size: AppFontSize.lg, weight: .semibold))
-                    .foregroundStyle(AppColors.primary)
-                Text("My Wishlist")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(AppColors.foreground)
-            }
+            Text("Wishlist")
+                .font(.system(size: 28, weight: .bold))
+                .foregroundStyle(AppColors.foreground)
 
             Spacer(minLength: 0)
 
@@ -146,6 +141,8 @@ struct WishlistView: View {
             }
         }
         .padding(.horizontal, contentHorizontalPadding)
+        .padding(.top, AppSpacing.sm)
+        .padding(.bottom, AppSpacing.md)
     }
 
     @ViewBuilder

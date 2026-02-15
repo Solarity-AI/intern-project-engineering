@@ -8,6 +8,9 @@
 import SwiftUI
 
 struct AIAssistantView: View {
+    @EnvironmentObject var navigationRouter: NavigationRouter
+    @Environment(\.dismiss) private var dismiss
+
     let productId: Int
     let productName: String
 
@@ -46,6 +49,14 @@ struct AIAssistantView: View {
         viewModel.messages.reversed().compactMap(\.options).first ?? ["Yes", "No"]
     }
 
+    private func handleBack() {
+        if navigationRouter.path.isEmpty {
+            dismiss()
+        } else {
+            navigationRouter.pop()
+        }
+    }
+
     var body: some View {
         ZStack {
             AppColors.background
@@ -55,24 +66,29 @@ struct AIAssistantView: View {
                 headerView
 
                 ScrollViewReader { proxy in
-                    ZStack {
-                        DecorativeOrbsView()
-
-                        ScrollView {
-                            LazyVStack(spacing: AppSpacing.md) {
-                                ForEach(viewModel.messages) { message in
-                                    MessageBubble(message: message)
-                                        .id(message.id)
-                                }
-
-                                if viewModel.isLoading {
-                                    TypingIndicatorBubble(dotOpacity: dotOpacity)
-                                        .id("typing-indicator")
-                                }
+                    ScrollView {
+                        LazyVStack(spacing: AppSpacing.md) {
+                            ForEach(viewModel.messages) { message in
+                                MessageBubble(message: message)
+                                    .id(message.id)
                             }
-                            .padding(.horizontal, AppSpacing.lg)
-                            .padding(.vertical, AppSpacing.lg)
+
+                            if viewModel.isLoading {
+                                TypingIndicatorBubble(dotOpacity: dotOpacity)
+                                    .id("typing-indicator")
+                            }
+
+                            if viewModel.messages.isEmpty || viewModel.waitingForMore {
+                                quickQuestionsView
+                                    .id("quick-questions")
+                            }
                         }
+                        .padding(.horizontal, AppSpacing.lg)
+                        .padding(.vertical, AppSpacing.lg)
+                        .containerRelativeFrame(.horizontal, alignment: .leading)
+                    }
+                    .background {
+                        DecorativeOrbsView()
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .onChange(of: viewModel.messages.count) { _, _ in
@@ -88,17 +104,35 @@ struct AIAssistantView: View {
                             proxy.scrollTo("typing-indicator", anchor: .bottom)
                         }
                     }
-                }
-
-                if viewModel.messages.isEmpty || viewModel.waitingForMore {
-                    quickQuestionsView
-                        .padding(.horizontal, AppSpacing.lg)
-                        .padding(.top, AppSpacing.sm)
+                    .onChange(of: viewModel.waitingForMore) { _, waiting in
+                        guard waiting else { return }
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            proxy.scrollTo("quick-questions", anchor: .bottom)
+                        }
+                    }
                 }
 
                 inputBar
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
+        .overlay(alignment: .topLeading) {
+            Button {
+                handleBack()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.primary)
+                    .frame(width: 40, height: 40)
+                    .glassCard(AppGlass.card, cornerRadius: AppRadius.full)
+                    .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 2)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, AppSpacing.lg)
+            .padding(.top, AppSpacing.sm)
+            .safeAreaPadding(.top)
+        }
+        .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .toolbarBackground(.hidden, for: .navigationBar)
         .alert("Error", isPresented: Binding(get: { viewModel.error != nil }, set: { if !$0 { viewModel.error = nil } })) {
@@ -137,8 +171,9 @@ struct AIAssistantView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, AppSpacing.lg)
-        .padding(.top, AppSpacing.md)
+        .padding(.top, AppSpacing.sm)
         .padding(.bottom, AppSpacing.lg)
+        .safeAreaPadding(.top)
         .background(AppGradients.ai)
         .glow(AppGlow.ai)
     }
@@ -160,6 +195,7 @@ struct AIAssistantView: View {
                         .disabled(viewModel.isLoading)
                     }
                 }
+                .frame(maxWidth: .infinity)
             } else {
                 Text("Ask about \(productName)")
                     .font(.system(size: AppFontSize.sm, weight: .semibold))
@@ -179,8 +215,10 @@ struct AIAssistantView: View {
                         .disabled(viewModel.isLoading)
                     }
                 }
+                .frame(maxWidth: .infinity)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.bottom, AppSpacing.sm)
     }
 
@@ -219,6 +257,7 @@ struct AIAssistantView: View {
         .padding(.horizontal, AppSpacing.lg)
         .padding(.top, AppSpacing.sm)
         .padding(.bottom, AppSpacing.md)
+        .safeAreaPadding(.bottom, AppSpacing.xs)
     }
 
     private func sendMessage() {
@@ -521,5 +560,6 @@ class AIAssistantViewModel: ObservableObject {
 #Preview {
     NavigationStack {
         AIAssistantView(productId: 1, productName: "iPhone 15 Pro")
+            .environmentObject(NavigationRouter())
     }
 }

@@ -389,10 +389,9 @@ struct ProductListView: View {
                         .background(.ultraThinMaterial, in: Circle())
                         .padding(.top, 8)
                         .padding(.trailing, 2)
-                        .offset(x: -16, y: 6)
+                        .offset(x: -16, y: 2)
                         .opacity(0.9)
                     }
-                    .frame(width: cardWidth, height: cardHeight)
                     .onAppear {
                         if product.id == viewModel.products.last?.id {
                             Task { await viewModel.loadMore() }
@@ -738,6 +737,7 @@ struct ProductCardView: View {
                 .frame(width: imageSize, height: imageSize)
                 .contentShape(Rectangle())
                 .cornerRadius(AppRadius.md)
+                .offset(y: 8)
                 .accessibilityHidden(true)
 
             Text(product.name)
@@ -746,6 +746,7 @@ struct ProductCardView: View {
                 .foregroundStyle(AppColors.foreground)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
+                .offset(y: 8)
 
             Spacer(minLength: 0)
 

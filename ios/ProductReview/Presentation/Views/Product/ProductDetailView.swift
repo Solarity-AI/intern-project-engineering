@@ -14,7 +14,6 @@ struct ProductDetailView: View {
 
     @State private var showAddReview = false
     @State private var selectedRatingFilter: Int? = nil
-    @State private var topSafeArea: CGFloat = 50
 
     init(productId: Int) {
         _viewModel = StateObject(wrappedValue: ProductDetailViewModel(productId: productId))
@@ -39,9 +38,12 @@ struct ProductDetailView: View {
     private func productImageView(for product: Product) -> some View {
         if let imageURL = product.resolvedImageURL {
             CachedAsyncImage(url: imageURL) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
+                Color.clear
+                    .overlay {
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    }
             } placeholder: {
                 imageFallbackView
                     .overlay {
@@ -78,7 +80,6 @@ struct ProductDetailView: View {
                     if let product = viewModel.product {
                         detailContent(
                             for: product,
-                            safeTopInset: topSafeArea,
                             viewportHeight: UIScreen.main.bounds.height
                         )
                         .containerRelativeFrame(.horizontal, alignment: .leading)
@@ -92,17 +93,38 @@ struct ProductDetailView: View {
                 .ignoresSafeArea(edges: .top)
             }
         }
-        .background {
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear {
-                        topSafeArea = proxy.safeAreaInsets.top
-                    }
-                    .onChange(of: proxy.safeAreaInsets.top) { _, newTop in
-                        topSafeArea = newTop
-                    }
+        .overlay(alignment: .top) {
+            HStack {
+                Button {
+                    handleBack()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.primary)
+                        .frame(width: 40, height: 40)
+                        .glassCard(AppGlass.card, cornerRadius: AppRadius.full)
+                        .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 2)
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                Button {
+                    Task { await viewModel.toggleWishlist() }
+                } label: {
+                    Image(systemName: viewModel.isInWishlist ? "heart.fill" : "heart")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(viewModel.isInWishlist ? AppColors.primary : Color.primary)
+                        .frame(width: 40, height: 40)
+                        .glassCard(AppGlass.card, cornerRadius: AppRadius.full)
+                        .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 2)
+                }
+                .buttonStyle(.plain)
             }
-            .ignoresSafeArea()
+            .padding(.horizontal, AppSpacing.lg)
+            .padding(.top, AppSpacing.sm)
+            .safeAreaPadding(.top)
+            .frame(maxWidth: .infinity)
         }
         .overlay(alignment: .bottomTrailing) {
             if viewModel.product != nil {
@@ -154,7 +176,6 @@ struct ProductDetailView: View {
     @ViewBuilder
     private func detailContent(
         for product: Product,
-        safeTopInset: CGFloat,
         viewportHeight: CGFloat
     ) -> some View {
         let heroHeight = max(320, min(viewportHeight * 0.50, 520))
@@ -201,34 +222,6 @@ struct ProductDetailView: View {
                         .padding(.bottom, AppSpacing.xl)
                     }
                     .ignoresSafeArea(edges: .top)
-
-                HStack {
-                    Button {
-                        handleBack()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Color.white)
-                            .frame(width: 40, height: 40)
-                            .glassCard(AppGlass.subtle, cornerRadius: AppRadius.full)
-                    }
-                    .buttonStyle(.plain)
-
-                    Spacer()
-
-                    Button {
-                        Task { await viewModel.toggleWishlist() }
-                    } label: {
-                        Image(systemName: viewModel.isInWishlist ? "heart.fill" : "heart")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(viewModel.isInWishlist ? AppColors.primary : Color.white)
-                            .frame(width: 40, height: 40)
-                            .glassCard(AppGlass.subtle, cornerRadius: AppRadius.full)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, AppSpacing.lg)
-                .padding(.top, max(safeTopInset, AppSpacing.xl))
             }
 
             VStack(alignment: .leading, spacing: AppSpacing.lg) {
