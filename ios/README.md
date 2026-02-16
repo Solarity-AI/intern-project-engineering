@@ -144,7 +144,7 @@ ios/
 
 The app connects to the backend API at:
 ```
-Production: https://product-review-app-ybmf.herokuapp.com
+Production: https://solarity-review-api.herokuapp.com
 Development: http://localhost:8080 (DEBUG builds)
 ```
 
