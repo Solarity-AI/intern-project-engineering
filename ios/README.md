@@ -159,7 +159,7 @@ enum AppConstants {
         #endif
 
         static var baseURL: String {
-            useLocalServer ? "http://localhost:8080" : "https://product-review-app-ybmf.herokuapp.com"
+            useLocalServer ? "http://localhost:8080" : "https://solarity-review-api.herokuapp.com"
         }
         static let timeoutInterval: TimeInterval = 10.0
         static let aiTimeoutInterval: TimeInterval = 20.0
