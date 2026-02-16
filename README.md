@@ -62,7 +62,7 @@ xcodegen generate              # Generate Xcode project from project.yml
 open ProductReview.xcodeproj   # Open in Xcode
 # Select target device (iPhone 16 Pro recommended) → Cmd+R to build & run
 ```
-*   The app auto-connects to the deployed backend in release builds and `localhost:8080` in debug builds.
+*   The app defaults to the deployed backend in all builds. Set `useLocalServer = true` in `Constants.swift` for local development.
 *   See [`ios/README.md`](ios/README.md) for detailed architecture and feature documentation.
 
 ---
@@ -82,7 +82,7 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 
 ### Frontend — React Native (Mobile/Web)
 *   **State Management:** React Context API for Wishlist, Search, and Notifications.
-*   **Responsive Design:** Adaptive layouts for Mobile (Android/iOS) and Web (Vercel).
+*   **Responsive Design:** Adaptive layouts for Mobile (Android/iOS) and Web (Heroku).
 *   **Networking:** Centralized API service with retry logic (exponential backoff), request deduplication, memory caching, and structured error handling.
 *   **UI Design:** Glassmorphism theme with Glass cards, Gradients, and Glow effects.
 
@@ -127,7 +127,7 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 │   ├── src/components/     # Reusable UI Components
 │   ├── src/screens/        # Screen-level Components
 │   ├── src/context/        # Global State Management
-│   └── vercel.json         # Web Deployment Configuration
+│   └── Procfile             # Heroku process definition
 ├── ios/                    # Native iOS App (Swift/SwiftUI)
 │   ├── ProductReview/      # Main app source
 │   │   ├── App/            # App entry, navigation, core utilities
@@ -146,43 +146,30 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 ## 🌐 Deployment
 
 ### Production Environment
+*   **Backend:** Heroku (Java buildpack, PostgreSQL addon)
+*   **Frontend Web:** Heroku (static SPA via `serve`)
 *   **Mobile App:** Distributed via **EAS Build (APK)** with **OTA Updates** support.
 
-### Why Render.com + Vercel?
-**Render.com** (Backend):
-- ✅ Completely free (750 hours/month)
+### Why Heroku?
+- ✅ Single platform for both backend and frontend
 - ✅ Automatic HTTPS
-- ✅ GitHub integration
+- ✅ GitHub Actions integration for auto-deploy on push to `main`
+- ✅ Managed PostgreSQL addon
 - ✅ Health check support
-- ⚠️ Cold start (~30-60s for first request)
-
-**Vercel** (Frontend):
-- ✅ Completely free
-- ✅ Global CDN
-- ✅ Automatic deployments
-- ✅ Edge functions
-- ✅ Zero configuration
+- ✅ Easy environment variable management
 
 ### Deployment Workflow
-The project includes automated CI/CD integration:
-- Push to `main` branch triggers automatic Vercel production deployment
-- Backend updates deploy automatically via Render.com GitHub integration
-- Pull requests create preview deployments for testing
-- See deployment guides for detailed instructions
+The project includes automated CI/CD via GitHub Actions:
+- Push to `main` branch triggers parallel deployment of backend and frontend to Heroku
+- Manual deployment available via `workflow_dispatch`
+- See `.github/workflows/deploy-heroku.yml` for workflow configuration
 
 ### Quick Deploy Commands
-**Backend (Render.com):**
 ```bash
-# Already configured with render.yaml
-# Just connect your GitHub repo on render.com dashboard
-```
-
-**Frontend (Vercel):**
-```bash
-cd mobile
-npm install -g vercel  # Install Vercel CLI
-vercel login           # Login to Vercel
-vercel --prod          # Deploy to production
+# Heroku apps are deployed automatically via GitHub Actions
+# For manual Heroku CLI usage:
+heroku logs --tail --app <backend-app-name>    # View backend logs
+heroku logs --tail --app <frontend-app-name>   # View frontend logs
 ```
 
 ### Color Palette (Updated 2026-02)
@@ -216,7 +203,7 @@ Future interns are expected to:
 
 *   **Port 8080 Conflict:** If the backend fails to start, check if another process is using port 8080.
 *   **Network Issues:** Ensure the `BASE_URL` in `mobile/src/services/api.ts` matches your backend IP (use local IP for physical devices).
-*   **Vercel 404 on Refresh:** Fixed via `vercel.json` rewrites. If issues persist, ensure the file is in the `mobile/` root.
+*   **Heroku 404 on Refresh:** SPA routing is handled by `serve -s` in `mobile/Procfile`, which rewrites all 404s to `/index.html`.
 *   **iOS — XcodeGen:** If the `.xcodeproj` is missing, install XcodeGen (`brew install xcodegen`) and run `xcodegen generate` inside the `ios/` directory.
 *   **iOS — Simulator:** Requires Xcode 15.0+ and macOS Sonoma (14.0+). Target device must be iOS 17.0+.
 
@@ -231,7 +218,7 @@ The final submission must include the following items:
 3. **Backend Code Walkthrough:** A 3–5 minute demo video [Google Drive Link] explaining the backend architecture.
 4. **Application Demo:** A 3–5 minute video [Google Drive Link] showcasing all features on an emulator or real device.
 5. **Build Artifacts:** A [Google Drive Link] to download the generated APK (Android) or IPA (iOS).
-6. **Web Access:** A public web application link (e.g., Vercel) for testing in a browser.
+6. **Web Access:** A public web application link (e.g., Heroku) for testing in a browser.
 7. **Future Improvements:** A section describing potential enhancements (see Roadmap below).
 8. **Final Presentation:** A slide deck summarizing the project and learnings.
 

@@ -144,7 +144,7 @@ ios/
 
 The app connects to the backend API at:
 ```
-Production: https://product-review-app-ybmf.onrender.com
+Production: https://product-review-app-ybmf.herokuapp.com
 Development: http://localhost:8080 (DEBUG builds)
 ```
 
@@ -159,7 +159,7 @@ enum AppConstants {
         #endif
 
         static var baseURL: String {
-            useLocalServer ? "http://localhost:8080" : "https://product-review-app-ybmf.onrender.com"
+            useLocalServer ? "http://localhost:8080" : "https://product-review-app-ybmf.herokuapp.com"
         }
         static let timeoutInterval: TimeInterval = 10.0
         static let aiTimeoutInterval: TimeInterval = 20.0

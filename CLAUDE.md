@@ -25,8 +25,8 @@
 - **Storage:** AsyncStorage
 
 ### Deployment
-- **Backend:** Render.com (Docker)
-- **Web:** Vercel
+- **Backend:** Heroku (Java buildpack)
+- **Web:** Heroku (static SPA via `serve`)
 - **Mobile:** EAS Build
 
 ## Directory Structure
@@ -35,28 +35,38 @@
 .
 ├── backend/                    # Spring Boot REST API
 │   ├── src/main/java/com/example/productreview/
-│   │   ├── controller/         # REST endpoints
+│   │   ├── controller/         # REST endpoints (/api/v1/)
 │   │   ├── service/            # Business logic
 │   │   ├── model/              # JPA entities
 │   │   ├── repository/         # Data access
 │   │   ├── dto/                # Data transfer objects
-│   │   ├── config/             # CORS, caching, rate limiting
+│   │   ├── config/             # CORS, caching, rate limiting, OpenAPI
 │   │   └── exception/          # Custom exceptions & global handler
-│   └── src/main/resources/     # Configuration (+ application-prod.properties)
+│   └── src/main/resources/     # Configuration, Flyway migrations
 │
-├── mobile/                     # React Native app
+├── mobile/                     # React Native app (Expo)
 │   ├── src/
 │   │   ├── screens/            # Screen components
 │   │   ├── components/         # Reusable UI
 │   │   ├── context/            # State providers
 │   │   ├── services/           # API client
 │   │   ├── constants/          # Theme & config
+│   │   ├── hooks/              # Custom hooks (useDebounce, ViewModels)
 │   │   └── types/              # TypeScript definitions
 │   └── App.tsx                 # Entry point
 │
+├── ios/                        # Native iOS App (Swift/SwiftUI)
+│   ├── ProductReview/
+│   │   ├── App/                # Entry, navigation, core utilities
+│   │   ├── Data/               # Network, repositories, mappers
+│   │   ├── Domain/             # Models & repository protocols
+│   │   └── Presentation/       # Views, ViewModels, components
+│   └── project.yml             # XcodeGen configuration
+│
+├── swift-issues/               # iOS UI redesign issue tracking
 ├── .vscode/                    # VS Code configuration
-├── render.yaml                 # Backend deployment config
-└── Procfile                    # Heroku-style process file
+├── .github/workflows/          # CI/CD (Heroku deployment)
+└── Procfile                    # (removed — see backend/Procfile & mobile/Procfile)
 ```
 
 ## Development Commands
@@ -69,7 +79,7 @@ cd backend
 ./mvnw test                    # Run tests
 ```
 
-### Frontend Setup & Run
+### Frontend Setup & Run (React Native)
 ```bash
 cd mobile
 npm install                    # Install dependencies
@@ -78,12 +88,19 @@ npx expo start --web           # Web version
 npx expo start --android       # Android emulator
 ```
 
+### iOS Native Setup & Run
+```bash
+cd ios
+xcodegen generate              # Generate Xcode project from project.yml
+open ProductReview.xcodeproj   # Open in Xcode, Cmd+R to build & run
+```
+
 ### Build & Deploy
 ```bash
-# Backend (Render.com handles via render.yaml)
+# Backend (Heroku auto-deploys via GitHub Actions on push to main)
 cd backend && ./mvnw clean package
 
-# Frontend Web (Vercel)
+# Frontend Web (Heroku auto-deploys via GitHub Actions on push to main)
 cd mobile && npm run build
 
 # Mobile (EAS)
@@ -92,23 +109,26 @@ cd mobile && eas build --platform android
 
 ## API Endpoints
 
+All endpoints are versioned under `/api/v1/`. Swagger UI available at `/swagger-ui.html` (dev only).
+
 ### Products
-- `GET /api/products` - List products (paginated, filterable by category/search)
-- `GET /api/products/{id}` - Product details with AI summary
-- `GET /api/products/stats` - Global statistics
+- `GET /api/v1/products` - List products (paginated, filterable by category/search)
+- `GET /api/v1/products/{id}` - Product details with AI summary
+- `GET /api/v1/products/stats` - Global statistics
 
 ### Reviews
-- `GET /api/products/{id}/reviews` - Product reviews (paginated)
-- `POST /api/products/{id}/reviews` - Submit review
-- `PUT /api/products/reviews/{id}/helpful` - Mark helpful
+- `GET /api/v1/products/{id}/reviews` - Product reviews (paginated)
+- `POST /api/v1/products/{id}/reviews` - Submit review
+- `PUT /api/v1/products/reviews/{id}/helpful` - Mark helpful
 
 ### AI
-- `POST /api/products/{id}/chat` - AI chat about product
+- `POST /api/v1/products/{id}/chat` - AI chat about product
 
 ### User
-- `GET /api/users/wishlist` - Get wishlist
-- `POST /api/users/wishlist/{productId}` - Toggle wishlist
-- `GET /api/users/notifications` - Get notifications
+- `GET /api/v1/user/wishlist` - Get wishlist IDs
+- `GET /api/v1/user/wishlist/products` - Get wishlist products (paginated)
+- `POST /api/v1/user/wishlist/{productId}` - Toggle wishlist
+- `GET /api/v1/user/notifications` - Get notifications
 
 ## Key Files
 
@@ -117,17 +137,28 @@ cd mobile && eas build --platform android
 - `backend/src/main/java/.../service/ProductServiceImpl.java` - Business logic
 - `backend/src/main/java/.../service/AISummaryService.java` - OpenAI integration
 - `backend/src/main/java/.../config/CorsConfig.java` - Centralized CORS (environment-based origins)
+- `backend/src/main/java/.../config/OpenApiConfig.java` - Swagger/OpenAPI configuration
 - `backend/src/main/java/.../config/RateLimitingFilter.java` - Bucket4j rate limiting (per client)
 - `backend/src/main/java/.../exception/GlobalExceptionHandler.java` - Error handling with proper HTTP status codes
 - `backend/src/main/java/.../dto/ErrorResponse.java` - Structured error responses
 - `backend/src/main/resources/application.properties` - Configuration
 - `backend/src/main/resources/application-prod.properties` - Production overrides
+- `backend/src/main/resources/db/migration/` - Flyway SQL migrations
 
-### Frontend
+### Frontend (React Native)
 - `mobile/src/services/api.ts` - API client (retry, cache, dedup, structured errors, mutation cache invalidation)
 - `mobile/src/context/` - State management (Theme, Wishlist, Notifications, Network)
 - `mobile/src/screens/ProductListScreen.tsx` - Main product list
 - `mobile/src/constants/theme.ts` - Theme tokens (Colors, Gradients, Glass, Glow, Shadow)
+- `mobile/src/screens/useProductListViewModel.ts` - Product list business logic
+- `mobile/src/screens/useProductDetailViewModel.ts` - Product detail business logic
+
+### iOS Native
+- `ios/ProductReview/App/Core/Constants.swift` - API config (debug defaults to remote server)
+- `ios/ProductReview/App/Core/AppTheme.swift` - Design system (colors, glass, glow)
+- `ios/ProductReview/Data/Network/APIClient.swift` - Networking with async/await
+- `ios/ProductReview/Presentation/ViewModels/` - ObservableObject ViewModels
+- `ios/ProductReview/Presentation/Views/` - SwiftUI screens
 
 ## Coding Conventions
 
@@ -155,14 +186,13 @@ cd mobile && eas build --platform android
 - `cors.allowed-origins` - Comma-separated allowed CORS origins (default: localhost dev ports)
 - `rate-limit.requests-per-minute` - Rate limit per client (default: 60)
 - `spring.profiles.active=prod` - Activate production profile (PostgreSQL, Flyway, restricted actuator)
-- `DATABASE_URL` - PostgreSQL JDBC URL (prod only, e.g. `jdbc:postgresql://host:5432/dbname`)
-- `DB_USERNAME` - PostgreSQL username (prod only)
-- `DB_PASSWORD` - PostgreSQL password (prod only)
+- `JDBC_DATABASE_URL` - PostgreSQL JDBC URL (prod only, auto-provided by Heroku Postgres addon)
+- `CORS_ALLOWED_ORIGINS` - Comma-separated allowed CORS origins (prod)
 
 ### Frontend
+- `EXPO_PUBLIC_API_URL` - Backend API URL (set via Heroku config vars or GitHub Actions secret)
 - API base URL exported from `mobile/src/services/api.ts` (`export const BASE_URL`)
 - Shared by `NetworkContext.tsx` for health checks
-- Currently: `https://product-review-app-ybmf.onrender.com`
 
 ## Testing
 
