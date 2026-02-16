@@ -35,6 +35,7 @@ public class Product {
 
     private String imageUrl;
 
+    @Column(columnDefinition = "NUMERIC(3,2)")
     private Double averageRating = 0.0;
     private Integer reviewCount = 0;
 
