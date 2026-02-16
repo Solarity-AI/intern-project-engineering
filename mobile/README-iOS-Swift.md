@@ -214,7 +214,7 @@ Presentation/
 
 ### Base URL
 ```
-https://product-review-app-solarityai-a391ad53d79a.herokuapp.com
+https://solarity-review-api-95bd50ea0f47.herokuapp.com
 ```
 
 ### Products

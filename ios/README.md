@@ -144,7 +144,7 @@ ios/
 
 The app connects to the backend API at:
 ```
-Production: https://solarity-review-api.herokuapp.com
+Production: https://solarity-review-api-95bd50ea0f47.herokuapp.com
 Development: http://localhost:8080 (DEBUG builds)
 ```
 
@@ -159,7 +159,7 @@ enum AppConstants {
         #endif
 
         static var baseURL: String {
-            useLocalServer ? "http://localhost:8080" : "https://solarity-review-api.herokuapp.com"
+            useLocalServer ? "http://localhost:8080" : "https://solarity-review-api-95bd50ea0f47.herokuapp.com"
         }
         static let timeoutInterval: TimeInterval = 10.0
         static let aiTimeoutInterval: TimeInterval = 20.0

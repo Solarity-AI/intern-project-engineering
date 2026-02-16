@@ -18,7 +18,7 @@ enum AppConstants {
         #endif
 
         static var baseURL: String {
-            useLocalServer ? "http://localhost:8080" : "https://solarity-review-api.herokuapp.com"
+            useLocalServer ? "http://localhost:8080" : "https://solarity-review-api-95bd50ea0f47.herokuapp.com"
         }
         static let timeoutInterval: TimeInterval = 8.0
         static let aiTimeoutInterval: TimeInterval = 20.0 // Longer timeout for AI calls

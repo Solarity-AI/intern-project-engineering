@@ -41,7 +41,7 @@ jobs:
         working-directory: ./mobile
         run: npm run build
         env:
-          EXPO_PUBLIC_API_URL: https://${{ secrets.HEROKU_BACKEND_APP }}.herokuapp.com
+          EXPO_PUBLIC_API_URL: ${{ secrets.HEROKU_BACKEND_URL }}
 
       - name: Deploy Frontend to Heroku
         working-directory: ./mobile
