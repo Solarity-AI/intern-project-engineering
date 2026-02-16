@@ -54,7 +54,7 @@ The application serves as an internship training platform where the backend API 
 | **React Navigation** | 7.x | Screen navigation |
 | **AsyncStorage** | 2.2.0 | Local persistence |
 | **Expo Linear Gradient** | 15.0.8 | UI gradients |
-| **Vercel Analytics** | 1.6.1 | Web analytics |
+| **serve** | 14.x | Static SPA server for Heroku |
 
 ### iOS Native (Swift/SwiftUI)
 
@@ -74,10 +74,10 @@ The application serves as an internship training platform where the backend API 
 
 | Platform | Purpose |
 |----------|---------|
-| **Render.com** | Backend hosting (Docker-based) |
-| **Vercel** | Web frontend hosting (CDN) |
+| **Heroku** | Backend hosting (Java buildpack, PostgreSQL addon) |
+| **Heroku** | Web frontend hosting (static SPA via `serve`) |
 | **EAS Build** | Mobile app builds (APK/IPA) |
-| **GitHub Actions** | CI/CD automation |
+| **GitHub Actions** | CI/CD automation (parallel Heroku deployment) |
 
 ---
 
@@ -173,7 +173,7 @@ The application serves as an internship training platform where the backend API 
 │   ├── package.json                  # Node dependencies
 │   ├── app.json                      # Expo configuration
 │   ├── eas.json                      # EAS Build configuration
-│   ├── vercel.json                   # Web deployment config
+│   ├── Procfile                      # Heroku process definition
 │   └── tsconfig.json                 # TypeScript configuration
 │
 ├── ios/                              # Native iOS App (Swift/SwiftUI)
@@ -238,16 +238,15 @@ The application serves as an internship training platform where the backend API 
 │   └── README.md                     # iOS-specific documentation
 │
 ├── .github/workflows/                # CI/CD
-│   └── deploy-vercel.yml             # Vercel deployment workflow
+│   └── deploy-heroku.yml             # Heroku deployment workflow
 ├── .vscode/                          # IDE configuration
 │   ├── settings.json
 │   └── launch.json
-├── render.yaml                       # Render.com deployment
-├── Procfile                          # Process definition
+├── Procfile                          # (removed — see backend/ and mobile/ Procfiles)
+├── swift-issues/                     # iOS UI redesign issue tracking
 ├── pom.xml                           # Parent Maven project
-├── system.properties                 # Java version
+├── backend/system.properties          # Java version (Heroku buildpack)
 ├── CLAUDE.md                         # Project documentation
-├── tasks.md                          # Task tracking
 └── README.md                         # Main documentation
 ```
 
@@ -357,13 +356,14 @@ Presentation          Domain              Data
 **Presentation Layer:**
 - `ViewModels`: @Published-based ObservableObjects (ProductListViewModel, ProductDetailViewModel) with @MainActor for thread safety
 - `Views`: SwiftUI views for all screens (ProductList, ProductDetail, Wishlist, Notifications, AIAssistant)
-- `Components`: 7 reusable components (EmptyStateView, ShimmerView, ToastView, LoadingButton, AnimatedHeartButton, RatingStarsView, ConfirmationDialog)
+- `Components`: 9 reusable components (EmptyStateView, ShimmerView, ToastView, LoadingButton, AnimatedHeartButton, RatingStarsView, ConfirmationDialog, GlassCardModifier, GlowModifier)
 
 **Core Utilities:**
+- `AppTheme`: Design system with colors, gradients, glass effects, and glow modifiers
 - `ThemeManager`: System/light/dark theme persistence via UserDefaults
 - `HapticManager`: Centralized haptic feedback (impact, notification, selection)
 - `NetworkMonitor`: Real-time connectivity monitoring with offline banner display
-- `Constants`: API configuration with debug/release URL switching
+- `Constants`: API configuration with debug/release URL switching (debug defaults to remote server)
 
 **User Identification:**
 - UUID generated on first launch, stored in UserDefaults (`device_user_id`)
@@ -473,10 +473,8 @@ management.endpoints.web.exposure.include=health,info
 
 **application-prod.properties (Production — PostgreSQL):**
 ```properties
-# PostgreSQL Datasource
-spring.datasource.url=${DATABASE_URL}
-spring.datasource.username=${DB_USERNAME}
-spring.datasource.password=${DB_PASSWORD}
+# PostgreSQL Datasource (Heroku provides JDBC_DATABASE_URL with embedded credentials)
+spring.datasource.url=${JDBC_DATABASE_URL}
 spring.datasource.driverClassName=org.postgresql.Driver
 
 # JPA — validate schema against Flyway migrations
@@ -487,7 +485,10 @@ spring.jpa.hibernate.ddl-auto=validate
 spring.flyway.enabled=true
 spring.flyway.baseline-on-migrate=true
 
-# HikariCP — tuned for Render.com free tier
+# CORS - production origins (configurable via env var)
+cors.allowed-origins=${CORS_ALLOWED_ORIGINS:https://localhost:3000}
+
+# HikariCP — tuned for Heroku
 spring.datasource.hikari.maximum-pool-size=5
 spring.datasource.hikari.minimum-idle=2
 spring.datasource.hikari.leak-detection-threshold=0
@@ -503,21 +504,21 @@ springdoc.api-docs.enabled=false
 |----------|----------|---------|
 | `PORT` | No | Server port (default: 8080) |
 | `OPENAI_API_KEY` | No | AI features (falls back to mock) |
-| `DATABASE_URL` | Prod | PostgreSQL JDBC connection URL |
-| `DB_USERNAME` | Prod | PostgreSQL username |
-| `DB_PASSWORD` | Prod | PostgreSQL password |
+| `JDBC_DATABASE_URL` | Prod | PostgreSQL JDBC URL (auto-provided by Heroku Postgres addon) |
+| `CORS_ALLOWED_ORIGINS` | Prod | Comma-separated CORS origins |
 | `cors.allowed-origins` | No | Comma-separated CORS origins (default: localhost dev ports) |
 | `rate-limit.requests-per-minute` | No | Rate limit per client (default: 60) |
 | `spring.profiles.active` | No | Set to `prod` for production profile |
-| `VERCEL_TOKEN` | CI | Vercel deployment auth |
-| `VERCEL_ORG_ID` | CI | Vercel organization |
-| `VERCEL_PROJECT_ID` | CI | Vercel project |
+| `HEROKU_API_KEY` | CI | Heroku API key (GitHub Actions secret) |
+| `HEROKU_EMAIL` | CI | Heroku account email (GitHub Actions secret) |
+| `HEROKU_BACKEND_APP` | CI | Heroku backend app name (GitHub Actions secret) |
+| `HEROKU_FRONTEND_APP` | CI | Heroku frontend app name (GitHub Actions secret) |
 
 ### Frontend Configuration (React Native)
 
 **API Base URL (exported, shared by NetworkContext for health checks):**
 ```typescript
-export const BASE_URL = 'https://product-review-app-ybmf.onrender.com';
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://<backend-app>.herokuapp.com';
 ```
 
 **User Identification:**
@@ -529,9 +530,9 @@ export const BASE_URL = 'https://product-review-app-ybmf.onrender.com';
 **API Base URL** (`App/Core/Constants.swift`):
 ```swift
 #if DEBUG
-static let useLocalServer = true   // http://localhost:8080
+static let useLocalServer = false  // defaults to remote; set true for local dev
 #else
-static let useLocalServer = false  // https://product-review-app-ybmf.onrender.com
+static let useLocalServer = false  // https://<backend-app>.herokuapp.com
 #endif
 ```
 
@@ -543,35 +544,29 @@ static let useLocalServer = false  // https://product-review-app-ybmf.onrender.c
 
 ## 7. Deployment & Operations
 
-### 7.1 Backend Deployment (Render.com)
+### 7.1 Backend Deployment (Heroku)
 
-**Multi-stage Docker Build:**
-```dockerfile
-# Build stage
-FROM maven:3.9-eclipse-temurin-17
-RUN mvn clean package -DskipTests
+**Heroku Java Buildpack:**
+- Auto-detected from `pom.xml`
+- JDK version specified in `backend/system.properties`
+- Process defined in `backend/Procfile`
 
-# Runtime stage
-FROM eclipse-temurin:17-jre-alpine
-EXPOSE 10000
-CMD ["java", "-jar", "app.jar"]
-```
-
-**Render Configuration (render.yaml):**
-- Docker-based deployment
+**Configuration:**
 - Health check: `/actuator/health`
-- Environment: PORT=10000, JAVA_VERSION=17
+- PostgreSQL: Heroku Postgres addon (provides `JDBC_DATABASE_URL`)
+- Environment: `SPRING_PROFILES_ACTIVE=prod`, `OPENAI_API_KEY`, `CORS_ALLOWED_ORIGINS`
 
-### 7.2 Frontend Web Deployment (Vercel)
+### 7.2 Frontend Web Deployment (Heroku)
 
 **GitHub Actions Workflow:**
-- Triggers on `main` branch pushes to `mobile/`
+- Triggers on `main` branch pushes (parallel with backend)
 - Node.js 20 with npm ci
-- Deploys via `amondnet/vercel-action`
+- Builds with `EXPO_PUBLIC_API_URL` env var
+- Deploys via `akhileshns/heroku-deploy`
 
-**Vercel Configuration:**
-- SPA routing: All paths → `/index.html`
-- Cache: 1-year immutable headers
+**Heroku Configuration:**
+- Static SPA served via `serve` (defined in `mobile/Procfile`)
+- SPA mode: All 404s rewrite to `/index.html`
 - Output: `dist/` directory
 
 ### 7.3 Mobile App Builds (EAS)
@@ -584,9 +579,9 @@ CMD ["java", "-jar", "app.jar"]
 
 | Aspect | Details |
 |--------|---------|
-| Cold Start | Backend: ~30-60s on Render free tier |
+| Cold Start | Backend: ~30-60s on Heroku eco dynos |
 | Database | H2 in-memory (dev), PostgreSQL (prod via Flyway migrations) |
-| Connection Pool | HikariCP: 10 max (dev), 5 max (prod/Render free tier) |
+| Connection Pool | HikariCP: 10 max (dev), 5 max (prod/Heroku) |
 | Caching | AI summaries cached 1 hour |
 | Health | `/actuator/health` monitored |
 | Updates | OTA via Expo Updates |
@@ -686,6 +681,8 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 | AnimatedHeartButton | Wishlist heart with bounce animation |
 | RatingStarsView | Display and interactive star ratings |
 | ConfirmationDialog | Reusable confirmation dialogs |
+| GlassCardModifier | Glassmorphism card background with blur |
+| GlowModifier | Glow/shadow effect for accent elements |
 
 ### Theme System
 
@@ -772,13 +769,13 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 - Flyway-managed schema migrations with `ddl-auto=validate` in production
 
 ### Production Profile (`application-prod.properties`)
-- PostgreSQL datasource with environment-variable credentials
+- PostgreSQL datasource via Heroku-provided JDBC_DATABASE_URL
 - Flyway migrations enabled, JPA schema validation only
 - H2 console disabled
 - Swagger UI and API docs disabled
 - Actuator restricted to health endpoint only
 - CORS origins restricted to production domains
-- HikariCP tuned for Render.com free tier (5 max connections)
+- HikariCP tuned for Heroku (5 max connections)
 
 ### Container Security
 - Alpine-based images (minimal attack surface)
@@ -794,8 +791,6 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 | Service | Purpose | Integration |
 |---------|---------|-------------|
 | OpenAI (GPT-4o-mini) | Review analysis & chat | simple-openai library |
-| Vercel Analytics | Web visitor tracking | @vercel/analytics |
-| Vercel Speed Insights | Performance monitoring | @vercel/speed-insights |
 
 ### Internal Service Communication
 
@@ -873,6 +868,7 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 | RN Theme | `mobile/src/constants/theme.ts` |
 | RN State Contexts | `mobile/src/context/` |
 | iOS Entry | `ios/ProductReview/App/AppEntry/ProductReviewApp.swift` |
+| iOS Design System | `ios/ProductReview/App/Core/AppTheme.swift` |
 | iOS API Client | `ios/ProductReview/Data/Network/APIClient.swift` |
 | iOS Constants | `ios/ProductReview/App/Core/Constants.swift` |
 | iOS ViewModels | `ios/ProductReview/Presentation/ViewModels/` |
