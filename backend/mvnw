@@ -53,4 +53,4 @@ if [ ! -f "$WRAPPER_JAR" ]; then
     curl -sfL "$WRAPPER_URL" -o "$WRAPPER_JAR" || wget -q "$WRAPPER_URL" -O "$WRAPPER_JAR"
 fi
 
-exec "$JAVA_HOME/bin/java" $MAVEN_OPTS -classpath "$WRAPPER_JAR" org.apache.maven.wrapper.MavenWrapperMain "$@"
+exec "$JAVA_HOME/bin/java" $MAVEN_OPTS -Dmaven.multiModuleProjectDirectory="$BASEDIR" -classpath "$WRAPPER_JAR" org.apache.maven.wrapper.MavenWrapperMain "$@"
