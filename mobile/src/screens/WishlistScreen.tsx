@@ -297,7 +297,7 @@ export const WishlistScreen = () => {
         }}
       >
         <View style={{ flex: 1 }}>
-          {isOffline && <OfflineBanner onRetry={() => fetchWishlist(0, false)} />}
+          <OfflineBanner onRetry={() => fetchWishlist(0, false)} />
 
           {/* Header */}
           <View style={isWeb ? styles.webPageContainer : undefined}>

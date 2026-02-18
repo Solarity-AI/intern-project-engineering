@@ -706,7 +706,7 @@ export const ProductListScreen = () => {
         }}
       >
         <View style={{ flex: 1 }}>
-          {isOffline && <OfflineBanner onRetry={handleRetry} />}
+          <OfflineBanner onRetry={handleRetry} />
 
           <FlatList
             data={loading || error ? [] : gridProducts}
