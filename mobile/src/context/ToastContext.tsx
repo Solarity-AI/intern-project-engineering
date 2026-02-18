@@ -47,12 +47,12 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       Animated.timing(translateY, {
         toValue: -100,
         duration: 300,
-        useNativeDriver: false,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.timing(opacity, {
         toValue: 0,
         duration: 300,
-        useNativeDriver: false,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start(() => {
       setVisible(false);
@@ -78,14 +78,14 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       Animated.parallel([
         Animated.spring(translateY, {
           toValue: 0,
-          useNativeDriver: false,
+          useNativeDriver: Platform.OS !== 'web',
           tension: 80,
           friction: 10,
         }),
         Animated.timing(opacity, {
           toValue: 1,
           duration: 200,
-          useNativeDriver: false,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ]).start();
 

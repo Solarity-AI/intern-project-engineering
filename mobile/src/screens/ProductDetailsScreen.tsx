@@ -75,7 +75,7 @@ const ProductDetailsContent: React.FC = () => {
     Animated.timing(heroImageOpacity, {
       toValue: 1,
       duration: 400,
-      useNativeDriver: false,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [heroImageOpacity]);
 

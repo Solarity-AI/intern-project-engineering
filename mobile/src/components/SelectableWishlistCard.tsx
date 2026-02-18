@@ -48,7 +48,7 @@ function SelectableWishlistCardComponent({
     Animated.timing(imageOpacity, {
       toValue: 1,
       duration: 350,
-      useNativeDriver: false,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [imageOpacity]);
 
@@ -62,19 +62,19 @@ function SelectableWishlistCardComponent({
             toValue: -1.2,
             duration: 85,
             easing: Easing.linear,
-            useNativeDriver: false,
+            useNativeDriver: Platform.OS !== 'web',
           }),
           Animated.timing(shakeAnim, {
             toValue: 1.2,
             duration: 85,
             easing: Easing.linear,
-            useNativeDriver: false,
+            useNativeDriver: Platform.OS !== 'web',
           }),
           Animated.timing(shakeAnim, {
             toValue: 0,
             duration: 85,
             easing: Easing.linear,
-            useNativeDriver: false,
+            useNativeDriver: Platform.OS !== 'web',
           }),
         ])
       );

@@ -1,28 +1,18 @@
 package com.example.productreview.controller;
 
+import com.example.productreview.BaseIntegrationTest;
 import com.example.productreview.dto.ReviewDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-
-import org.springframework.test.context.TestPropertySource;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@TestPropertySource(properties = "rate-limit.requests-per-minute=10000")
-public class ProductControllerIntegrationTest {
-
-    @Autowired
-    private MockMvc mockMvc;
+public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -108,6 +98,13 @@ public class ProductControllerIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("Page index must not be negative"));
+    }
+
+    @Test
+    void getReviews_WithMaxSize_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
     }
 
     // --- Review Validation Tests ---

@@ -9,6 +9,7 @@ import {
   StyleSheet,
   ViewStyle,
   Animated,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Spacing, FontSize } from '../constants/theme';
@@ -47,13 +48,13 @@ const AnimatedStar: React.FC<{
     Animated.sequence([
       Animated.spring(scaleAnim, {
         toValue: 1.4,
-        useNativeDriver: false,
+        useNativeDriver: Platform.OS !== 'web',
         speed: 50,
         bounciness: 15,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        useNativeDriver: false,
+        useNativeDriver: Platform.OS !== 'web',
         speed: 50,
         bounciness: 8,
       }),
