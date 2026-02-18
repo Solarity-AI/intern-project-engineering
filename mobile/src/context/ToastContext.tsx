@@ -47,12 +47,12 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       Animated.timing(translateY, {
         toValue: -100,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(opacity, {
         toValue: 0,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start(() => {
       setVisible(false);
@@ -78,14 +78,14 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       Animated.parallel([
         Animated.spring(translateY, {
           toValue: 0,
-          useNativeDriver: true,
+          useNativeDriver: false,
           tension: 80,
           friction: 10,
         }),
         Animated.timing(opacity, {
           toValue: 1,
           duration: 200,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]).start();
 
@@ -206,14 +206,9 @@ const styles = StyleSheet.create({
 
     borderRadius: BorderRadius.lg,
 
-    // iOS shadow (android uses elevation)
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-      },
+      web: { boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)' } as any,
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 },
       android: {},
     }),
   },

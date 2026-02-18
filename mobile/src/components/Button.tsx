@@ -48,7 +48,7 @@ export const Button: React.FC<ButtonProps> = ({
   const handlePressIn = useCallback(() => {
     Animated.spring(scaleAnim, {
       toValue: 0.96,
-      useNativeDriver: true,
+      useNativeDriver: false,
       speed: 50,
       bounciness: 4,
     }).start();
@@ -57,7 +57,7 @@ export const Button: React.FC<ButtonProps> = ({
   const handlePressOut = useCallback(() => {
     Animated.spring(scaleAnim, {
       toValue: 1,
-      useNativeDriver: true,
+      useNativeDriver: false,
       speed: 50,
       bounciness: 4,
     }).start();

@@ -142,13 +142,10 @@ export const NotificationsScreen: React.FC = () => {
             ? Glass.elevated
             : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 },
           // Unread: type-colored glow
-          !item.isRead && {
-            shadowColor: accentColor,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.3,
-            shadowRadius: 12,
-            elevation: 8,
-          },
+          !item.isRead && Platform.select({
+            web: { boxShadow: `0px 0px 12px ${accentColor}4D` } as any,
+            default: { shadowColor: accentColor, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 8 },
+          }),
         ]}
       >
         {/* 3px left accent line */}

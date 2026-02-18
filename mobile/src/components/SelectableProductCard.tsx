@@ -3,7 +3,6 @@ import {
   View,
   Text,
   Image,
-  TouchableOpacity,
   Pressable,
   StyleSheet,
   Animated,
@@ -19,6 +18,8 @@ import { Spacing, BorderRadius, Shadow, FontWeight, Glass, Glow, Gradients, Font
 import { ApiProduct } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { useWishlist } from '../context/WishlistContext';
+
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 interface SelectableProductCardProps {
   product: ApiProduct;
@@ -71,13 +72,13 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
     Animated.sequence([
       Animated.spring(heartScale, {
         toValue: 1.35,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
         speed: 50,
         bounciness: 12,
       }),
       Animated.spring(heartScale, {
         toValue: 1,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
         speed: 50,
         bounciness: 8,
       }),
@@ -98,7 +99,7 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
     Animated.timing(imageOpacity, {
       toValue: 1,
       duration: 350,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
     }).start();
   }, [imageOpacity]);
 
@@ -112,19 +113,19 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
             toValue: -2,
             duration: 50,
             easing: Easing.linear,
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
           Animated.timing(shakeAnim, {
             toValue: 2,
             duration: 50,
             easing: Easing.linear,
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
           Animated.timing(shakeAnim, {
             toValue: 0,
             duration: 50,
             easing: Easing.linear,
-            useNativeDriver: true,
+            useNativeDriver: USE_NATIVE_DRIVER,
           }),
         ])
       );
@@ -153,20 +154,19 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
 
   return (
     <Animated.View
-      style={
+      style={[
+        styles.wrapper,
         isSelectionMode
           ? { transform: [{ rotate: rotateInterpolate }] }
-          : undefined
-      }
+          : undefined,
+      ]}
     >
-      <TouchableOpacity
-        activeOpacity={0.9}
+      <Pressable
         style={[
           styles.container,
           { aspectRatio },
           isSelectionMode && styles.cardSelectionMode,
           isSelected && [styles.cardSelected, { borderColor: colors.primary }, Glow.primary],
-          // Web hover transition
           Platform.OS === 'web' && ({ transition: 'transform 0.3s ease', cursor: 'pointer' } as any),
         ]}
         onPress={() => onPress(product)}
@@ -189,44 +189,6 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
           colors={['transparent', 'rgba(11,17,32,0.90)'] as [string, string]}
           style={styles.bottomGradient}
         />
-
-        {/* Wishlist button — top right, glass circle */}
-        {/* Using Pressable instead of TouchableOpacity to avoid nested button issue on web */}
-        {!isSelectionMode && showWishlistButton && (
-          <Pressable
-            style={[
-              styles.wishlistButton,
-              colorScheme === 'dark' ? Glass.strong : { backgroundColor: 'rgba(255,255,255,0.9)' },
-              numColumns >= 3 && styles.wishlistButtonCompact,
-            ]}
-            onPress={handleWishlistToggle}
-            accessibilityLabel={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
-            accessibilityRole="button"
-          >
-            <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-              <Ionicons
-                name={inWishlist ? 'heart' : 'heart-outline'}
-                size={numColumns >= 3 ? 14 : 18}
-                color={inWishlist ? '#F87171' : colorScheme === 'dark' ? '#fff' : '#111'}
-              />
-            </Animated.View>
-          </Pressable>
-        )}
-
-        {/* Selection indicator */}
-        {isSelectionMode && (
-          <View
-            style={[
-              styles.selectionIndicator,
-              {
-                backgroundColor: isSelected ? colors.primary : 'rgba(255,255,255,0.9)',
-                borderColor: isSelected ? colors.primary : colors.border,
-              },
-            ]}
-          >
-            {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
-          </View>
-        )}
 
         {/* Overlaid content at bottom */}
         <View style={[styles.overlayContent, numColumns >= 3 && styles.overlayContentCompact]}>
@@ -263,12 +225,52 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
             )}
           </View>
         </View>
-      </TouchableOpacity>
+      </Pressable>
+
+      {/* Wishlist button — sibling to avoid nested <button> on web */}
+      {!isSelectionMode && showWishlistButton && (
+        <Pressable
+          style={[
+            styles.wishlistButton,
+            colorScheme === 'dark' ? Glass.strong : { backgroundColor: 'rgba(255,255,255,0.9)' },
+            numColumns >= 3 && styles.wishlistButtonCompact,
+          ]}
+          onPress={handleWishlistToggle}
+          accessibilityLabel={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+          accessibilityRole="button"
+        >
+          <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+            <Ionicons
+              name={inWishlist ? 'heart' : 'heart-outline'}
+              size={numColumns >= 3 ? 14 : 18}
+              color={inWishlist ? '#F87171' : colorScheme === 'dark' ? '#fff' : '#111'}
+            />
+          </Animated.View>
+        </Pressable>
+      )}
+
+      {/* Selection indicator — sibling to avoid nested <button> on web */}
+      {isSelectionMode && (
+        <View
+          style={[
+            styles.selectionIndicator,
+            {
+              backgroundColor: isSelected ? colors.primary : 'rgba(255,255,255,0.9)',
+              borderColor: isSelected ? colors.primary : colors.border,
+            },
+          ]}
+        >
+          {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+        </View>
+      )}
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    position: 'relative',
+  },
   container: {
     width: '100%',
     borderRadius: BorderRadius['2xl'],
@@ -279,11 +281,10 @@ const styles = StyleSheet.create({
   },
   cardSelectionMode: {
     transform: [{ scale: 1.05 }],
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    ...Platform.select({
+      web: { boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)' } as any,
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
+    }),
   },
   cardSelected: {
     borderWidth: 2,

@@ -35,14 +35,14 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ onRetry }) => {
       Animated.parallel([
         Animated.spring(translateY, {
           toValue: 0,
-          useNativeDriver: true,
+          useNativeDriver: false,
           tension: 80,
           friction: 10,
         }),
         Animated.timing(opacity, {
           toValue: 1,
           duration: 200,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]).start();
     } else {
@@ -51,12 +51,12 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ onRetry }) => {
         Animated.timing(translateY, {
           toValue: -100,
           duration: 300,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(opacity, {
           toValue: 0,
           duration: 200,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]).start();
     }

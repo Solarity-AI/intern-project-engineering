@@ -47,13 +47,13 @@ const AnimatedStar: React.FC<{
     Animated.sequence([
       Animated.spring(scaleAnim, {
         toValue: 1.4,
-        useNativeDriver: true,
+        useNativeDriver: false,
         speed: 50,
         bounciness: 15,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        useNativeDriver: true,
+        useNativeDriver: false,
         speed: 50,
         bounciness: 8,
       }),

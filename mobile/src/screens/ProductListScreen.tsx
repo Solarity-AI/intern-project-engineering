@@ -449,7 +449,7 @@ export const ProductListScreen = () => {
     Animated.timing(featuredImageOpacity, {
       toValue: 1,
       duration: 400,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   }, [featuredImageOpacity]);
 

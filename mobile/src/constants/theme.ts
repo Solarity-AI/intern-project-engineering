@@ -117,34 +117,22 @@ export const Glass = {
 };
 
 export const Glow = {
-  primary: {
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  primarySoft: {
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  accent: {
-    shadowColor: '#FBBF24',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  ai: {
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 12,
-  },
+  primary: Platform.select({
+    web: { boxShadow: '0px 0px 20px rgba(16, 185, 129, 0.45)' },
+    default: { shadowColor: '#10B981', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.45, shadowRadius: 20, elevation: 12 },
+  }) as any,
+  primarySoft: Platform.select({
+    web: { boxShadow: '0px 4px 16px rgba(16, 185, 129, 0.25)' },
+    default: { shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 8 },
+  }) as any,
+  accent: Platform.select({
+    web: { boxShadow: '0px 0px 20px rgba(251, 191, 36, 0.4)' },
+    default: { shadowColor: '#FBBF24', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 },
+  }) as any,
+  ai: Platform.select({
+    web: { boxShadow: '0px 0px 20px rgba(139, 92, 246, 0.4)' },
+    default: { shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 },
+  }) as any,
 };
 
 export const Spacing = {
@@ -191,25 +179,16 @@ export const BorderRadius = {
 };
 
 export const Shadow = {
-  soft: {
-    shadowColor: '#0B1120',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  medium: {
-    shadowColor: '#0B1120',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 8,
-  },
-  hover: {
-    shadowColor: '#0B1120',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.3,
-    shadowRadius: 32,
-    elevation: 12,
-  },
+  soft: Platform.select({
+    web: { boxShadow: '0px 4px 12px rgba(11, 17, 32, 0.15)' },
+    default: { shadowColor: '#0B1120', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 4 },
+  }) as any,
+  medium: Platform.select({
+    web: { boxShadow: '0px 8px 24px rgba(11, 17, 32, 0.25)' },
+    default: { shadowColor: '#0B1120', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 24, elevation: 8 },
+  }) as any,
+  hover: Platform.select({
+    web: { boxShadow: '0px 12px 32px rgba(11, 17, 32, 0.3)' },
+    default: { shadowColor: '#0B1120', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.3, shadowRadius: 32, elevation: 12 },
+  }) as any,
 };

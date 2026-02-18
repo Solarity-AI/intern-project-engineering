@@ -11,11 +11,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.test.context.TestPropertySource;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@TestPropertySource(properties = "rate-limit.requests-per-minute=10000")
 public class UserControllerIntegrationTest {
 
     @Autowired
@@ -263,6 +266,37 @@ public class UserControllerIntegrationTest {
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].productId").value(1));
+    }
+
+    // --- Pagination Validation Tests ---
+
+    @Test
+    void getWishlistProducts_WithExcessiveSize_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/user/wishlist/products")
+                .header("X-User-ID", "wishlist-validation-user")
+                .param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Page size must not exceed 100"));
+    }
+
+    @Test
+    void getWishlistProducts_WithNegativePage_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/user/wishlist/products")
+                .header("X-User-ID", "wishlist-validation-user")
+                .param("page", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Page index must not be negative"));
+    }
+
+    @Test
+    void getWishlistProducts_WithMaxSize_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/user/wishlist/products")
+                .header("X-User-ID", "wishlist-validation-user")
+                .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
     }
 
     // --- Additional Tests for Criteria Compliance ---
