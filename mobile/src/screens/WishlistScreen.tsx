@@ -33,6 +33,7 @@ import { getWishlistProducts, ApiProduct, getUserMessage } from '../services/api
 
 import { RootStackParamList } from '../types';
 import { BorderRadius, FontSize, FontWeight, Spacing, Gradients, Glass, Shadow, Glow } from '../constants/theme';
+import { getWishlistHeaderToggleSizing } from './wishlistHeaderToggleSizing';
 
 type WishlistNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Wishlist'>;
 
@@ -50,11 +51,13 @@ export const WishlistScreen = () => {
   const isWeb = Platform.OS === 'web';
   const webBp = !isWeb ? 'mobile' : width < 720 ? 'narrow' : width < 1100 ? 'medium' : 'wide';
 
-  const headerIconSize = isWeb ? (webBp === 'wide' ? 26 : 24) : 20;
-  const headerIconSizeBig = isWeb ? (webBp === 'wide' ? 28 : 26) : 22;
-
   const [gridMode, setGridMode] = useState<1 | 2 | 3>(2);
   const numColumns = gridMode;
+  const headerToggleSizing = getWishlistHeaderToggleSizing({
+    isWeb,
+    breakpoint: webBp,
+    numColumns,
+  });
 
   const gridTouchedRef = useRef(false);
 
@@ -314,11 +317,15 @@ export const WishlistScreen = () => {
                 <Text style={[styles.brandTextAccent, { color: colors.primary }]}>Review</Text>
               </TouchableOpacity>
 
-              <View style={styles.headerActions}>
+              <View style={[styles.headerActions, { gap: headerToggleSizing.actionGap }]}>
                 <TouchableOpacity
                   style={[
                     styles.headerButton,
-                    isWeb && styles.headerButtonWeb,
+                    {
+                      width: headerToggleSizing.buttonSize,
+                      height: headerToggleSizing.buttonSize,
+                      borderRadius: headerToggleSizing.buttonSize / 2,
+                    },
                     colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
                   ]}
                   onPress={toggleTheme}
@@ -326,7 +333,7 @@ export const WishlistScreen = () => {
                 >
                   <Ionicons
                     name={colorScheme === 'dark' ? 'sunny' : 'moon'}
-                    size={headerIconSize}
+                    size={headerToggleSizing.iconSize}
                     color={colors.foreground}
                   />
                 </TouchableOpacity>
@@ -334,7 +341,11 @@ export const WishlistScreen = () => {
                 <TouchableOpacity
                   style={[
                     styles.headerButton,
-                    isWeb && styles.headerButtonWeb,
+                    {
+                      width: headerToggleSizing.buttonSize,
+                      height: headerToggleSizing.buttonSize,
+                      borderRadius: headerToggleSizing.buttonSize / 2,
+                    },
                     colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
                   ]}
                   onPress={toggleGridMode}
@@ -342,7 +353,7 @@ export const WishlistScreen = () => {
                 >
                   <Ionicons
                     name={gridMode === 1 ? 'list' : gridMode === 2 ? 'grid-outline' : 'grid'}
-                    size={headerIconSize}
+                    size={headerToggleSizing.iconSize}
                     color={colors.foreground}
                   />
                 </TouchableOpacity>
@@ -350,7 +361,11 @@ export const WishlistScreen = () => {
                 <TouchableOpacity
                   style={[
                     styles.headerButton,
-                    isWeb && styles.headerButtonWeb,
+                    {
+                      width: headerToggleSizing.buttonSize,
+                      height: headerToggleSizing.buttonSize,
+                      borderRadius: headerToggleSizing.buttonSize / 2,
+                    },
                     colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
                   ]}
                   onPress={async () => {
@@ -360,7 +375,11 @@ export const WishlistScreen = () => {
                   }}
                   activeOpacity={0.85}
                 >
-                  <Ionicons name="trash-outline" size={headerIconSizeBig} color={colors.foreground} />
+                  <Ionicons
+                    name="trash-outline"
+                    size={headerToggleSizing.emphasisIconSize}
+                    color={colors.foreground}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
@@ -549,17 +568,13 @@ const styles = StyleSheet.create({
   brandText: { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
   brandTextAccent: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginLeft: -2 },
 
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  headerActions: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
   headerButton: {
     width: 40,
     height: 40,
     borderRadius: BorderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerButtonWeb: {
-    width: 46,
-    height: 46,
   },
 
   /* Page title */
