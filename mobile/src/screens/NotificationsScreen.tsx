@@ -76,7 +76,7 @@ export const NotificationsScreen: React.FC = () => {
 
   const { width: windowWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
-  const MAX_CONTENT_WIDTH = 600;
+  const MAX_CONTENT_WIDTH = isWeb ? (windowWidth >= 1200 ? 760 : 600) : 600;
 
   const responsiveContainerStyle = {
     width: '100%' as const,
@@ -138,6 +138,7 @@ export const NotificationsScreen: React.FC = () => {
         activeOpacity={0.7}
         style={[
           styles.notificationCard,
+          isWeb && styles.notificationCardWeb,
           colorScheme === 'dark'
             ? Glass.elevated
             : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 },
@@ -244,7 +245,7 @@ export const NotificationsScreen: React.FC = () => {
           renderItem={renderNotification}
           ListHeaderComponent={renderHeader}
           ListEmptyComponent={renderEmpty}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, isWeb && styles.listContentWeb]}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
         />
@@ -284,6 +285,7 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     gap: Spacing.sm,
@@ -302,9 +304,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing['3xl'],
   },
+  listContentWeb: {
+    alignItems: 'center',
+  },
   notificationCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
     padding: Spacing.lg,
     paddingLeft: Spacing.lg + 6, // space for accent line
     borderRadius: BorderRadius['2xl'],
@@ -312,6 +318,9 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     ...Shadow.soft,
+  },
+  notificationCardWeb: {
+    maxWidth: 560,
   },
   accentLine: {
     position: 'absolute',
