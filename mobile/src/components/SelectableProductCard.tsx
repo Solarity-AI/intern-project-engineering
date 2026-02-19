@@ -171,7 +171,7 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
         ]}
         onPress={() => onPress(product)}
         onLongPress={() => onLongPress(product)}
-        delayLongPress={2250}
+        delayLongPress={500}
         accessibilityLabel={`${product.name ?? 'Product'}, rated ${avgRating.toFixed(1)} stars, $${product.price.toFixed(2)}`}
         accessibilityRole="button"
         accessibilityHint="Double tap to view product details"

@@ -119,7 +119,7 @@ function SelectableWishlistCardComponent({
           ]}
           onPress={() => onPress(item)}
           onLongPress={() => onLongPress(item)}
-          delayLongPress={2250}
+          delayLongPress={500}
           accessibilityLabel={`${item.name}, $${item.price?.toFixed(2) ?? '0.00'}`}
           accessibilityRole="button"
           accessibilityHint="Double tap to view product details"
