@@ -78,6 +78,11 @@ export const ProductListScreen = () => {
   const headerIconSize = isWeb ? 20 : 18;
   const headerIconSizeBig = isWeb ? 22 : 20;
 
+  // Hero breakout: cancel the contentContainerStyle padding/maxWidth so the hero is truly full-bleed
+  const effectiveContainerWidth = containerMaxWidth ? Math.min(width, containerMaxWidth) : width;
+  const heroInset = (width - effectiveContainerWidth) / 2 + Spacing.lg;
+  const heroBreakoutStyle = { width, marginLeft: -heroInset, marginRight: -heroInset };
+
   // Offline
   const isOffline = !isConnected || isInternetReachable === false;
 
@@ -481,7 +486,7 @@ export const ProductListScreen = () => {
   const listHeaderContent = useMemo(() => (
     <>
       {/* ===== FULL-BLEED IMMERSIVE HERO ===== */}
-      <View style={styles.heroWrapper}>
+      <View style={[styles.heroWrapper, heroBreakoutStyle]}>
         {/* Mesh gradient layers */}
         <LinearGradient
           colors={Gradients.meshA as [string, string, ...string[]]}
@@ -733,7 +738,7 @@ export const ProductListScreen = () => {
       </View>
     </>
   ), [
-    isWeb, containerMaxWidth, webBp, colors, colorScheme,
+    isWeb, containerMaxWidth, webBp, width, heroBreakoutStyle, colors, colorScheme,
     handleReset, toggleTheme, toggleGridMode, gridMode,
     headerIconSize, headerIconSizeBig, wishlistCount, unreadCount,
     stats, searchQuery, setSearchQuery, handleSearchSubmit,
