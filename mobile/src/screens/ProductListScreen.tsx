@@ -447,6 +447,7 @@ export const ProductListScreen = () => {
 
   const featuredProductId = String(featuredProduct?.id ?? '');
   const featuredInWishlist = featuredProductId ? isInWishlist(featuredProductId) : false;
+  const featuredIsSelected = featuredProductId ? selectedItems.has(featuredProductId) : false;
 
   const handleFeaturedWishlistToggle = useCallback((e: any) => {
     e.stopPropagation();
@@ -648,8 +649,11 @@ export const ProductListScreen = () => {
               colorScheme === 'dark'
                 ? Glass.elevated
                 : { backgroundColor: '#0F172A', ...Shadow.medium },
+              featuredIsSelected && { borderWidth: 2, borderColor: colors.primary },
             ]}
             onPress={() => handleCardPress(featuredProduct)}
+            onLongPress={() => handleCardLongPress(featuredProduct)}
+            delayLongPress={500}
           >
             <Animated.Image
               source={{ uri: featuredImageUri }}
@@ -684,6 +688,19 @@ export const ProductListScreen = () => {
                   color={featuredInWishlist ? '#fff' : colorScheme === 'dark' ? '#fff' : '#111'}
                 />
               </Pressable>
+            )}
+            {isSelectionMode && (
+              <View
+                style={[
+                  styles.featuredSelectionIndicator,
+                  {
+                    backgroundColor: featuredIsSelected ? colors.primary : 'rgba(255,255,255,0.9)',
+                    borderColor: featuredIsSelected ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                {featuredIsSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+              </View>
             )}
             <View style={styles.featuredContent}>
               <Text style={styles.featuredLabel}>FEATURED</Text>
@@ -723,6 +740,7 @@ export const ProductListScreen = () => {
     selectedCategory, handleCategoryChange, sortBy, handleSortChange,
     featuredProduct, featuredImageUri, featuredImageOpacity, onFeaturedImageLoad, handleCardPress,
     featuredInWishlist, handleFeaturedWishlistToggle, isSelectionMode,
+    handleCardLongPress, featuredIsSelected,
   ]);
 
   useFocusEffect(
@@ -1150,6 +1168,18 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  featuredSelectionIndicator: {
+    position: 'absolute',
+    top: Spacing.md,
+    right: Spacing.md,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
