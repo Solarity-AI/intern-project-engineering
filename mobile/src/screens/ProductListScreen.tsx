@@ -13,6 +13,7 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   Animated,
   useWindowDimensions,
   Platform,
@@ -63,7 +64,7 @@ export const ProductListScreen = () => {
   const route = useRoute<RouteProp<RootStackParamList, 'ProductList'>>();
   const { colors, colorScheme, toggleTheme } = useTheme();
   const { unreadCount } = useNotifications();
-  const { wishlistCount, addMultipleToWishlist, isInWishlist } = useWishlist();
+  const { wishlistCount, addMultipleToWishlist, isInWishlist, toggleWishlist } = useWishlist();
   const { addSearchTerm } = useSearch();
   const { isConnected, isInternetReachable, checkConnection } = useNetwork();
 
@@ -444,6 +445,23 @@ export const ProductListScreen = () => {
     return imageForCategory(featuredProduct.categories);
   }, [featuredProduct]);
 
+  const featuredProductId = String(featuredProduct?.id ?? '');
+  const featuredInWishlist = featuredProductId ? isInWishlist(featuredProductId) : false;
+
+  const handleFeaturedWishlistToggle = useCallback((e: any) => {
+    e.stopPropagation();
+    if (!featuredProduct || !featuredProductId) return;
+
+    toggleWishlist({
+      id: featuredProductId,
+      name: featuredProduct.name ?? 'Product',
+      price: featuredProduct.price,
+      imageUrl: featuredImageUri,
+      categories: featuredProduct.categories,
+      averageRating: featuredProduct.averageRating ?? 0,
+    } as any);
+  }, [featuredProduct, featuredProductId, featuredImageUri, toggleWishlist]);
+
   const featuredImageOpacity = useRef(new Animated.Value(0)).current;
   const onFeaturedImageLoad = useCallback(() => {
     Animated.timing(featuredImageOpacity, {
@@ -645,6 +663,27 @@ export const ProductListScreen = () => {
               end={{ x: 1, y: 0 }}
               style={styles.featuredImageOverlay}
             />
+            {!isSelectionMode && (
+              <Pressable
+                style={[
+                  styles.featuredWishlistButton,
+                  featuredInWishlist
+                    ? { backgroundColor: '#EF4444' }
+                    : colorScheme === 'dark'
+                      ? Glass.strong
+                      : { backgroundColor: 'rgba(255,255,255,0.9)' },
+                ]}
+                onPress={handleFeaturedWishlistToggle}
+                accessibilityLabel={featuredInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={featuredInWishlist ? 'heart' : 'heart-outline'}
+                  size={18}
+                  color={featuredInWishlist ? '#fff' : colorScheme === 'dark' ? '#fff' : '#111'}
+                />
+              </Pressable>
+            )}
             <View style={styles.featuredContent}>
               <Text style={styles.featuredLabel}>FEATURED</Text>
               <Text style={styles.featuredName} numberOfLines={2}>
@@ -682,6 +721,7 @@ export const ProductListScreen = () => {
     stats, searchQuery, setSearchQuery, handleSearchSubmit,
     selectedCategory, handleCategoryChange, sortBy, handleSortChange,
     featuredProduct, featuredImageUri, featuredImageOpacity, onFeaturedImageLoad, handleCardPress,
+    featuredInWishlist, handleFeaturedWishlistToggle, isSelectionMode,
   ]);
 
   useFocusEffect(
@@ -1101,6 +1141,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: '25%',
     width: '35%',
+  },
+  featuredWishlistButton: {
+    position: 'absolute',
+    top: Spacing.md,
+    right: Spacing.md,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
   },
   featuredContent: {
     flex: 1,
