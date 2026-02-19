@@ -246,10 +246,6 @@ export const AIAssistantScreen: React.FC = () => {
           setLastActiveMessageId('');
           setIsProcessing(false);
           processingRef.current = false;
-
-          setTimeout(() => {
-            navigation.goBack();
-          }, 3000);
         }, 300);
       } else {
         setTimeout(() => {
@@ -268,7 +264,7 @@ export const AIAssistantScreen: React.FC = () => {
         }, 300);
       }
     },
-    [consumeOptionsForMessage, isProcessing, lastActiveMessageId, navigation]
+    [consumeOptionsForMessage, isProcessing, lastActiveMessageId]
   );
 
   const renderMessage = (message: Message) => {
