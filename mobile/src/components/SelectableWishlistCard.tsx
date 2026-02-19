@@ -149,32 +149,20 @@ function SelectableWishlistCardComponent({
             style={styles.bottomGradient}
           />
 
-          {/* Emerald heart icon — top left */}
-          {!isSelectionMode && (
-            <View style={[styles.heartBadge, isCompact && styles.heartBadgeCompact]}>
-              <Ionicons name="heart" size={isCompact ? 12 : 14} color="#10B981" />
-            </View>
-          )}
-
-          {/* Quick delete button — top right */}
-          {/* Using Pressable instead of TouchableOpacity to avoid nested button issue on web */}
+          {/* Heart button — top right, tappable remove (mirrors product list layout) */}
           {!isSelectionMode && (
             <Pressable
               style={[
-                styles.deleteButton,
+                styles.heartButton,
                 colorScheme === 'dark' ? Glass.strong : { backgroundColor: 'rgba(255,255,255,0.9)' },
-                isCompact && styles.deleteButtonCompact,
+                isCompact && styles.heartButtonCompact,
               ]}
               onPress={() => onRemove(item.id)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               accessibilityLabel="Remove from wishlist"
               accessibilityRole="button"
             >
-              <Ionicons
-                name="close"
-                size={isCompact ? 14 : 18}
-                color={colorScheme === 'dark' ? '#fff' : '#000'}
-              />
+              <Ionicons name="heart" size={isCompact ? 16 : 20} color="#F87171" />
             </Pressable>
           )}
 
@@ -268,43 +256,23 @@ const styles = StyleSheet.create({
     height: '65%',
   },
 
-  heartBadge: {
+  heartButton: {
     position: 'absolute',
-    top: Spacing.sm,
-    left: Spacing.sm,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(15,23,42,0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  heartBadgeCompact: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    top: Spacing.xs,
-    left: Spacing.xs,
-  },
-
-  deleteButton: {
-    position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    top: Spacing.md,
+    right: Spacing.md,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
   },
-  deleteButtonCompact: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    top: Spacing.xs,
-    right: Spacing.xs,
+  heartButtonCompact: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    top: Spacing.sm,
+    right: Spacing.sm,
   },
 
   selectionIndicator: {
