@@ -674,6 +674,7 @@ export const ProductListScreen = () => {
                       : { backgroundColor: 'rgba(255,255,255,0.9)' },
                 ]}
                 onPress={handleFeaturedWishlistToggle}
+                hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }}
                 accessibilityLabel={featuredInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
                 accessibilityRole="button"
               >
@@ -1146,9 +1147,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: Spacing.md,
     right: Spacing.md,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,

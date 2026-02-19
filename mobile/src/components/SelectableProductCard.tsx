@@ -200,13 +200,14 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
               numColumns >= 3 && styles.wishlistButtonCompact,
             ]}
             onPress={handleWishlistToggle}
+            hitSlop={numColumns >= 3 ? { top: 7, bottom: 7, left: 7, right: 7 } : { top: 4, bottom: 4, left: 4, right: 4 }}
             accessibilityLabel={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
             accessibilityRole="button"
           >
             <Animated.View style={{ transform: [{ scale: heartScale }] }}>
               <Ionicons
                 name={inWishlist ? 'heart' : 'heart-outline'}
-                size={numColumns >= 3 ? 14 : 18}
+                size={numColumns >= 3 ? 16 : 20}
                 color={inWishlist ? '#F87171' : colorScheme === 'dark' ? '#fff' : '#111'}
               />
             </Animated.View>
@@ -307,17 +308,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: Spacing.md,
     right: Spacing.md,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
   },
   wishlistButtonCompact: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     top: Spacing.sm,
     right: Spacing.sm,
   },
