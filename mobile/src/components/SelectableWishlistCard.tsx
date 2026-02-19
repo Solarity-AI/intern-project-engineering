@@ -91,7 +91,7 @@ function SelectableWishlistCardComponent({
   });
 
   const isCompact = numColumns !== undefined && numColumns >= 3;
-  const aspectRatio = numColumns === 1 ? 16 / 9 : isCompact ? 1 : 3 / 4;
+  const aspectRatio = numColumns === 1 ? 16 / 9 : 1;
 
   return (
     <View style={{ zIndex: isSelectionMode ? (isSelected ? 2 : 1) : 1 }}>
