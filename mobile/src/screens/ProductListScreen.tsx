@@ -196,7 +196,7 @@ export const ProductListScreen = () => {
     const id = String((product as any)?.id ?? '');
     if (!id) return;
 
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'android' && !isSelectionMode) {
       Vibration.vibrate(50);
     }
 

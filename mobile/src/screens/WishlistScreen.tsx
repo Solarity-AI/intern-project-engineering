@@ -174,9 +174,9 @@ export const WishlistScreen = () => {
     setSelectedItems(prev => {
       const next = new Set(prev);
       next.add(id);
-      bumpSelectionTick();
       return next;
     });
+    bumpSelectionTick();
   };
 
   const handleCardPress = (item: ApiProduct) => {
