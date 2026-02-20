@@ -787,12 +787,14 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     height: 64,
     borderRadius: BorderRadius.xl,
+    paddingHorizontal: Spacing.lg,
   },
   aiBannerText: {
     color: '#fff',
     fontSize: FontSize.base,
     fontWeight: FontWeight.semibold,
     flex: 1,
+    textAlign: 'center',
   },
 
   reviewsHeader: {

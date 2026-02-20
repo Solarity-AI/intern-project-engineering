@@ -446,6 +446,9 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   backButton: {
+    width: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: Spacing.xs,
   },
   headerTitle: {
