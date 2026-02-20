@@ -1,12 +1,10 @@
 package com.example.productreview.controller;
 
+import com.example.productreview.BaseIntegrationTest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.Map;
@@ -14,12 +12,7 @@ import java.util.Map;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-public class UserControllerIntegrationTest {
-
-    @Autowired
-    private MockMvc mockMvc;
+public class UserControllerIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -263,6 +256,37 @@ public class UserControllerIntegrationTest {
                 .header("X-User-ID", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].productId").value(1));
+    }
+
+    // --- Pagination Validation Tests ---
+
+    @Test
+    void getWishlistProducts_WithExcessiveSize_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/user/wishlist/products")
+                .header("X-User-ID", "wishlist-validation-user")
+                .param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Page size must not exceed 100"));
+    }
+
+    @Test
+    void getWishlistProducts_WithNegativePage_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/user/wishlist/products")
+                .header("X-User-ID", "wishlist-validation-user")
+                .param("page", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Page index must not be negative"));
+    }
+
+    @Test
+    void getWishlistProducts_WithMaxSize_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/user/wishlist/products")
+                .header("X-User-ID", "wishlist-validation-user")
+                .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
     }
 
     // --- Additional Tests for Criteria Compliance ---

@@ -88,7 +88,7 @@ public class ProductServiceTest {
     void getProductDTOById_ShouldReturnDTO() {
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.findRatingCountsByProductId(1L)).thenReturn(new ArrayList<>());
-        when(reviewRepository.findByProductId(1L)).thenReturn(new ArrayList<>());
+        when(reviewRepository.findByProductId(eq(1L), any(Pageable.class))).thenReturn(new PageImpl<>(new ArrayList<>()));
 
         ProductDTO result = productService.getProductDTOById(1L);
 
@@ -208,13 +208,7 @@ public class ProductServiceTest {
 
     @Test
     void getUserVotedReviewIds_ShouldReturnVotedIds() {
-        Review review10 = new Review();
-        review10.setId(10L);
-        Review review20 = new Review();
-        review20.setId(20L);
-        ReviewVote vote1 = new ReviewVote("user1", review10);
-        ReviewVote vote2 = new ReviewVote("user1", review20);
-        when(reviewVoteRepository.findByUserId("user1")).thenReturn(Arrays.asList(vote1, vote2));
+        when(reviewVoteRepository.findReviewIdsByUserId("user1")).thenReturn(Arrays.asList(10L, 20L));
 
         List<Long> result = productService.getUserVotedReviewIds("user1");
 
@@ -225,7 +219,7 @@ public class ProductServiceTest {
 
     @Test
     void getUserVotedReviewIds_WhenNoVotes_ShouldReturnEmpty() {
-        when(reviewVoteRepository.findByUserId("user1")).thenReturn(new ArrayList<>());
+        when(reviewVoteRepository.findReviewIdsByUserId("user1")).thenReturn(new ArrayList<>());
 
         List<Long> result = productService.getUserVotedReviewIds("user1");
 
@@ -357,24 +351,6 @@ public class ProductServiceTest {
     }
 
     @Test
-    void getReviewsByProductId_ShouldReturnReviewDTOList() {
-        Review review = new Review();
-        review.setId(1L);
-        review.setReviewerName("User");
-        review.setComment("Nice");
-        review.setRating(4);
-        review.setHelpfulCount(0);
-        review.setProduct(product);
-
-        when(reviewRepository.findByProductId(1L)).thenReturn(Arrays.asList(review));
-
-        List<ReviewDTO> result = productService.getReviewsByProductId(1L);
-
-        assertEquals(1, result.size());
-        assertEquals("User", result.get(0).getReviewerName());
-    }
-
-    @Test
     void getReviewsByProductId_Paged_ShouldReturnPagedReviews() {
         Pageable pageable = PageRequest.of(0, 10);
         Review review = new Review();
@@ -415,7 +391,7 @@ public class ProductServiceTest {
 
     @Test
     void chatAboutProduct_ShouldDelegateToAIService() {
-        when(reviewRepository.findByProductId(1L)).thenReturn(new ArrayList<>());
+        when(reviewRepository.findByProductId(eq(1L), any(Pageable.class))).thenReturn(new PageImpl<>(new ArrayList<>()));
         when(aiSummaryService.chatWithReviews(eq(1L), eq("How is quality?"), any()))
                 .thenReturn("AI response");
 
@@ -433,7 +409,7 @@ public class ProductServiceTest {
                 new Object[]{4, 2L}
         );
         when(reviewRepository.findRatingCountsByProductId(1L)).thenReturn(ratingCounts);
-        when(reviewRepository.findByProductId(1L)).thenReturn(new ArrayList<>());
+        when(reviewRepository.findByProductId(eq(1L), any(Pageable.class))).thenReturn(new PageImpl<>(new ArrayList<>()));
 
         ProductDTO result = productService.getProductDTOById(1L);
 

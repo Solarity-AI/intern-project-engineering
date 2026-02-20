@@ -370,11 +370,10 @@ const styles = StyleSheet.create({
   webCard: {
     borderRadius: BorderRadius['2xl'],
     maxHeight: '90%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.35,
-    shadowRadius: 32,
-    elevation: 20,
+    ...Platform.select({
+      web: { boxShadow: '0px 16px 32px rgba(0, 0, 0, 0.35)' } as any,
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.35, shadowRadius: 32, elevation: 20 },
+    }),
   },
   webScrollContent: {
     padding: Spacing['2xl'],
