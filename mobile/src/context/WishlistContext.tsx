@@ -258,18 +258,24 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
     [isInWishlist, removeFromWishlist, addToWishlist]
   );
 
-  const clearWishlist = useCallback(async () => {
-    // Get current IDs to remove them from backend
-    const currentIds = wishlist?.map(item => item.id) || [];
-    
+  const clearWishlist = useCallback(() => {
+    // Skip items already being toggled to avoid a double-toggle race.
+    const toRemove = wishlistRef.current.filter(
+      item => !pendingOps.current.has(item.id)
+    );
+    if (toRemove.length === 0 && wishlistRef.current.length === 0) return;
+
+    toRemove.forEach(item => pendingOps.current.add(item.id));
+
     setWishlist([]);
-    saveWishlistToStorage([]);
-    
-    // Remove all from backend
-    currentIds.forEach(id => {
-      toggleWishlistApi(Number(id)).catch(e => console.error("Backend sync failed", e));
+    // Debounced save useEffect will persist the empty list.
+
+    toRemove.forEach(item => {
+      toggleWishlistApi(Number(item.id))
+        .catch(e => console.error('Backend sync failed', e))
+        .finally(() => pendingOps.current.delete(item.id));
     });
-  }, [wishlist]);
+  }, []);
 
   return (
     <WishlistContext.Provider
