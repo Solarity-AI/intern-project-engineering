@@ -166,10 +166,10 @@ export const ProductListScreen = () => {
     fetchStats();
   }, [selectedCategory, submittedSearchQuery]);
 
-  const toggleGridMode = () => {
+  const toggleGridMode = useCallback(() => {
     gridTouchedRef.current = true;
     setGridMode(prev => (prev === 1 ? 2 : prev === 2 ? 3 : 1));
-  };
+  }, []);
 
   const handleCancelSelection = useCallback(() => {
     isSelectionModeRef.current = false;
@@ -218,22 +218,25 @@ export const ProductListScreen = () => {
     const id = String((product as any)?.id ?? '');
     if (!id) return;
 
-    if (isSelectionMode) {
+    if (isSelectionModeRef.current) {
       setSelectedItems(prev => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id);
         else next.add(id);
-        if (next.size === 0) {
-          isSelectionModeRef.current = false;
-          setIsSelectionMode(false);
-        }
         return next;
       });
       return;
     }
 
     navigation.navigate('ProductDetails', { productId: (product as any)?.id });
-  }, [isSelectionMode, navigation]);
+  }, [navigation]);
+
+  useEffect(() => {
+    if (isSelectionMode && selectedItems.size === 0) {
+      isSelectionModeRef.current = false;
+      setIsSelectionMode(false);
+    }
+  }, [selectedItems, isSelectionMode]);
 
   const fetchProducts = useCallback(
     async (page: number, append: boolean, searchOverride?: string, categoryOverride?: string, sortOverride?: string) => {
