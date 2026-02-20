@@ -210,12 +210,7 @@ export const WishlistScreen = () => {
   }, [selectedItems, removeMultipleFromWishlist]);
 
   const handleRemoveSingle = useCallback((id: string) => {
-    console.log('Removing item:', id);
-    setPagedWishlist(prev => {
-      const filtered = prev.filter(item => String(item.id) !== String(id));
-      console.log('Previous length:', prev.length, 'New length:', filtered.length);
-      return filtered;
-    });
+    setPagedWishlist(prev => prev.filter(item => String(item.id) !== String(id)));
     setTotalItems(prev => Math.max(0, prev - 1));
     removeFromWishlist(id);
   }, [removeFromWishlist]);
