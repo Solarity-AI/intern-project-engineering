@@ -11,11 +11,11 @@ public interface NotificationRepository extends JpaRepository<AppNotification, L
     List<AppNotification> findByUserIdOrderByCreatedAtDesc(String userId);
     long countByUserIdAndIsReadFalse(String userId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE AppNotification a SET a.isRead = true WHERE a.userId = :userId AND a.isRead = false")
     int markAllAsReadByUserId(@Param("userId") String userId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("DELETE FROM AppNotification a WHERE a.userId = :userId")
     int deleteAllByUserId(@Param("userId") String userId);
 }
