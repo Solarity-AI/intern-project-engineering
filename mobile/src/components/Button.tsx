@@ -9,6 +9,7 @@ import {
   ViewStyle,
   TextStyle,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, FontSize, BorderRadius, Shadow, Gradients, Glow } from '../constants/theme';
@@ -48,7 +49,7 @@ export const Button: React.FC<ButtonProps> = ({
   const handlePressIn = useCallback(() => {
     Animated.spring(scaleAnim, {
       toValue: 0.96,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
       speed: 50,
       bounciness: 4,
     }).start();
@@ -57,7 +58,7 @@ export const Button: React.FC<ButtonProps> = ({
   const handlePressOut = useCallback(() => {
     Animated.spring(scaleAnim, {
       toValue: 1,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
       speed: 50,
       bounciness: 4,
     }).start();

@@ -1,25 +1,18 @@
 package com.example.productreview.controller;
 
+import com.example.productreview.BaseIntegrationTest;
 import com.example.productreview.dto.ReviewDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-public class ProductControllerIntegrationTest {
-
-    @Autowired
-    private MockMvc mockMvc;
+public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -51,6 +44,70 @@ public class ProductControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reviewerName").value("Jane Doe"));
     }
+
+    // --- Pagination Validation Tests ---
+
+    @Test
+    void getAllProducts_WithExcessiveSize_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/products").param("size", "200"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Page size must not exceed 100"));
+    }
+
+    @Test
+    void getAllProducts_WithMaxSize_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/products").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
+    void getAllProducts_WithValidSize_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/products").param("size", "50"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
+    void getAllProducts_WithNegativePage_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/products").param("page", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Page index must not be negative"));
+    }
+
+    @Test
+    void getAllProducts_WithoutSizeParam_ShouldDefaultTo10() throws Exception {
+        mockMvc.perform(get("/api/v1/products"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(10));
+    }
+
+    @Test
+    void getReviews_WithExcessiveSize_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews").param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Page size must not exceed 100"));
+    }
+
+    @Test
+    void getReviews_WithNegativePage_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews").param("page", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Page index must not be negative"));
+    }
+
+    @Test
+    void getReviews_WithMaxSize_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+    }
+
+    // --- Review Validation Tests ---
 
     @Test
     void addReview_WithInvalidData_ShouldReturnBadRequest() throws Exception {

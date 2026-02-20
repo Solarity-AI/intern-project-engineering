@@ -48,7 +48,7 @@ function SelectableWishlistCardComponent({
     Animated.timing(imageOpacity, {
       toValue: 1,
       duration: 350,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [imageOpacity]);
 
@@ -62,19 +62,19 @@ function SelectableWishlistCardComponent({
             toValue: -1.2,
             duration: 85,
             easing: Easing.linear,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
           Animated.timing(shakeAnim, {
             toValue: 1.2,
             duration: 85,
             easing: Easing.linear,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
           Animated.timing(shakeAnim, {
             toValue: 0,
             duration: 85,
             easing: Easing.linear,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
         ])
       );
@@ -239,11 +239,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#0B1120',
   },
   cardSelectionMode: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 12,
+    ...Platform.select({
+      web: { boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.4)' } as any,
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 12 },
+    }),
   },
   cardSelected: {
     borderWidth: 2,

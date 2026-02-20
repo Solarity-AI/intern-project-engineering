@@ -65,6 +65,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/actuator/") || path.startsWith("/h2-console");
+        return path.startsWith("/actuator/") || path.startsWith("/h2-console")
+                || path.equals("/favicon.ico") || path.equals("/");
     }
 }

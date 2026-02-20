@@ -449,7 +449,7 @@ export const ProductListScreen = () => {
     Animated.timing(featuredImageOpacity, {
       toValue: 1,
       duration: 400,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [featuredImageOpacity]);
 
@@ -706,7 +706,7 @@ export const ProductListScreen = () => {
         }}
       >
         <View style={{ flex: 1 }}>
-          {isOffline && <OfflineBanner onRetry={handleRetry} />}
+          <OfflineBanner onRetry={handleRetry} />
 
           <FlatList
             data={loading || error ? [] : gridProducts}

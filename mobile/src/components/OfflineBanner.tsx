@@ -1,13 +1,14 @@
 // OfflineBanner.tsx
 // Animated banner that shows when device is offline
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Animated,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,43 +23,47 @@ interface OfflineBannerProps {
 export const OfflineBanner: React.FC<OfflineBannerProps> = ({ onRetry }) => {
   const { isConnected, isInternetReachable, checkConnection } = useNetwork();
   const insets = useSafeAreaInsets();
-  
+
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   // Check if offline
   const isOffline = !isConnected || isInternetReachable === false;
 
+  // Stay mounted until hide animation completes
+  const [isVisible, setIsVisible] = useState(isOffline);
+
   useEffect(() => {
     if (isOffline) {
+      setIsVisible(true);
       // Slide down
       Animated.parallel([
         Animated.spring(translateY, {
           toValue: 0,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
           tension: 80,
           friction: 10,
         }),
         Animated.timing(opacity, {
           toValue: 1,
           duration: 200,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ]).start();
     } else {
-      // Slide up
+      // Slide up, then hide
       Animated.parallel([
         Animated.timing(translateY, {
           toValue: -100,
           duration: 300,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(opacity, {
           toValue: 0,
           duration: 200,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
-      ]).start();
+      ]).start(() => setIsVisible(false));
     }
   }, [isOffline]);
 
@@ -67,7 +72,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({ onRetry }) => {
     onRetry?.();
   };
 
-  if (!isOffline) {
+  if (!isVisible) {
     return null;
   }
 
