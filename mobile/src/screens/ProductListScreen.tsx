@@ -78,6 +78,7 @@ export const ProductListScreen = () => {
 
   const headerIconSize = isWeb ? 20 : 18;
   const headerIconSizeBig = isWeb ? 22 : 20;
+  const headerButtonSize = isWeb ? 44 : 40;
 
   // Hero breakout: cancel the contentContainerStyle padding/maxWidth so the hero is truly full-bleed
   const effectiveContainerWidth = containerMaxWidth ? Math.min(width, containerMaxWidth) : width;
@@ -536,42 +537,66 @@ export const ProductListScreen = () => {
             )}
           </TouchableOpacity>
 
-          <View style={styles.headerButtons}>
-            <TouchableOpacity
-              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
-              onPress={toggleTheme}
-              activeOpacity={0.8}
-              accessibilityLabel={colorScheme === 'dark' ? 'Toggle light mode' : 'Toggle dark mode'}
-              accessibilityRole="button"
-            >
-              <Ionicons
-                name={colorScheme === 'dark' ? 'sunny' : 'moon'}
-                size={headerIconSize}
-                color={colorScheme === 'dark' ? '#FBBF24' : colors.foreground}
-              />
-            </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.headerIconButton,
+                  {
+                    width: headerButtonSize,
+                    height: headerButtonSize,
+                    borderRadius: headerButtonSize / 2,
+                  },
+                  colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
+                ]}
+                onPress={toggleTheme}
+                activeOpacity={0.85}
+                accessibilityLabel={colorScheme === 'dark' ? 'Toggle light mode' : 'Toggle dark mode'}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={colorScheme === 'dark' ? 'sunny' : 'moon'}
+                  size={headerIconSize}
+                  color={colors.foreground}
+                />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
-              onPress={toggleGridMode}
-              activeOpacity={0.8}
-              accessibilityLabel="Change grid layout"
-              accessibilityRole="button"
-            >
-              <Ionicons
-                name={gridMode === 1 ? 'list' : gridMode === 2 ? 'grid-outline' : 'grid'}
-                size={headerIconSize}
-                color={colorScheme === 'dark' ? '#fff' : colors.foreground}
-              />
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.headerIconButton,
+                  {
+                    width: headerButtonSize,
+                    height: headerButtonSize,
+                    borderRadius: headerButtonSize / 2,
+                  },
+                  colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
+                ]}
+                onPress={toggleGridMode}
+                activeOpacity={0.85}
+                accessibilityLabel="Change grid layout"
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={gridMode === 1 ? 'list' : gridMode === 2 ? 'grid-outline' : 'grid'}
+                  size={headerIconSize}
+                  color={colors.foreground}
+                />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
-              onPress={() => navigation.navigate('Wishlist')}
-              activeOpacity={0.8}
-              accessibilityLabel={`View wishlist, ${wishlistCount} items`}
-              accessibilityRole="button"
-            >
+              <TouchableOpacity
+                style={[
+                  styles.headerIconButton,
+                  {
+                    width: headerButtonSize,
+                    height: headerButtonSize,
+                    borderRadius: headerButtonSize / 2,
+                  },
+                  colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
+                ]}
+                onPress={() => navigation.navigate('Wishlist')}
+                activeOpacity={0.85}
+                accessibilityLabel={`View wishlist, ${wishlistCount} items`}
+                accessibilityRole="button"
+              >
               <Ionicons name="heart" size={headerIconSizeBig} color="#F87171" />
               {wishlistCount > 0 && (
                 <View style={styles.badge}>
@@ -580,13 +605,21 @@ export const ProductListScreen = () => {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
-              onPress={() => navigation.navigate('Notifications')}
-              activeOpacity={0.8}
-              accessibilityLabel={`View notifications, ${unreadCount} unread`}
-              accessibilityRole="button"
-            >
+              <TouchableOpacity
+                style={[
+                  styles.headerIconButton,
+                  {
+                    width: headerButtonSize,
+                    height: headerButtonSize,
+                    borderRadius: headerButtonSize / 2,
+                  },
+                  colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
+                ]}
+                onPress={() => navigation.navigate('Notifications')}
+                activeOpacity={0.85}
+                accessibilityLabel={`View notifications, ${unreadCount} unread`}
+                accessibilityRole="button"
+              >
               <Ionicons name="notifications" size={headerIconSizeBig} color="#FBBF24" />
               {unreadCount > 0 && (
                 <View style={[styles.badge, { backgroundColor: colors.destructive }]}>
@@ -638,7 +671,12 @@ export const ProductListScreen = () => {
       </View>
 
       {/* ===== COMBINED FILTER TOOLBAR — no "Explore Products" or "Sort by:" labels ===== */}
-      <View style={[styles.filterSection, isWeb && styles.filterSectionWeb, isWeb && { maxWidth: containerMaxWidth }]}>
+      <View style={[
+        styles.filterSection,
+        Platform.OS === 'ios' && styles.filterSectionIOSFullBleed,
+        isWeb && styles.filterSectionWeb,
+        isWeb && { maxWidth: containerMaxWidth },
+      ]}>
         <CategoryFilter
           selectedCategory={selectedCategory}
           onCategoryChange={handleCategoryChange}
@@ -656,6 +694,7 @@ export const ProductListScreen = () => {
             activeOpacity={0.9}
             style={[
               styles.featuredCard,
+              !isWeb && { height: Math.round(width * 0.42) },
               colorScheme === 'dark'
                 ? Glass.elevated
                 : { backgroundColor: colors.card, ...Shadow.medium },
@@ -672,7 +711,10 @@ export const ProductListScreen = () => {
               onLoad={onFeaturedImageLoad}
             />
             <LinearGradient
-              colors={['transparent', colorScheme === 'dark' ? 'rgba(11,17,32,0.90)' : 'rgba(255,255,255,0.95)'] as [string, string]}
+              colors={[
+                colorScheme === 'dark' ? 'rgba(11,17,32,0)' : 'rgba(255,255,255,0)',
+                colorScheme === 'dark' ? 'rgba(11,17,32,0.90)' : 'rgba(255,255,255,0.95)',
+              ] as [string, string]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.featuredImageOverlay}
@@ -1033,11 +1075,6 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  headerIconButtonWeb: {
-    width: 44,
-    height: 44,
   },
 
   badge: {
@@ -1136,6 +1173,9 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xs,
     paddingBottom: Spacing.md,
     gap: Spacing.sm,
+  },
+  filterSectionIOSFullBleed: {
+    marginHorizontal: -Spacing.lg,
   },
   filterSectionWeb: {
     width: '100%',

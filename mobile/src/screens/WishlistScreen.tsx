@@ -16,7 +16,6 @@ import {
 
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenWrapper } from '../components/ScreenWrapper';
@@ -32,7 +31,7 @@ import { useNetwork } from '../context/NetworkContext';
 import { getWishlistProducts, ApiProduct, getUserMessage } from '../services/api';
 
 import { RootStackParamList } from '../types';
-import { BorderRadius, FontSize, FontWeight, Spacing, Gradients, Glass, Shadow, Glow } from '../constants/theme';
+import { BorderRadius, FontSize, FontWeight, Spacing, Glass, Shadow, Glow } from '../constants/theme';
 import { getWishlistHeaderToggleSizing } from './wishlistHeaderToggleSizing';
 
 type WishlistNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Wishlist'>;
@@ -154,6 +153,14 @@ export const WishlistScreen = () => {
       return next;
     });
   };
+
+  const handleBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('ProductList');
+  }, [navigation]);
 
   // Multi-select mode
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -295,15 +302,23 @@ export const WishlistScreen = () => {
           <View style={isWeb ? styles.webPageContainer : undefined}>
             <View style={[styles.header, { backgroundColor: colors.background }, isWeb && styles.headerWeb]}>
               <TouchableOpacity
-                style={[styles.brand, isWeb && styles.brandWeb]}
-                onPress={() => navigation.navigate('ProductList')}
+                style={[
+                  styles.headerButton,
+                  {
+                    width: headerToggleSizing.buttonSize,
+                    height: headerToggleSizing.buttonSize,
+                    borderRadius: headerToggleSizing.buttonSize / 2,
+                  },
+                  colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
+                ]}
+                onPress={handleBack}
                 activeOpacity={0.85}
               >
-                <LinearGradient colors={Gradients.brandVivid as [string, string, ...string[]]} style={styles.brandIcon}>
-                  <Ionicons name="flash" size={18} color="#fff" />
-                </LinearGradient>
-                <Text style={[styles.brandText, { color: colors.foreground }]}>Solarity</Text>
-                <Text style={[styles.brandTextAccent, { color: colors.primary }]}>Review</Text>
+                <Ionicons
+                  name="chevron-back"
+                  size={headerToggleSizing.iconSize}
+                  color={colors.foreground}
+                />
               </TouchableOpacity>
 
               <View style={[styles.headerActions, { gap: headerToggleSizing.actionGap }]}>
@@ -543,19 +558,6 @@ const styles = StyleSheet.create({
   headerWeb: {
     paddingHorizontal: 0,
   },
-
-  brand: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  brandWeb: { paddingVertical: 4 },
-  brandIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadow.soft,
-  },
-  brandText: { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
-  brandTextAccent: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginLeft: -2 },
 
   headerActions: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
   headerButton: {
