@@ -35,9 +35,12 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
   // Ref kept in sync with state so callbacks can read current wishlist
   // without being stale closures, and without needing deps in useCallback.
   const wishlistRef = useRef<WishlistItem[]>([]);
-  // Tracks IDs that have an in-flight API request, preventing a rapid double-tap
-  // from firing a second toggle (which would undo the first).
-  const pendingOps = useRef<Set<string>>(new Set());
+  // Tracks IDs that have an in-flight API request and their direction ('add'|'remove'),
+  // preventing a rapid double-tap from firing a second toggle (which would undo the first).
+  const pendingOps = useRef<Map<string, 'add' | 'remove'>>(new Map());
+  // IDs whose in-flight 'add' must be followed by a compensating remove (e.g., clearWishlist
+  // was called while the add was still in-flight).
+  const compensatingRemoves = useRef<Set<string>>(new Set());
   // Prevents the debounced save from writing before the initial load completes.
   const isInitialized = useRef(false);
 
@@ -88,10 +91,23 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
         // If backend has more items than local, we might be missing data.
         // In a real app, we would fetch product details for (backendIds - localIds).
 
-        setWishlist(syncedItems);
+        setWishlist(currentWishlist => {
+          // Preserve any items added/toggled while getWishlistApi() was in-flight.
+          const pendingItems = currentWishlist.filter(
+            item => pendingOps.current.has(String(item.id))
+          );
+          const pendingIds = new Set(pendingItems.map(item => String(item.id)));
+          return [
+            ...pendingItems,
+            ...syncedItems.filter(item => !pendingIds.has(String(item.id))),
+          ];
+        });
       } else if (backendIds && backendIds.length === 0) {
-        // Backend says empty, so clear local
-        setWishlist([]);
+        // Backend says empty — keep only items whose toggle is still in-flight,
+        // as those mutations will land on the backend and are not yet reflected.
+        setWishlist(currentWishlist =>
+          currentWishlist.filter(item => pendingOps.current.has(String(item.id)))
+        );
       }
 
     } catch (error) {
@@ -130,7 +146,7 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
       if (pendingOps.current.has(idStr)) return;
       if (wishlistRef.current.some(item => String(item.id) === idStr)) return;
 
-      pendingOps.current.add(idStr);
+      pendingOps.current.set(idStr, 'add');
 
       const newItem: WishlistItem = {
         ...product,
@@ -150,7 +166,16 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
       // API call outside the state updater — fires exactly once per gesture.
       toggleWishlistApi(Number(idStr))
         .catch(e => console.error("Backend sync failed", e))
-        .finally(() => pendingOps.current.delete(idStr));
+        .finally(() => {
+          pendingOps.current.delete(idStr);
+          // If clearWishlist was called while this add was in-flight, issue
+          // the compensating remove now that the add has landed on the backend.
+          if (compensatingRemoves.current.has(idStr)) {
+            compensatingRemoves.current.delete(idStr);
+            toggleWishlistApi(Number(idStr))
+              .catch(e => console.error('Backend sync failed (compensating remove)', e));
+          }
+        });
     },
     []
   );
@@ -173,7 +198,7 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
         addedAt: new Date(),
       }));
 
-      newItems.forEach(item => pendingOps.current.add(item.id));
+      newItems.forEach(item => pendingOps.current.set(item.id, 'add'));
 
       setWishlist(currentWishlist => {
         const list = currentWishlist || [];
@@ -186,9 +211,17 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
 
       // API calls outside the state updater — each fires exactly once.
       newItems.forEach(item => {
-        toggleWishlistApi(Number(item.id))
+        const id = item.id;
+        toggleWishlistApi(Number(id))
           .catch(e => console.error("Backend sync failed", e))
-          .finally(() => pendingOps.current.delete(item.id));
+          .finally(() => {
+            pendingOps.current.delete(id);
+            if (compensatingRemoves.current.has(id)) {
+              compensatingRemoves.current.delete(id);
+              toggleWishlistApi(Number(id))
+                .catch(e => console.error('Backend sync failed (compensating remove)', e));
+            }
+          });
       });
     },
     []
@@ -202,7 +235,7 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
       if (pendingOps.current.has(idStr)) return;
       if (!wishlistRef.current.some(item => String(item.id) === idStr)) return;
 
-      pendingOps.current.add(idStr);
+      pendingOps.current.set(idStr, 'remove');
 
       setWishlist(currentWishlist => {
         const list = currentWishlist || [];
@@ -228,7 +261,7 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
 
       if (toRemove.length === 0) return;
 
-      toRemove.forEach(item => pendingOps.current.add(String(item.id)));
+      toRemove.forEach(item => pendingOps.current.set(String(item.id), 'remove'));
 
       const removeSet = new Set(toRemove.map(item => String(item.id)));
       setWishlist(currentWishlist => {
@@ -259,21 +292,33 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
   );
 
   const clearWishlist = useCallback(() => {
-    // Skip items already being toggled to avoid a double-toggle race.
-    const toRemove = wishlistRef.current.filter(
-      item => !pendingOps.current.has(item.id)
-    );
-    if (toRemove.length === 0 && wishlistRef.current.length === 0) return;
-
-    toRemove.forEach(item => pendingOps.current.add(item.id));
+    const currentItems = wishlistRef.current;
+    if (currentItems.length === 0) return;
 
     setWishlist([]);
     // Debounced save useEffect will persist the empty list.
 
-    toRemove.forEach(item => {
-      toggleWishlistApi(Number(item.id))
+    currentItems.forEach(item => {
+      const id = String(item.id);
+      const dir = pendingOps.current.get(id);
+
+      if (dir === 'remove') {
+        // Already being removed — nothing more to do.
+        return;
+      }
+
+      if (dir === 'add') {
+        // In-flight add: schedule a compensating remove to fire once the add lands.
+        // The .finally() in addToWishlist / addMultipleToWishlist checks this set.
+        compensatingRemoves.current.add(id);
+        return;
+      }
+
+      // No pending op — issue an immediate remove.
+      pendingOps.current.set(id, 'remove');
+      toggleWishlistApi(Number(id))
         .catch(e => console.error('Backend sync failed', e))
-        .finally(() => pendingOps.current.delete(item.id));
+        .finally(() => pendingOps.current.delete(id));
     });
   }, []);
 
