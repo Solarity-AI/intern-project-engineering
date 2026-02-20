@@ -12,7 +12,7 @@ export const ProductCardSkeleton: React.FC<ProductCardSkeletonProps> = ({
   numColumns = 2,
 }) => {
   const { colorScheme } = useTheme();
-  const aspectRatio = numColumns === 1 ? 16 / 9 : 1;
+  const aspectRatio = numColumns === 1 ? 16 / 9 : numColumns >= 3 ? 1 : 3 / 4;
 
   const baseBg = colorScheme === 'dark'
     ? 'rgba(15,23,42,0.75)'
