@@ -1,8 +1,8 @@
-export type WishlistWebBreakpoint = 'mobile' | 'narrow' | 'medium' | 'wide';
+export type WebBreakpoint = 'mobile' | 'narrow' | 'medium' | 'wide';
 
 type HeaderToggleSizingInput = {
   isWeb: boolean;
-  breakpoint: WishlistWebBreakpoint;
+  breakpoint: WebBreakpoint;
   numColumns: 1 | 2 | 3;
 };
 
@@ -17,7 +17,7 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-export function getWishlistHeaderToggleSizing({
+export function getHeaderToggleSizing({
   isWeb,
   breakpoint,
   numColumns,

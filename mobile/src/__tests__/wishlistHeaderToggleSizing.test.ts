@@ -1,21 +1,21 @@
 import {
   calculateHeaderActionRowWidth,
-  getWishlistHeaderToggleSizing,
-} from '../screens/wishlistHeaderToggleSizing';
+  getHeaderToggleSizing,
+} from '../screens/headerToggleSizing';
 
 describe('wishlist header toggle sizing', () => {
   it('scales controls down for single and dual web column modes', () => {
-    const wideThreeCol = getWishlistHeaderToggleSizing({
+    const wideThreeCol = getHeaderToggleSizing({
       isWeb: true,
       breakpoint: 'wide',
       numColumns: 3,
     });
-    const narrowSingleCol = getWishlistHeaderToggleSizing({
+    const narrowSingleCol = getHeaderToggleSizing({
       isWeb: true,
       breakpoint: 'narrow',
       numColumns: 1,
     });
-    const mediumDualCol = getWishlistHeaderToggleSizing({
+    const mediumDualCol = getHeaderToggleSizing({
       isWeb: true,
       breakpoint: 'medium',
       numColumns: 2,
@@ -27,7 +27,7 @@ describe('wishlist header toggle sizing', () => {
   });
 
   it('keeps sizes constrained to stable ranges', () => {
-    const cases: Array<Parameters<typeof getWishlistHeaderToggleSizing>[0]> = [
+    const cases: Array<Parameters<typeof getHeaderToggleSizing>[0]> = [
       { isWeb: true, breakpoint: 'narrow', numColumns: 1 },
       { isWeb: true, breakpoint: 'medium', numColumns: 2 },
       { isWeb: true, breakpoint: 'wide', numColumns: 3 },
@@ -36,7 +36,7 @@ describe('wishlist header toggle sizing', () => {
     ];
 
     for (const input of cases) {
-      const sizing = getWishlistHeaderToggleSizing(input);
+      const sizing = getHeaderToggleSizing(input);
       expect(sizing.buttonSize).toBeGreaterThanOrEqual(36);
       expect(sizing.buttonSize).toBeLessThanOrEqual(44);
       expect(sizing.iconSize).toBeGreaterThanOrEqual(16);
@@ -49,12 +49,12 @@ describe('wishlist header toggle sizing', () => {
   });
 
   it('keeps narrow single and dual mode header actions compact enough to avoid overflow regressions', () => {
-    const narrowSingleCol = getWishlistHeaderToggleSizing({
+    const narrowSingleCol = getHeaderToggleSizing({
       isWeb: true,
       breakpoint: 'narrow',
       numColumns: 1,
     });
-    const narrowDualCol = getWishlistHeaderToggleSizing({
+    const narrowDualCol = getHeaderToggleSizing({
       isWeb: true,
       breakpoint: 'narrow',
       numColumns: 2,
@@ -65,7 +65,7 @@ describe('wishlist header toggle sizing', () => {
   });
 
   it('keeps the destructive action icon visually one step larger than base icon', () => {
-    const sizing = getWishlistHeaderToggleSizing({
+    const sizing = getHeaderToggleSizing({
       isWeb: true,
       breakpoint: 'medium',
       numColumns: 2,

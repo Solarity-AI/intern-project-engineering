@@ -32,7 +32,7 @@ import { getWishlistProducts, ApiProduct, getUserMessage } from '../services/api
 
 import { RootStackParamList } from '../types';
 import { BorderRadius, FontSize, FontWeight, Spacing, Glass, Shadow, Glow } from '../constants/theme';
-import { getWishlistHeaderToggleSizing } from './wishlistHeaderToggleSizing';
+import { getHeaderToggleSizing } from './headerToggleSizing';
 
 type WishlistNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Wishlist'>;
 
@@ -52,7 +52,7 @@ export const WishlistScreen = () => {
 
   const [gridMode, setGridMode] = useState<1 | 2 | 3>(2);
   const numColumns = gridMode;
-  const headerToggleSizing = getWishlistHeaderToggleSizing({
+  const headerToggleSizing = getHeaderToggleSizing({
     isWeb,
     breakpoint: webBp,
     numColumns,

@@ -45,6 +45,7 @@ import { useNetwork } from '../context/NetworkContext';
 import { RootStackParamList } from '../types';
 import { BorderRadius, FontSize, FontWeight, Spacing, Gradients, Glass, Glow, Shadow } from '../constants/theme';
 import { useDebounce } from '../hooks/useDebounce';
+import { getHeaderToggleSizing } from './headerToggleSizing';
 
 type ProductListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ProductList'>;
 
@@ -76,10 +77,6 @@ export const ProductListScreen = () => {
   const containerMaxWidth =
     !isWeb ? undefined : webBp === 'wide' ? 1200 : webBp === 'medium' ? 1040 : 900;
 
-  const headerIconSize = isWeb ? 20 : 18;
-  const headerIconSizeBig = isWeb ? 22 : 20;
-  const headerButtonSize = isWeb ? 44 : 40;
-
   // Hero breakout: cancel the contentContainerStyle padding/maxWidth so the hero is truly full-bleed
   const effectiveContainerWidth = containerMaxWidth ? Math.min(width, containerMaxWidth) : width;
   const heroInset = (width - effectiveContainerWidth) / 2 + Spacing.lg;
@@ -95,6 +92,11 @@ export const ProductListScreen = () => {
   // Grid mode: 1 / 2 / 3
   const [gridMode, setGridMode] = useState<1 | 2 | 3>(2);
   const numColumns = gridMode;
+
+  const headerToggleSizing = getHeaderToggleSizing({ isWeb, breakpoint: webBp, numColumns });
+  const headerIconSize = headerToggleSizing.iconSize;
+  const headerIconSizeBig = headerToggleSizing.emphasisIconSize;
+  const headerButtonSize = headerToggleSizing.buttonSize;
   const gridTouchedRef = useRef(false);
 
   useEffect(() => {
@@ -537,7 +539,7 @@ export const ProductListScreen = () => {
             )}
           </TouchableOpacity>
 
-            <View style={styles.headerButtons}>
+            <View style={[styles.headerButtons, { gap: headerToggleSizing.actionGap }]}>
               <TouchableOpacity
                 style={[
                   styles.headerIconButton,
@@ -1068,7 +1070,7 @@ const styles = StyleSheet.create({
   logoText: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: '#F1F5F9' },
   logoTextAccent: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginLeft: -2, color: '#10B981' },
 
-  headerButtons: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexShrink: 0 },
+  headerButtons: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
   headerIconButton: {
     borderRadius: BorderRadius.full,
     width: 40,
