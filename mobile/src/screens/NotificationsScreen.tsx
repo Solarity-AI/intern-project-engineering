@@ -79,6 +79,7 @@ export const NotificationsScreen: React.FC = () => {
   const MAX_CONTENT_WIDTH = isWeb ? (windowWidth >= 1200 ? 760 : 600) : 600;
 
   const responsiveContainerStyle = {
+    flex: 1 as const,
     width: '100%' as const,
     maxWidth: isWeb ? MAX_CONTENT_WIDTH : undefined,
     alignSelf: 'center' as const,
@@ -291,8 +292,8 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   filterChip: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
   },
@@ -305,7 +306,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing['3xl'],
   },
   listContentWeb: {
-    alignItems: 'center',
+    width: '100%',
   },
   notificationCard: {
     flexDirection: 'row',
@@ -320,7 +321,7 @@ const styles = StyleSheet.create({
     ...Shadow.soft,
   },
   notificationCardWeb: {
-    maxWidth: 560,
+    width: '100%',
   },
   accentLine: {
     position: 'absolute',

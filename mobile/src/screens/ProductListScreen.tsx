@@ -71,6 +71,7 @@ export const ProductListScreen = () => {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
   const webBp = !isWeb ? 'mobile' : width < 720 ? 'narrow' : width < 1100 ? 'medium' : 'wide';
+  const isCompactWebHeader = isWeb && width < 430;
 
   const containerMaxWidth =
     !isWeb ? undefined : webBp === 'wide' ? 1200 : webBp === 'medium' ? 1040 : 900;
@@ -527,8 +528,12 @@ export const ProductListScreen = () => {
             <LinearGradient colors={Gradients.brandVivid as [string, string, ...string[]]} style={styles.logoIcon}>
               <Ionicons name="flash" size={18} color="#fff" />
             </LinearGradient>
-            <Text style={[styles.logoText, { color: colors.foreground }]}>Solarity</Text>
-            <Text style={styles.logoTextAccent}>Review</Text>
+            {!isCompactWebHeader && (
+              <>
+                <Text style={[styles.logoText, { color: colors.foreground }]} numberOfLines={1}>Solarity</Text>
+                <Text style={styles.logoTextAccent} numberOfLines={1}>Review</Text>
+              </>
+            )}
           </TouchableOpacity>
 
           <View style={styles.headerButtons}>
@@ -1014,7 +1019,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  logoContainer: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  logoContainer: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexShrink: 1, minWidth: 0 },
   logoIcon: {
     width: 36,
     height: 36,
@@ -1026,7 +1031,7 @@ const styles = StyleSheet.create({
   logoText: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: '#F1F5F9' },
   logoTextAccent: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginLeft: -2, color: '#10B981' },
 
-  headerButtons: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  headerButtons: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexShrink: 0 },
   headerIconButton: {
     borderRadius: BorderRadius.full,
     width: 40,
