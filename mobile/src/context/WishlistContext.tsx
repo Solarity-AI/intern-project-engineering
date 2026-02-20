@@ -165,17 +165,20 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
 
       // API call outside the state updater — fires exactly once per gesture.
       toggleWishlistApi(Number(idStr))
-        .catch(e => console.error("Backend sync failed", e))
-        .finally(() => {
-          pendingOps.current.delete(idStr);
-          // If clearWishlist was called while this add was in-flight, issue
-          // the compensating remove now that the add has landed on the backend.
+        .then(() => {
+          // Add landed successfully — issue compensating remove only if clearWishlist fired while in-flight.
           if (compensatingRemoves.current.has(idStr)) {
             compensatingRemoves.current.delete(idStr);
             toggleWishlistApi(Number(idStr))
               .catch(e => console.error('Backend sync failed (compensating remove)', e));
           }
-        });
+        })
+        .catch(e => {
+          console.error('Backend sync failed', e);
+          // Add failed — backend never received the item, so no compensating remove needed.
+          compensatingRemoves.current.delete(idStr);
+        })
+        .finally(() => pendingOps.current.delete(idStr));
     },
     []
   );
@@ -213,15 +216,18 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
       newItems.forEach(item => {
         const id = item.id;
         toggleWishlistApi(Number(id))
-          .catch(e => console.error("Backend sync failed", e))
-          .finally(() => {
-            pendingOps.current.delete(id);
+          .then(() => {
             if (compensatingRemoves.current.has(id)) {
               compensatingRemoves.current.delete(id);
               toggleWishlistApi(Number(id))
                 .catch(e => console.error('Backend sync failed (compensating remove)', e));
             }
-          });
+          })
+          .catch(e => {
+            console.error('Backend sync failed', e);
+            compensatingRemoves.current.delete(id);
+          })
+          .finally(() => pendingOps.current.delete(id));
       });
     },
     []
