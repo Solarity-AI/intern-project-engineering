@@ -56,28 +56,13 @@ function SelectableWishlistCardComponent({
 
   useEffect(() => {
     if (isSelectionMode) {
-      const animation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(shakeAnim, {
-            toValue: -1.2,
-            duration: 85,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-          Animated.timing(shakeAnim, {
-            toValue: 1.2,
-            duration: 85,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-          Animated.timing(shakeAnim, {
-            toValue: 0,
-            duration: 85,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-        ])
-      );
+      const animation = Animated.sequence([
+        Animated.timing(shakeAnim, { toValue: -1.2, duration: 70, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 1.2, duration: 70, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: -0.6, duration: 70, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 0.6, duration: 70, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 0, duration: 70, easing: Easing.linear, useNativeDriver: true }),
+      ]);
       animation.start();
       return () => animation.stop();
     } else {

@@ -158,42 +158,42 @@ export const WishlistScreen = () => {
   // Multi-select mode
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const isSelectionModeRef = useRef(false);
 
-  const [selectionTick, setSelectionTick] = useState(0);
-  const bumpSelectionTick = useCallback(() => setSelectionTick(t => t + 1), []);
-
-  const handleCancelSelection = () => {
+  const handleCancelSelection = useCallback(() => {
+    isSelectionModeRef.current = false;
     setIsSelectionMode(false);
     setSelectedItems(new Set());
-    bumpSelectionTick();
-  };
+  }, []);
 
-  const handleCardLongPress = (item: ApiProduct) => {
+  const handleCardLongPress = useCallback((item: ApiProduct) => {
     const id = String(item.id);
+    isSelectionModeRef.current = true;
     setIsSelectionMode(true);
     setSelectedItems(prev => {
       const next = new Set(prev);
       next.add(id);
       return next;
     });
-    bumpSelectionTick();
-  };
+  }, []);
 
-  const handleCardPress = (item: ApiProduct) => {
+  const handleCardPress = useCallback((item: ApiProduct) => {
     const id = String(item.id);
     if (isSelectionMode) {
       setSelectedItems(prev => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id);
         else next.add(id);
-        if (next.size === 0) setIsSelectionMode(false);
+        if (next.size === 0) {
+          isSelectionModeRef.current = false;
+          setIsSelectionMode(false);
+        }
         return next;
       });
-      bumpSelectionTick();
       return;
     }
     navigation.navigate('ProductDetails', { productId: id });
-  };
+  }, [isSelectionMode, navigation]);
 
   const handleRemoveSelected = useCallback(() => {
     const idsToRemove = Array.from(selectedItems);
@@ -223,16 +223,11 @@ export const WishlistScreen = () => {
     return { itemCount: totalItems, totalPrice, avgRating };
   }, [pagedWishlist, totalItems]);
 
-  const renderWishlistItem = ({ item, index }: { item: ApiProduct; index: number }) => {
+  const renderWishlistItem = useCallback(({ item, index }: { item: ApiProduct; index: number }) => {
     const id = String(item.id);
     const selected = selectedItems.has(id);
     const isGrid = numColumns > 1;
     const gapSize = Spacing.sm;
-
-    const forceKey =
-      Platform.OS === 'android'
-        ? `${id}-${isSelectionMode ? 1 : 0}-${selected ? 1 : 0}-${selectionTick}`
-        : id;
 
     return (
       <View
@@ -253,18 +248,17 @@ export const WishlistScreen = () => {
         ]}
       >
         <SelectableWishlistCard
-          key={forceKey}
           item={item as any}
           numColumns={numColumns}
           isSelectionMode={isSelectionMode}
           isSelected={selected}
-          onPress={() => handleCardPress(item)}
-          onLongPress={() => handleCardLongPress(item)}
+          onPress={handleCardPress as any}
+          onLongPress={handleCardLongPress as any}
           onRemove={handleRemoveSingle}
         />
       </View>
     );
-  };
+  }, [numColumns, isSelectionMode, selectedItems, handleCardPress, handleCardLongPress, handleRemoveSingle]);
 
   const emptyState = (
     <View style={styles.emptyContainer}>
@@ -467,12 +461,12 @@ export const WishlistScreen = () => {
           ) : (
             <FlatList
               data={pagedWishlist}
-              extraData={selectionTick}
+              extraData={selectedItems}
               key={numColumns}
               numColumns={numColumns}
               keyExtractor={(item) => String(item.id)}
               renderItem={renderWishlistItem}
-              removeClippedSubviews={false}
+              removeClippedSubviews={Platform.OS !== 'web'}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"

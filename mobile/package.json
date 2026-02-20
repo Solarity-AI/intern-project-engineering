@@ -10,6 +10,8 @@
     "build": "node -e \"if (!process.env.EXPO_PUBLIC_API_URL) { console.error('\\nError: EXPO_PUBLIC_API_URL is not set\\n'); process.exit(1); }\" && expo export --platform web",
     "postbuild": "node -e \"const fs = require('fs'); if (fs.existsSync('public')) { fs.cpSync('public', 'dist', { recursive: true }); }\"",
     "export": "expo export --platform web",
+    "perf:multiselect": "node ./scripts/perf/multiselect-performance-check.js",
+    "perf:multiselect:ci": "node ./scripts/perf/multiselect-performance-check.js --strict",
     "test": "node ./node_modules/jest-expo/node_modules/jest/bin/jest.js --config jest.config.js",
     "test:unit": "node ./node_modules/jest-expo/node_modules/jest/bin/jest.js --config jest.node.config.js",
     "test:ui": "node ./node_modules/jest-expo/node_modules/jest/bin/jest.js --config jest.ui.config.js"

@@ -107,9 +107,7 @@ export const ProductListScreen = () => {
   // Multi-select mode
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-
-  const [selectionTick, setSelectionTick] = useState(0);
-  const bumpSelectionTick = useCallback(() => setSelectionTick(t => t + 1), []);
+  const isSelectionModeRef = useRef(false);
 
   const [apiProducts, setApiProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,13 +166,13 @@ export const ProductListScreen = () => {
     setGridMode(prev => (prev === 1 ? 2 : prev === 2 ? 3 : 1));
   };
 
-  const handleCancelSelection = () => {
+  const handleCancelSelection = useCallback(() => {
+    isSelectionModeRef.current = false;
     setIsSelectionMode(false);
     setSelectedItems(new Set());
-    bumpSelectionTick();
-  };
+  }, []);
 
-  const handleAddSelectedToWishlist = () => {
+  const handleAddSelectedToWishlist = useCallback(() => {
     const selectedProducts = filteredProducts.filter(p => {
       const id = String((p as any)?.id ?? '');
       return selectedItems.has(id) && !isInWishlist(id);
@@ -196,22 +194,22 @@ export const ProductListScreen = () => {
       })) as any);
       handleCancelSelection();
     });
-  };
+  }, [filteredProducts, selectedItems, isInWishlist, addMultipleToWishlist, handleCancelSelection]);
 
-  const handleCardLongPress = (product: ApiProduct) => {
+  const handleCardLongPress = useCallback((product: ApiProduct) => {
     const id = String((product as any)?.id ?? '');
     if (!id) return;
 
-    if (Platform.OS === 'android' && !isSelectionMode) {
+    if (Platform.OS === 'android' && !isSelectionModeRef.current) {
       Vibration.vibrate(50);
     }
 
+    isSelectionModeRef.current = true;
     setIsSelectionMode(true);
     setSelectedItems(prev => new Set(prev).add(id));
-    bumpSelectionTick();
-  };
+  }, []);
 
-  const handleCardPress = (product: ApiProduct) => {
+  const handleCardPress = useCallback((product: ApiProduct) => {
     const id = String((product as any)?.id ?? '');
     if (!id) return;
 
@@ -220,15 +218,17 @@ export const ProductListScreen = () => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id);
         else next.add(id);
-        if (next.size === 0) setIsSelectionMode(false);
+        if (next.size === 0) {
+          isSelectionModeRef.current = false;
+          setIsSelectionMode(false);
+        }
         return next;
       });
-      bumpSelectionTick();
       return;
     }
 
     navigation.navigate('ProductDetails', { productId: (product as any)?.id });
-  };
+  }, [isSelectionMode, navigation]);
 
   const fetchProducts = useCallback(
     async (page: number, append: boolean, searchOverride?: string, categoryOverride?: string, sortOverride?: string) => {
@@ -767,6 +767,42 @@ export const ProductListScreen = () => {
     return count;
   }, [selectedItems, isInWishlist]);
 
+  const renderItem = useCallback(({ item, index }: { item: ApiProduct; index: number }) => {
+    const isGrid = numColumns > 1;
+    const gapSize = Platform.OS === 'android' ? Spacing.md : Spacing.lg;
+    const id = String((item as any)?.id ?? '');
+    const selected = selectedItems.has(id);
+
+    return (
+      <View
+        style={[
+          isGrid && {
+            width: `${100 / numColumns}%`,
+            paddingRight: index % numColumns === numColumns - 1 ? 0 : gapSize / 2,
+            paddingLeft: index % numColumns === 0 ? 0 : gapSize / 2,
+            marginBottom: Spacing.lg,
+            flexGrow: 0,
+            flexShrink: 0,
+          },
+          !isGrid && {
+            width: '100%',
+            marginBottom: Spacing.lg,
+          },
+        ]}
+        collapsable={false}
+      >
+        <SelectableProductCard
+          product={item}
+          numColumns={numColumns}
+          isSelectionMode={isSelectionMode}
+          isSelected={selected}
+          onPress={handleCardPress}
+          onLongPress={handleCardLongPress}
+        />
+      </View>
+    );
+  }, [numColumns, isSelectionMode, selectedItems, handleCardPress, handleCardLongPress]);
+
   return (
     <ScreenWrapper>
       <TouchableWithoutFeedback
@@ -779,13 +815,13 @@ export const ProductListScreen = () => {
 
           <FlatList
             data={loading || error ? [] : gridProducts}
-            extraData={selectionTick}
+            extraData={selectedItems}
             key={numColumns}
             numColumns={numColumns}
             columnWrapperStyle={
               numColumns > 1 ? styles.columnWrap : undefined
             }
-            removeClippedSubviews={false}
+            removeClippedSubviews={Platform.OS !== 'web'}
             keyExtractor={(item: any) => String(item?.id ?? '')}
             contentContainerStyle={[
               styles.listContent,
@@ -851,48 +887,7 @@ export const ProductListScreen = () => {
                 </View>
               )
             }
-            renderItem={({ item, index }) => {
-              const isGrid = numColumns > 1;
-              const gapSize = Platform.OS === 'android' ? Spacing.md : Spacing.lg;
-
-              const id = String((item as any)?.id ?? '');
-              const selected = selectedItems.has(id);
-
-              const forceKey =
-                Platform.OS === 'android'
-                  ? `${id}-${isSelectionMode ? 1 : 0}-${selected ? 1 : 0}-${selectionTick}`
-                  : id;
-
-              return (
-                <View
-                  style={[
-                    isGrid && {
-                      width: `${100 / numColumns}%`,
-                      paddingRight: index % numColumns === numColumns - 1 ? 0 : gapSize / 2,
-                      paddingLeft: index % numColumns === 0 ? 0 : gapSize / 2,
-                      marginBottom: Spacing.lg,
-                      flexGrow: 0,
-                      flexShrink: 0,
-                    },
-                    !isGrid && {
-                      width: '100%',
-                      marginBottom: Spacing.lg,
-                    },
-                  ]}
-                  collapsable={false}
-                >
-                  <SelectableProductCard
-                    key={forceKey}
-                    product={item}
-                    numColumns={numColumns}
-                    isSelectionMode={isSelectionMode}
-                    isSelected={selected}
-                    onPress={handleCardPress}
-                    onLongPress={handleCardLongPress}
-                  />
-                </View>
-              );
-            }}
+            renderItem={renderItem}
 
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"

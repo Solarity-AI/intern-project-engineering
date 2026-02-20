@@ -39,7 +39,7 @@ function imageForCategory(categories?: string[]) {
   return 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=800&q=80';
 }
 
-export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
+const SelectableProductCardComponent: React.FC<SelectableProductCardProps> = ({
   product,
   numColumns = 2,
   isSelectionMode,
@@ -64,7 +64,7 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
 
   const heartScale = useRef(new Animated.Value(1)).current;
 
-  const handleWishlistToggle = (e: any) => {
+  const handleWishlistToggle = useCallback((e: any) => {
     e.stopPropagation();
 
     // Bounce animation
@@ -91,7 +91,7 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
       categories: product.categories,
       averageRating: avgRating,
     } as any);
-  };
+  }, [heartScale, toggleWishlist, productId, product.name, product.price, product.categories, avgRating, imageUri]);
 
   const imageOpacity = useRef(new Animated.Value(0)).current;
   const onImageLoad = useCallback(() => {
@@ -106,28 +106,13 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
 
   useEffect(() => {
     if (isSelectionMode) {
-      const animation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(shakeAnim, {
-            toValue: -2,
-            duration: 50,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-          Animated.timing(shakeAnim, {
-            toValue: 2,
-            duration: 50,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-          Animated.timing(shakeAnim, {
-            toValue: 0,
-            duration: 50,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-        ])
-      );
+      const animation = Animated.sequence([
+        Animated.timing(shakeAnim, { toValue: -2, duration: 60, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 2, duration: 60, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: -1, duration: 60, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 1, duration: 60, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 0, duration: 60, easing: Easing.linear, useNativeDriver: true }),
+      ]);
       animation.start();
       return () => animation.stop();
     } else {
@@ -268,6 +253,8 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
     </Animated.View>
   );
 };
+
+export const SelectableProductCard = React.memo(SelectableProductCardComponent);
 
 const styles = StyleSheet.create({
   container: {
