@@ -54,7 +54,7 @@ The application serves as an internship training platform where the backend API 
 | **React Navigation** | 7.x | Screen navigation |
 | **AsyncStorage** | 2.2.0 | Local persistence |
 | **Expo Linear Gradient** | 15.0.8 | UI gradients |
-| **serve** | 14.x | Static SPA server for Heroku |
+| **serve** | 14.x | Static SPA server (development) |
 
 ### iOS Native (Swift/SwiftUI)
 
@@ -74,10 +74,8 @@ The application serves as an internship training platform where the backend API 
 
 | Platform | Purpose |
 |----------|---------|
-| **Heroku** | Backend hosting (Java buildpack, PostgreSQL addon) |
-| **Heroku** | Web frontend hosting (static SPA via `serve`) |
 | **EAS Build** | Mobile app builds (APK/IPA) |
-| **GitHub Actions** | CI/CD automation (parallel Heroku deployment) |
+| **GitHub Actions** | CI/CD automation |
 
 ---
 
@@ -173,7 +171,7 @@ The application serves as an internship training platform where the backend API 
 │   ├── package.json                  # Node dependencies
 │   ├── app.json                      # Expo configuration
 │   ├── eas.json                      # EAS Build configuration
-│   ├── Procfile                      # Heroku process definition
+│   ├── src/                          # Source code
 │   └── tsconfig.json                 # TypeScript configuration
 │
 ├── ios/                              # Native iOS App (Swift/SwiftUI)
@@ -238,14 +236,14 @@ The application serves as an internship training platform where the backend API 
 │   └── README.md                     # iOS-specific documentation
 │
 ├── .github/workflows/                # CI/CD
-│   └── deploy-heroku.yml             # Heroku deployment workflow
+│   └── ...                           # CI/CD workflows
 ├── .vscode/                          # IDE configuration
 │   ├── settings.json
 │   └── launch.json
-├── Procfile                          # (removed — see backend/ and mobile/ Procfiles)
+├── Procfile                          # (removed)
 ├── swift-issues/                     # iOS UI redesign issue tracking
 ├── pom.xml                           # Parent Maven project
-├── backend/system.properties          # Java version (Heroku buildpack)
+├── backend/                          # Spring Boot REST API
 ├── CLAUDE.md                         # Project documentation
 └── README.md                         # Main documentation
 ```
@@ -473,7 +471,7 @@ management.endpoints.web.exposure.include=health,info
 
 **application-prod.properties (Production — PostgreSQL):**
 ```properties
-# PostgreSQL Datasource (Heroku provides JDBC_DATABASE_URL with embedded credentials)
+# PostgreSQL Datasource (JDBC_DATABASE_URL provided by hosting platform)
 spring.datasource.url=${JDBC_DATABASE_URL}
 spring.datasource.driverClassName=org.postgresql.Driver
 
@@ -488,7 +486,7 @@ spring.flyway.baseline-on-migrate=true
 # CORS - production origins (configurable via env var)
 cors.allowed-origins=${CORS_ALLOWED_ORIGINS:https://localhost:3000}
 
-# HikariCP — tuned for Heroku
+# HikariCP — tuned for production
 spring.datasource.hikari.maximum-pool-size=5
 spring.datasource.hikari.minimum-idle=2
 spring.datasource.hikari.leak-detection-threshold=0
@@ -504,21 +502,17 @@ springdoc.api-docs.enabled=false
 |----------|----------|---------|
 | `PORT` | No | Server port (default: 8080) |
 | `OPENAI_API_KEY` | No | AI features (falls back to mock) |
-| `JDBC_DATABASE_URL` | Prod | PostgreSQL JDBC URL (auto-provided by Heroku Postgres addon) |
+| `JDBC_DATABASE_URL` | Prod | PostgreSQL JDBC URL (provided by hosting platform) |
 | `CORS_ALLOWED_ORIGINS` | Prod | Comma-separated CORS origins |
 | `cors.allowed-origins` | No | Comma-separated CORS origins (default: localhost dev ports) |
 | `rate-limit.requests-per-minute` | No | Rate limit per client (default: 60) |
 | `spring.profiles.active` | No | Set to `prod` for production profile |
-| `HEROKU_API_KEY` | CI | Heroku API key (GitHub Actions secret) |
-| `HEROKU_EMAIL` | CI | Heroku account email (GitHub Actions secret) |
-| `HEROKU_BACKEND_APP` | CI | Heroku backend app name (GitHub Actions secret) |
-| `HEROKU_FRONTEND_APP` | CI | Heroku frontend app name (GitHub Actions secret) |
 
 ### Frontend Configuration (React Native)
 
 **API Base URL (exported, shared by NetworkContext for health checks):**
 ```typescript
-export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://<backend-app>.herokuapp.com';
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
 ```
 
 **User Identification:**
@@ -532,7 +526,7 @@ export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://<backend-app
 #if DEBUG
 static let useLocalServer = false  // defaults to remote; set true for local dev
 #else
-static let useLocalServer = false  // https://<backend-app>.herokuapp.com
+static let useLocalServer = false
 #endif
 ```
 
@@ -544,30 +538,19 @@ static let useLocalServer = false  // https://<backend-app>.herokuapp.com
 
 ## 7. Deployment & Operations
 
-### 7.1 Backend Deployment (Heroku)
-
-**Heroku Java Buildpack:**
-- Auto-detected from `pom.xml`
-- JDK version specified in `backend/system.properties`
-- Process defined in `backend/Procfile`
+### 7.1 Backend Deployment
 
 **Configuration:**
 - Health check: `/actuator/health`
-- PostgreSQL: Heroku Postgres addon (provides `JDBC_DATABASE_URL`)
+- PostgreSQL with `JDBC_DATABASE_URL`
 - Environment: `SPRING_PROFILES_ACTIVE=prod`, `OPENAI_API_KEY`, `CORS_ALLOWED_ORIGINS`
 
-### 7.2 Frontend Web Deployment (Heroku)
+### 7.2 Frontend Web Deployment
 
-**GitHub Actions Workflow:**
-- Triggers on `main` branch pushes (parallel with backend)
+**Build:**
 - Node.js 20 with npm ci
 - Builds with `EXPO_PUBLIC_API_URL` env var
-- Deploys via `akhileshns/heroku-deploy`
-
-**Heroku Configuration:**
-- Static SPA served via `serve` (defined in `mobile/Procfile`)
-- SPA mode: All 404s rewrite to `/index.html`
-- Output: `dist/` directory
+- Output: `dist/` directory (static SPA)
 
 ### 7.3 Mobile App Builds (EAS)
 
@@ -579,9 +562,9 @@ static let useLocalServer = false  // https://<backend-app>.herokuapp.com
 
 | Aspect | Details |
 |--------|---------|
-| Cold Start | Backend: ~30-60s on Heroku eco dynos |
+| Cold Start | Backend: ~30-60s on free-tier hosting |
 | Database | H2 in-memory (dev), PostgreSQL (prod via Flyway migrations) |
-| Connection Pool | HikariCP: 10 max (dev), 5 max (prod/Heroku) |
+| Connection Pool | HikariCP: 10 max (dev), 5 max (prod) |
 | Caching | AI summaries cached 1 hour |
 | Health | `/actuator/health` monitored |
 | Updates | OTA via Expo Updates |
@@ -769,13 +752,13 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 - Flyway-managed schema migrations with `ddl-auto=validate` in production
 
 ### Production Profile (`application-prod.properties`)
-- PostgreSQL datasource via Heroku-provided JDBC_DATABASE_URL
+- PostgreSQL datasource via JDBC_DATABASE_URL
 - Flyway migrations enabled, JPA schema validation only
 - H2 console disabled
 - Swagger UI and API docs disabled
 - Actuator restricted to health endpoint only
 - CORS origins restricted to production domains
-- HikariCP tuned for Heroku (5 max connections)
+- HikariCP tuned for production (5 max connections)
 
 ### Container Security
 - Alpine-based images (minimal attack surface)

@@ -257,7 +257,7 @@ ui/
 
 ### Base URL
 ```
-https://solarity-review-api-95bd50ea0f47.herokuapp.com
+http://localhost:8080
 ```
 
 ### Products

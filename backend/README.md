@@ -79,7 +79,7 @@ The application is pre-configured for local development. Key settings in `applic
 | `spring.datasource.url` | `jdbc:h2:mem:testdb` | In-memory database URL |
 | `spring.h2.console.enabled` | `true` | Enables H2 Console at `/h2-console` |
 
-**Production Note:** For deployment (e.g., Heroku), these values are overridden by environment variables (e.g., `JDBC_DATABASE_URL`).
+**Production Note:** For deployment, these values are overridden by environment variables (e.g., `JDBC_DATABASE_URL`).
 
 ---
 
