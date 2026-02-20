@@ -142,7 +142,10 @@ function SelectableWishlistCardComponent({
                 colorScheme === 'dark' ? Glass.strong : { backgroundColor: 'rgba(255,255,255,0.9)' },
                 isCompact && styles.heartButtonCompact,
               ]}
-              onPress={() => onRemove(item.id)}
+              onPress={(e) => {
+                e.stopPropagation();
+                onRemove(item.id);
+              }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               accessibilityLabel="Remove from wishlist"
               accessibilityRole="button"

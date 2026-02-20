@@ -78,9 +78,11 @@ export const ProductListScreen = () => {
     !isWeb ? undefined : webBp === 'wide' ? 1200 : webBp === 'medium' ? 1040 : 900;
 
   // Hero breakout: cancel the contentContainerStyle padding/maxWidth so the hero is truly full-bleed
-  const effectiveContainerWidth = containerMaxWidth ? Math.min(width, containerMaxWidth) : width;
-  const heroInset = (width - effectiveContainerWidth) / 2 + Spacing.lg;
-  const heroBreakoutStyle = { width, marginLeft: -heroInset, marginRight: -heroInset };
+  const heroBreakoutStyle = useMemo(() => {
+    const effectiveContainerWidth = containerMaxWidth ? Math.min(width, containerMaxWidth) : width;
+    const heroInset = (width - effectiveContainerWidth) / 2 + Spacing.lg;
+    return { width, marginLeft: -heroInset, marginRight: -heroInset };
+  }, [width, containerMaxWidth]);
 
   // Offline
   const isOffline = !isConnected || isInternetReachable === false;
