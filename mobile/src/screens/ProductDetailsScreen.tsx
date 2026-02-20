@@ -539,11 +539,18 @@ const ProductDetailsContent: React.FC = () => {
           {/* Reviews Section */}
           <View ref={reviewsSectionRef} style={styles.section} collapsable={false}>
             <View style={styles.reviewsHeader}>
-              <SectionHeader
-                title={`Reviews ${selectedRating !== null ? `(${selectedRating}★)` : ''}`}
-                accentColor="#10B981"
-              />
-              <Button variant="premium" onPress={() => setIsReviewModalOpen(true)}>
+              <View style={styles.reviewsHeaderTitle}>
+                <SectionHeader
+                  title={`Reviews ${selectedRating !== null ? `(${selectedRating}★)` : ''}`}
+                  accentColor="#10B981"
+                />
+              </View>
+              <Button
+                variant="premium"
+                size="sm"
+                style={styles.addReviewButton}
+                onPress={() => setIsReviewModalOpen(true)}
+              >
                 Add Review
               </Button>
             </View>
@@ -791,7 +798,15 @@ const styles = StyleSheet.create({
   reviewsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: Spacing.md,
     marginBottom: Spacing.md,
+  },
+  reviewsHeaderTitle: {
+    flex: 1,
+    minWidth: 0,
+  },
+  addReviewButton: {
+    minWidth: 118,
+    flexShrink: 0,
   },
 });
