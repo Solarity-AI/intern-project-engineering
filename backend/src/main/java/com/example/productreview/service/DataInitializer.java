@@ -93,6 +93,7 @@ public class DataInitializer implements CommandLineRunner {
                     int rating = random.nextInt(5) + 1; // 1-5
                     addReview(p, name, comment, rating);
                 }
+                updateProductStats(p);
             }
 
             // Add bulk reviews for iPhone 15 Pro (first product) for pagination testing
@@ -103,6 +104,7 @@ public class DataInitializer implements CommandLineRunner {
                 int rating = random.nextInt(5) + 1;
                 addReview(iphone, name, comment + " (Test Review " + (i + 1) + ")", rating);
             }
+            updateProductStats(iphone);
         }
     }
 
@@ -124,9 +126,6 @@ public class DataInitializer implements CommandLineRunner {
         review.setRating(rating);
         review.setHelpfulCount(0);
         reviewRepository.save(review);
-
-        // Update product stats
-        updateProductStats(product);
     }
 
     private void updateProductStats(Product product) {

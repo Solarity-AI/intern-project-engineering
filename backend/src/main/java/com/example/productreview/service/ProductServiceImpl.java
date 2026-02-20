@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -181,9 +180,7 @@ public class ProductServiceImpl implements ProductService {
     
     @Override
     public List<Long> getUserVotedReviewIds(String userId) {
-        return reviewVoteRepository.findByUserId(userId).stream()
-                .map(ReviewVote::getReviewId)
-                .collect(Collectors.toList());
+        return reviewVoteRepository.findReviewIdsByUserId(userId);
     }
     
     @Override

@@ -208,13 +208,7 @@ public class ProductServiceTest {
 
     @Test
     void getUserVotedReviewIds_ShouldReturnVotedIds() {
-        Review review10 = new Review();
-        review10.setId(10L);
-        Review review20 = new Review();
-        review20.setId(20L);
-        ReviewVote vote1 = new ReviewVote("user1", review10);
-        ReviewVote vote2 = new ReviewVote("user1", review20);
-        when(reviewVoteRepository.findByUserId("user1")).thenReturn(Arrays.asList(vote1, vote2));
+        when(reviewVoteRepository.findReviewIdsByUserId("user1")).thenReturn(Arrays.asList(10L, 20L));
 
         List<Long> result = productService.getUserVotedReviewIds("user1");
 
@@ -225,7 +219,7 @@ public class ProductServiceTest {
 
     @Test
     void getUserVotedReviewIds_WhenNoVotes_ShouldReturnEmpty() {
-        when(reviewVoteRepository.findByUserId("user1")).thenReturn(new ArrayList<>());
+        when(reviewVoteRepository.findReviewIdsByUserId("user1")).thenReturn(new ArrayList<>());
 
         List<Long> result = productService.getUserVotedReviewIds("user1");
 

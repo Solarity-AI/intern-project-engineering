@@ -51,9 +51,7 @@ public class UserServiceTest {
 
     @Test
     void getWishlist_ShouldReturnProductIds() {
-        WishlistItem item1 = new WishlistItem(USER_ID, 1L);
-        WishlistItem item2 = new WishlistItem(USER_ID, 2L);
-        when(wishlistRepository.findByUserId(USER_ID)).thenReturn(Arrays.asList(item1, item2));
+        when(wishlistRepository.findProductIdsByUserId(USER_ID)).thenReturn(Arrays.asList(1L, 2L));
 
         List<Long> result = userService.getWishlist(USER_ID);
 
@@ -64,7 +62,7 @@ public class UserServiceTest {
 
     @Test
     void getWishlist_WhenEmpty_ShouldReturnEmptyList() {
-        when(wishlistRepository.findByUserId(USER_ID)).thenReturn(Collections.emptyList());
+        when(wishlistRepository.findProductIdsByUserId(USER_ID)).thenReturn(Collections.emptyList());
 
         List<Long> result = userService.getWishlist(USER_ID);
 
@@ -94,8 +92,7 @@ public class UserServiceTest {
 
     @Test
     void getWishlistProducts_ShouldReturnPagedProducts() {
-        WishlistItem item = new WishlistItem(USER_ID, 1L);
-        when(wishlistRepository.findByUserId(USER_ID)).thenReturn(Arrays.asList(item));
+        when(wishlistRepository.findProductIdsByUserId(USER_ID)).thenReturn(Arrays.asList(1L));
 
         Product p = new Product();
         p.setId(1L);
@@ -116,7 +113,7 @@ public class UserServiceTest {
 
     @Test
     void getWishlistProducts_WhenEmpty_ShouldReturnEmptyPage() {
-        when(wishlistRepository.findByUserId(USER_ID)).thenReturn(Collections.emptyList());
+        when(wishlistRepository.findProductIdsByUserId(USER_ID)).thenReturn(Collections.emptyList());
 
         Pageable pageable = PageRequest.of(0, 10);
         when(productRepository.findByIdIn(Collections.emptyList(), pageable))
@@ -184,21 +181,11 @@ public class UserServiceTest {
 
     @Test
     void markAllAsRead_ShouldMarkAllUnreadAsRead() {
-        AppNotification n1 = new AppNotification(USER_ID, "T1", "M1", null);
-        n1.setRead(false);
-        AppNotification n2 = new AppNotification(USER_ID, "T2", "M2", null);
-        n2.setRead(true);
-        AppNotification n3 = new AppNotification(USER_ID, "T3", "M3", null);
-        n3.setRead(false);
-
-        when(notificationRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
-                .thenReturn(Arrays.asList(n1, n2, n3));
+        when(notificationRepository.markAllAsReadByUserId(USER_ID)).thenReturn(2);
 
         userService.markAllAsRead(USER_ID);
 
-        assertTrue(n1.isRead());
-        assertTrue(n3.isRead());
-        verify(notificationRepository).saveAll(anyList());
+        verify(notificationRepository).markAllAsReadByUserId(USER_ID);
     }
 
     @Test
@@ -239,13 +226,11 @@ public class UserServiceTest {
 
     @Test
     void deleteAllNotifications_ShouldDeleteAllForUser() {
-        AppNotification n1 = new AppNotification(USER_ID, "T1", "M1", null);
-        when(notificationRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
-                .thenReturn(Arrays.asList(n1));
+        when(notificationRepository.deleteAllByUserId(USER_ID)).thenReturn(1);
 
         userService.deleteAllNotifications(USER_ID);
 
-        verify(notificationRepository).deleteAll(anyList());
+        verify(notificationRepository).deleteAllByUserId(USER_ID);
     }
 
     // --- Additional Tests for Criteria Compliance ---
@@ -277,37 +262,27 @@ public class UserServiceTest {
     }
 
     @Test
-    void markAllAsRead_WhenAllAlreadyRead_ShouldSaveEmptyList() {
-        AppNotification n1 = new AppNotification(USER_ID, "T1", "M1", null);
-        n1.setRead(true);
-        AppNotification n2 = new AppNotification(USER_ID, "T2", "M2", null);
-        n2.setRead(true);
-
-        when(notificationRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
-                .thenReturn(Arrays.asList(n1, n2));
+    void markAllAsRead_WhenAllAlreadyRead_ShouldStillCallBulkUpdate() {
+        when(notificationRepository.markAllAsReadByUserId(USER_ID)).thenReturn(0);
 
         userService.markAllAsRead(USER_ID);
 
-        verify(notificationRepository).saveAll(anyList());
+        verify(notificationRepository).markAllAsReadByUserId(USER_ID);
     }
 
     @Test
-    void deleteAllNotifications_WhenEmpty_ShouldDeleteEmptyList() {
-        when(notificationRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
-                .thenReturn(Collections.emptyList());
+    void deleteAllNotifications_WhenEmpty_ShouldStillCallBulkDelete() {
+        when(notificationRepository.deleteAllByUserId(USER_ID)).thenReturn(0);
 
         userService.deleteAllNotifications(USER_ID);
 
-        verify(notificationRepository).deleteAll(Collections.emptyList());
+        verify(notificationRepository).deleteAllByUserId(USER_ID);
     }
 
     @Test
     void getWishlist_WithMultipleItems_ShouldReturnAllIds() {
-        WishlistItem item1 = new WishlistItem(USER_ID, 10L);
-        WishlistItem item2 = new WishlistItem(USER_ID, 20L);
-        WishlistItem item3 = new WishlistItem(USER_ID, 30L);
-        when(wishlistRepository.findByUserId(USER_ID))
-                .thenReturn(Arrays.asList(item1, item2, item3));
+        when(wishlistRepository.findProductIdsByUserId(USER_ID))
+                .thenReturn(Arrays.asList(10L, 20L, 30L));
 
         List<Long> result = userService.getWishlist(USER_ID);
 
@@ -317,9 +292,7 @@ public class UserServiceTest {
 
     @Test
     void getWishlistProducts_WithMultipleIds_ShouldReturnPagedProducts() {
-        WishlistItem item1 = new WishlistItem(USER_ID, 1L);
-        WishlistItem item2 = new WishlistItem(USER_ID, 2L);
-        when(wishlistRepository.findByUserId(USER_ID)).thenReturn(Arrays.asList(item1, item2));
+        when(wishlistRepository.findProductIdsByUserId(USER_ID)).thenReturn(Arrays.asList(1L, 2L));
 
         Product p1 = new Product();
         p1.setId(1L);
