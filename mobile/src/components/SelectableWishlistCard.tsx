@@ -113,7 +113,7 @@ function SelectableWishlistCardComponent({
           activeOpacity={0.9}
           style={[
             styles.card,
-            { aspectRatio },
+            { aspectRatio, backgroundColor: colors.card },
             isSelectionMode && styles.cardSelectionMode,
             isSelected && [styles.cardSelected, { borderColor: colors.primary }, Glow.primary],
           ]}
@@ -145,7 +145,7 @@ function SelectableWishlistCardComponent({
 
           {/* Bottom gradient overlay */}
           <LinearGradient
-            colors={['transparent', 'rgba(11,17,32,0.90)'] as [string, string]}
+            colors={['transparent', colorScheme === 'dark' ? 'rgba(11,17,32,0.90)' : 'rgba(0,0,0,0.55)'] as [string, string]}
             style={styles.bottomGradient}
           />
 
@@ -224,7 +224,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Shadow.medium,
     position: 'relative',
-    backgroundColor: '#0B1120',
   },
   cardSelectionMode: {
     shadowColor: '#000',

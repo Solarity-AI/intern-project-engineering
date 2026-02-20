@@ -114,6 +114,27 @@ export const Glass = {
       default: {},
     }),
   },
+  // Light mode variants for dark Glass tokens
+  strongLight: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  subtleLight: {
+    backgroundColor: 'rgba(241,245,249,0.85)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  heroLight: {
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  elevatedLight: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
 };
 
 export const Glow = {

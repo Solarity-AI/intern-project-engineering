@@ -486,7 +486,7 @@ export const ProductListScreen = () => {
   const listHeaderContent = useMemo(() => (
     <>
       {/* ===== FULL-BLEED IMMERSIVE HERO ===== */}
-      <View style={[styles.heroWrapper, heroBreakoutStyle]}>
+      <View style={[styles.heroWrapper, heroBreakoutStyle, { backgroundColor: colors.background }]}>
         {/* Mesh gradient layers */}
         <LinearGradient
           colors={Gradients.meshA as [string, string, ...string[]]}
@@ -527,13 +527,13 @@ export const ProductListScreen = () => {
             <LinearGradient colors={Gradients.brandVivid as [string, string, ...string[]]} style={styles.logoIcon}>
               <Ionicons name="flash" size={18} color="#fff" />
             </LinearGradient>
-            <Text style={styles.logoText}>Solarity</Text>
+            <Text style={[styles.logoText, { color: colors.foreground }]}>Solarity</Text>
             <Text style={styles.logoTextAccent}>Review</Text>
           </TouchableOpacity>
 
           <View style={styles.headerButtons}>
             <TouchableOpacity
-              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb]}
+              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
               onPress={toggleTheme}
               activeOpacity={0.8}
               accessibilityLabel={colorScheme === 'dark' ? 'Toggle light mode' : 'Toggle dark mode'}
@@ -542,12 +542,12 @@ export const ProductListScreen = () => {
               <Ionicons
                 name={colorScheme === 'dark' ? 'sunny' : 'moon'}
                 size={headerIconSize}
-                color={colorScheme === 'dark' ? '#FBBF24' : '#fff'}
+                color={colorScheme === 'dark' ? '#FBBF24' : colors.foreground}
               />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb]}
+              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
               onPress={toggleGridMode}
               activeOpacity={0.8}
               accessibilityLabel="Change grid layout"
@@ -556,12 +556,12 @@ export const ProductListScreen = () => {
               <Ionicons
                 name={gridMode === 1 ? 'list' : gridMode === 2 ? 'grid-outline' : 'grid'}
                 size={headerIconSize}
-                color="#fff"
+                color={colorScheme === 'dark' ? '#fff' : colors.foreground}
               />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb]}
+              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
               onPress={() => navigation.navigate('Wishlist')}
               activeOpacity={0.8}
               accessibilityLabel={`View wishlist, ${wishlistCount} items`}
@@ -576,7 +576,7 @@ export const ProductListScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb]}
+              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
               onPress={() => navigation.navigate('Notifications')}
               activeOpacity={0.8}
               accessibilityLabel={`View notifications, ${unreadCount} unread`}
@@ -594,11 +594,11 @@ export const ProductListScreen = () => {
 
         {/* Hero text — LEFT-ALIGNED, massive tight headlines */}
         <View style={[styles.heroContent, isWeb && { maxWidth: containerMaxWidth, alignSelf: 'center', width: '100%' }]}>
-          <Text style={[styles.heroTitle, isWeb && styles.heroTitleWeb]}>
+          <Text style={[styles.heroTitle, isWeb && styles.heroTitleWeb, { color: colors.foreground }]}>
             Discover{'\n'}Products You'll{' '}
             <Text style={{ color: '#10B981' }}>Love</Text>
           </Text>
-          <Text style={styles.heroSubtitle}>
+          <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>
             AI-powered insights from real reviews
           </Text>
         </View>
@@ -653,7 +653,7 @@ export const ProductListScreen = () => {
               styles.featuredCard,
               colorScheme === 'dark'
                 ? Glass.elevated
-                : { backgroundColor: '#0F172A', ...Shadow.medium },
+                : { backgroundColor: colors.card, ...Shadow.medium },
               featuredIsSelected && { borderWidth: 2, borderColor: colors.primary },
             ]}
             onPress={() => handleCardPress(featuredProduct)}
@@ -667,7 +667,7 @@ export const ProductListScreen = () => {
               onLoad={onFeaturedImageLoad}
             />
             <LinearGradient
-              colors={['transparent', 'rgba(11,17,32,0.85)'] as [string, string]}
+              colors={['transparent', colorScheme === 'dark' ? 'rgba(11,17,32,0.90)' : 'rgba(255,255,255,0.95)'] as [string, string]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.featuredImageOverlay}
@@ -709,7 +709,7 @@ export const ProductListScreen = () => {
             )}
             <View style={styles.featuredContent}>
               <Text style={styles.featuredLabel}>FEATURED</Text>
-              <Text style={styles.featuredName} numberOfLines={2}>
+              <Text style={[styles.featuredName, { color: colors.cardForeground }]} numberOfLines={2}>
                 {featuredProduct.name ?? 'Product'}
               </Text>
               <View style={styles.featuredRatingRow}>
@@ -717,7 +717,7 @@ export const ProductListScreen = () => {
                 <Text style={styles.featuredRating}>
                   {(featuredProduct.averageRating ?? 0).toFixed(1)}
                 </Text>
-                <Text style={styles.featuredReviewCount}>
+                <Text style={[styles.featuredReviewCount, { color: colors.mutedForeground }]}>
                   ({featuredProduct.reviewCount ?? 0})
                 </Text>
               </View>
@@ -725,7 +725,7 @@ export const ProductListScreen = () => {
                 <Text style={styles.featuredPrice}>
                   ${featuredProduct.price?.toFixed(2) ?? 'N/A'}
                 </Text>
-                <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.5)" />
+                <Ionicons name="arrow-forward" size={18} color={colorScheme === 'dark' ? 'rgba(255,255,255,0.5)' : colors.mutedForeground} />
               </View>
             </View>
           </TouchableOpacity>
@@ -956,7 +956,6 @@ const styles = StyleSheet.create({
   heroWrapper: {
     width: '100%',
     minHeight: 280,
-    backgroundColor: '#0B1120',
     position: 'relative',
     overflow: 'hidden',
     // NO borderRadius, NO margin — full-bleed
@@ -1163,8 +1162,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
-    left: '25%',
-    width: '35%',
+    left: '30%',
+    width: '15%',
   },
   featuredWishlistButton: {
     position: 'absolute',

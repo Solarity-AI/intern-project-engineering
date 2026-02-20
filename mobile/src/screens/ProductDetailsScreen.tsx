@@ -389,32 +389,32 @@ const ProductDetailsContent: React.FC = () => {
               />
               {/* Top gradient for buttons */}
               <LinearGradient
-                colors={['rgba(11,17,32,0.6)', 'transparent'] as [string, string]}
+                colors={[colorScheme === 'dark' ? 'rgba(11,17,32,0.6)' : 'rgba(0,0,0,0.35)', 'transparent'] as [string, string]}
                 style={styles.heroTopGradient}
               />
               {/* Bottom 50% gradient for info */}
               <LinearGradient
-                colors={['transparent', 'rgba(11,17,32,0.85)'] as [string, string]}
+                colors={['transparent', colorScheme === 'dark' ? 'rgba(11,17,32,0.85)' : 'rgba(0,0,0,0.55)'] as [string, string]}
                 style={styles.heroBottomGradient}
               />
 
               {/* Back button — top left glass circle */}
               <TouchableOpacity
-                style={[styles.heroBackButton, Glass.strong]}
+                style={[styles.heroBackButton, colorScheme === 'dark' ? Glass.strong : Glass.strongLight]}
                 onPress={handleBack}
               >
-                <Ionicons name="chevron-back" size={22} color="#fff" />
+                <Ionicons name="chevron-back" size={22} color={colorScheme === 'dark' ? '#fff' : colors.foreground} />
               </TouchableOpacity>
 
               {/* Wishlist button — top right glass circle */}
               <TouchableOpacity
                 onPress={handleWishlistToggle}
-                style={[styles.heroWishlistButton, Glass.strong]}
+                style={[styles.heroWishlistButton, colorScheme === 'dark' ? Glass.strong : Glass.strongLight]}
               >
                 <Ionicons
                   name={inWishlist ? 'heart' : 'heart-outline'}
                   size={24}
-                  color={inWishlist ? '#F87171' : '#fff'}
+                  color={inWishlist ? '#F87171' : colorScheme === 'dark' ? '#fff' : colors.foreground}
                 />
               </TouchableOpacity>
 
