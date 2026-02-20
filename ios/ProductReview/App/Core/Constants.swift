@@ -12,7 +12,7 @@ enum AppConstants {
     enum API {
         // Toggle for local development vs production
         #if DEBUG
-        static let useLocalServer = true
+        static let useLocalServer = false
         #else
         static let useLocalServer = false
         #endif
