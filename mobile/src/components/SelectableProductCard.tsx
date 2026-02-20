@@ -40,7 +40,7 @@ function imageForCategory(categories?: string[]) {
   return 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=800&q=80';
 }
 
-export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
+const SelectableProductCardComponent: React.FC<SelectableProductCardProps> = ({
   product,
   numColumns = 2,
   isSelectionMode,
@@ -65,7 +65,7 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
 
   const heartScale = useRef(new Animated.Value(1)).current;
 
-  const handleWishlistToggle = (e: any) => {
+  const handleWishlistToggle = useCallback((e: any) => {
     e.stopPropagation();
 
     // Bounce animation
@@ -92,7 +92,7 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
       categories: product.categories,
       averageRating: avgRating,
     } as any);
-  };
+  }, [heartScale, toggleWishlist, productId, product.name, product.price, product.categories, avgRating, imageUri]);
 
   const imageOpacity = useRef(new Animated.Value(0)).current;
   const onImageLoad = useCallback(() => {
@@ -107,28 +107,13 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
 
   useEffect(() => {
     if (isSelectionMode) {
-      const animation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(shakeAnim, {
-            toValue: -2,
-            duration: 50,
-            easing: Easing.linear,
-            useNativeDriver: USE_NATIVE_DRIVER,
-          }),
-          Animated.timing(shakeAnim, {
-            toValue: 2,
-            duration: 50,
-            easing: Easing.linear,
-            useNativeDriver: USE_NATIVE_DRIVER,
-          }),
-          Animated.timing(shakeAnim, {
-            toValue: 0,
-            duration: 50,
-            easing: Easing.linear,
-            useNativeDriver: USE_NATIVE_DRIVER,
-          }),
-        ])
-      );
+      const animation = Animated.sequence([
+        Animated.timing(shakeAnim, { toValue: -2, duration: 60, easing: Easing.linear, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(shakeAnim, { toValue: 2, duration: 60, easing: Easing.linear, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(shakeAnim, { toValue: -1, duration: 60, easing: Easing.linear, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(shakeAnim, { toValue: 1, duration: 60, easing: Easing.linear, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(shakeAnim, { toValue: 0, duration: 60, easing: Easing.linear, useNativeDriver: USE_NATIVE_DRIVER }),
+      ]);
       animation.start();
       return () => animation.stop();
     } else {
@@ -164,14 +149,14 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
       <Pressable
         style={[
           styles.container,
-          { aspectRatio },
+          { aspectRatio, backgroundColor: colors.card },
           isSelectionMode && styles.cardSelectionMode,
           isSelected && [styles.cardSelected, { borderColor: colors.primary }, Glow.primary],
           Platform.OS === 'web' && ({ transition: 'transform 0.3s ease', cursor: 'pointer' } as any),
         ]}
         onPress={() => onPress(product)}
         onLongPress={() => onLongPress(product)}
-        delayLongPress={2250}
+        delayLongPress={500}
         accessibilityLabel={`${product.name ?? 'Product'}, rated ${avgRating.toFixed(1)} stars, $${product.price.toFixed(2)}`}
         accessibilityRole="button"
         accessibilityHint="Double tap to view product details"
@@ -186,7 +171,7 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
 
         {/* Bottom gradient overlay — 65% height */}
         <LinearGradient
-          colors={['transparent', 'rgba(11,17,32,0.90)'] as [string, string]}
+          colors={['transparent', colorScheme === 'dark' ? 'rgba(11,17,32,0.90)' : 'rgba(0,0,0,0.55)'] as [string, string]}
           style={styles.bottomGradient}
         />
 
@@ -236,13 +221,14 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
             numColumns >= 3 && styles.wishlistButtonCompact,
           ]}
           onPress={handleWishlistToggle}
+          hitSlop={numColumns >= 3 ? { top: 7, bottom: 7, left: 7, right: 7 } : { top: 4, bottom: 4, left: 4, right: 4 }}
           accessibilityLabel={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
           accessibilityRole="button"
         >
           <Animated.View style={{ transform: [{ scale: heartScale }] }}>
             <Ionicons
               name={inWishlist ? 'heart' : 'heart-outline'}
-              size={numColumns >= 3 ? 14 : 18}
+              size={numColumns >= 3 ? 16 : 20}
               color={inWishlist ? '#F87171' : colorScheme === 'dark' ? '#fff' : '#111'}
             />
           </Animated.View>
@@ -267,6 +253,8 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
   );
 };
 
+export const SelectableProductCard = React.memo(SelectableProductCardComponent);
+
 const styles = StyleSheet.create({
   wrapper: {
     position: 'relative',
@@ -277,7 +265,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Shadow.medium,
     position: 'relative',
-    backgroundColor: '#0B1120',
   },
   cardSelectionMode: {
     transform: [{ scale: 1.05 }],
@@ -308,17 +295,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: Spacing.md,
     right: Spacing.md,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
   },
   wishlistButtonCompact: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     top: Spacing.sm,
     right: Spacing.sm,
   },

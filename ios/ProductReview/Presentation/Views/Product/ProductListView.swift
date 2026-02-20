@@ -383,9 +383,9 @@ struct ProductListView: View {
                             onToggle: {},
                             activeColor: AppColors.primary,
                             inactiveColor: AppColors.foreground.opacity(0.65),
-                            size: 14
+                            size: 18
                         )
-                        .padding(8)
+                        .frame(width: 44, height: 44)
                         .background(.ultraThinMaterial, in: Circle())
                         .padding(.top, 8)
                         .padding(.trailing, 2)

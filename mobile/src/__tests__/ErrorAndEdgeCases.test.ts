@@ -19,11 +19,12 @@ jest.mock('../services/api', () => ({
   getUserVotedReviews: jest.fn(),
 }));
 
-import { renderHook, act } from '@testing-library/react-native';
+import { act } from 'react-test-renderer';
 import { getProduct, getProducts, getReviews } from '../services/api';
 import { useProductDetailViewModel } from '../screens/useProductDetailViewModel';
 import { useProductListViewModel } from '../screens/useProductListViewModel';
 import type { ApiProduct, Page } from '../services/api';
+import { renderHook } from './test-utils/renderHook';
 
 // ---------------------------------------------------------------------------
 // Typed mock references

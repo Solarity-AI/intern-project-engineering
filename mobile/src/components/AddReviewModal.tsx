@@ -325,7 +325,7 @@ export const AddReviewModal: React.FC<AddReviewModalProps> = ({
   productName,
   onSubmit,
 }) => {
-  const { colors } = useTheme();
+  const { colors, colorScheme } = useTheme();
   const isWeb = Platform.OS === 'web';
 
   // ✅ Provider INSIDE Modal = toast shows on the review screen (not behind it)
@@ -340,7 +340,7 @@ export const AddReviewModal: React.FC<AddReviewModalProps> = ({
       <ToastProvider>
         <View style={[
           styles.modalContainer,
-          isWeb && { backgroundColor: 'rgba(11, 17, 32, 0.85)' },
+          isWeb && { backgroundColor: colorScheme === 'dark' ? 'rgba(11, 17, 32, 0.85)' : 'rgba(0, 0, 0, 0.5)' },
           !isWeb && { backgroundColor: colors.background },
         ]}>
           <AddReviewModalContent 

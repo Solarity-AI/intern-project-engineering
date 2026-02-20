@@ -142,7 +142,7 @@ export const Button: React.FC<ButtonProps> = ({
       ) : (
         <>
           {icon}
-          <Text style={textStyleCombined}>{children}</Text>
+          <Text style={textStyleCombined} numberOfLines={1}>{children}</Text>
         </>
       )}
     </>

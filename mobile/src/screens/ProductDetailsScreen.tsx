@@ -31,6 +31,8 @@ import { GradientDivider } from '../components/GradientDivider';
 import { SectionHeader } from '../components/SectionHeader';
 import { SkeletonLoader } from '../components/SkeletonLoader';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { useWishlist } from '../context/WishlistContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useTheme } from '../context/ThemeContext';
@@ -60,13 +62,14 @@ const ProductDetailsContent: React.FC = () => {
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { addNotification } = useNotifications();
 
+  const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
   const MAX_CONTENT_WIDTH = 600;
   const isWideScreen = windowWidth > MAX_CONTENT_WIDTH;
 
   const contentWidth = isWeb && isWideScreen ? MAX_CONTENT_WIDTH : windowWidth;
-  const horizontalPadding = isWeb && isWideScreen ? (windowWidth - MAX_CONTENT_WIDTH) / 2 : 0;
+  const heroImageHeight = useMemo(() => Math.min(contentWidth * (5 / 4), 500), [contentWidth]);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const reviewsSectionRef = useRef<View>(null);
@@ -286,7 +289,7 @@ const ProductDetailsContent: React.FC = () => {
 
   if (loading && !product) {
     return (
-      <ScreenWrapper backgroundColor={colors.background}>
+      <ScreenWrapper backgroundColor={colors.background} edges={['left', 'right', 'bottom']}>
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Hero image skeleton */}
           <SkeletonLoader width="100%" height={400} borderRadius={0} />
@@ -346,7 +349,7 @@ const ProductDetailsContent: React.FC = () => {
 
   if (!product) {
     return (
-      <ScreenWrapper backgroundColor={colors.background}>
+      <ScreenWrapper backgroundColor={colors.background} edges={['left', 'right', 'bottom']}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color={colors.mutedForeground} />
           <Text style={[styles.errorText, { color: colors.foreground }]}>
@@ -368,7 +371,7 @@ const ProductDetailsContent: React.FC = () => {
   };
 
   return (
-    <ScreenWrapper backgroundColor={colors.background}>
+    <ScreenWrapper backgroundColor={colors.background} edges={['left', 'right', 'bottom']}>
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -379,6 +382,7 @@ const ProductDetailsContent: React.FC = () => {
           {imageUrl && (
             <View style={[
               styles.heroImage,
+              { height: heroImageHeight },
               isWeb && { borderRadius: 0 },
             ]}>
               <Animated.Image
@@ -389,32 +393,32 @@ const ProductDetailsContent: React.FC = () => {
               />
               {/* Top gradient for buttons */}
               <LinearGradient
-                colors={['rgba(11,17,32,0.6)', 'transparent'] as [string, string]}
+                colors={[colorScheme === 'dark' ? 'rgba(11,17,32,0.6)' : 'rgba(0,0,0,0.35)', 'transparent'] as [string, string]}
                 style={styles.heroTopGradient}
               />
               {/* Bottom 50% gradient for info */}
               <LinearGradient
-                colors={['transparent', 'rgba(11,17,32,0.85)'] as [string, string]}
+                colors={['transparent', colorScheme === 'dark' ? 'rgba(11,17,32,0.85)' : 'rgba(0,0,0,0.55)'] as [string, string]}
                 style={styles.heroBottomGradient}
               />
 
               {/* Back button — top left glass circle */}
               <TouchableOpacity
-                style={[styles.heroBackButton, Glass.strong]}
+                style={[styles.heroBackButton, { top: insets.top + Spacing.sm }, colorScheme === 'dark' ? Glass.strong : Glass.strongLight]}
                 onPress={handleBack}
               >
-                <Ionicons name="chevron-back" size={22} color="#fff" />
+                <Ionicons name="chevron-back" size={22} color={colorScheme === 'dark' ? '#fff' : colors.foreground} />
               </TouchableOpacity>
 
               {/* Wishlist button — top right glass circle */}
               <TouchableOpacity
                 onPress={handleWishlistToggle}
-                style={[styles.heroWishlistButton, Glass.strong]}
+                style={[styles.heroWishlistButton, { top: insets.top + Spacing.sm }, colorScheme === 'dark' ? Glass.strong : Glass.strongLight]}
               >
                 <Ionicons
                   name={inWishlist ? 'heart' : 'heart-outline'}
                   size={24}
-                  color={inWishlist ? '#F87171' : '#fff'}
+                  color={inWishlist ? '#F87171' : colorScheme === 'dark' ? '#fff' : colors.foreground}
                 />
               </TouchableOpacity>
 
@@ -539,11 +543,18 @@ const ProductDetailsContent: React.FC = () => {
           {/* Reviews Section */}
           <View ref={reviewsSectionRef} style={styles.section} collapsable={false}>
             <View style={styles.reviewsHeader}>
-              <SectionHeader
-                title={`Reviews ${selectedRating !== null ? `(${selectedRating}★)` : ''}`}
-                accentColor="#10B981"
-              />
-              <Button variant="premium" onPress={() => setIsReviewModalOpen(true)}>
+              <View style={styles.reviewsHeaderTitle}>
+                <SectionHeader
+                  title={`Reviews ${selectedRating !== null ? `(${selectedRating}★)` : ''}`}
+                  accentColor="#10B981"
+                />
+              </View>
+              <Button
+                variant="premium"
+                size="sm"
+                style={styles.addReviewButton}
+                onPress={() => setIsReviewModalOpen(true)}
+              >
                 Add Review
               </Button>
             </View>
@@ -613,8 +624,6 @@ const styles = StyleSheet.create({
   heroImage: {
     position: 'relative',
     width: '100%',
-    aspectRatio: 4 / 5,
-    maxHeight: 500,
     overflow: 'hidden',
   },
   heroImg: {
@@ -780,18 +789,28 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     height: 64,
     borderRadius: BorderRadius.xl,
+    paddingHorizontal: Spacing.lg,
   },
   aiBannerText: {
     color: '#fff',
     fontSize: FontSize.base,
     fontWeight: FontWeight.semibold,
     flex: 1,
+    textAlign: 'center',
   },
 
   reviewsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: Spacing.md,
     marginBottom: Spacing.md,
+  },
+  reviewsHeaderTitle: {
+    flex: 1,
+    minWidth: 0,
+  },
+  addReviewButton: {
+    minWidth: 118,
+    flexShrink: 0,
   },
 });

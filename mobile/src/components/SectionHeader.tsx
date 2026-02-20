@@ -14,7 +14,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({ title, accentColor
   return (
     <View style={styles.container}>
       <View style={[styles.accentBar, { backgroundColor: barColor }]} />
-      <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
+      <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>{title}</Text>
     </View>
   );
 };
