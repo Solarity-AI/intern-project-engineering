@@ -19,6 +19,9 @@ jest.mock('../../services/api', () => ({
   getUserVotedReviews: jest.fn(),
   postReview: jest.fn(),
   markReviewAsHelpful: jest.fn(),
+  getUserMessage: jest.fn((error: unknown) =>
+    error instanceof Error ? error.message : 'Unexpected error'
+  ),
 }));
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -225,6 +228,7 @@ function makeProduct(
     price,
     averageRating: 4.5,
     reviewCount: 12,
+    imageUrl: `https://example.com/product-${id}.jpg`,
     ...overrides,
   };
 }
@@ -304,7 +308,7 @@ describe('ProductList -> ProductDetails navigation', () => {
   it('back action returns to the product list screen', async () => {
     await navigateToDetails();
 
-    fireEvent.press(screen.getByText('Back'));
+    fireEvent.press(screen.getByTestId('icon-chevron-back'));
 
     await waitFor(() => {
       expect(screen.getByText('List Product 101')).toBeTruthy();

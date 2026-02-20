@@ -35,6 +35,9 @@ jest.mock('../../services/api', () => ({
   getUserVotedReviews: jest.fn().mockResolvedValue([]),
   postReview: jest.fn(),
   markReviewAsHelpful: jest.fn(),
+  getUserMessage: jest.fn((error: unknown) =>
+    error instanceof Error ? error.message : 'Unexpected error'
+  ),
 }));
 
 jest.mock('@react-native-async-storage/async-storage', () => ({

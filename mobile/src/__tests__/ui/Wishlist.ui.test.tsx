@@ -10,6 +10,9 @@
 jest.mock('../../services/api', () => ({
   getWishlistProducts: jest.fn(),
   toggleWishlistApi: jest.fn().mockResolvedValue(undefined),
+  getUserMessage: jest.fn((error: unknown) =>
+    error instanceof Error ? error.message : 'Unexpected error'
+  ),
 }));
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -48,6 +51,14 @@ jest.mock('../../context/ThemeContext', () => ({
     colorScheme: 'light',
     toggleTheme: jest.fn(),
     isThemeLoaded: true,
+  }),
+}));
+
+jest.mock('../../context/NetworkContext', () => ({
+  useNetwork: () => ({
+    isConnected: true,
+    isInternetReachable: true,
+    checkConnection: jest.fn().mockResolvedValue(true),
   }),
 }));
 
