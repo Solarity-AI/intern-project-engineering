@@ -13,7 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,7 @@ import java.util.stream.Collectors;
 public class ProductServiceImpl implements ProductService {
     
     private static final Logger log = LoggerFactory.getLogger(ProductServiceImpl.class);
+    private static final int AI_REVIEW_MAX_COUNT = 50;
     
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;
@@ -94,11 +97,12 @@ public class ProductServiceImpl implements ProductService {
         productDTO.setRatingBreakdown(ratingBreakdown);
         
         try {
-            List<Review> reviews = reviewRepository.findByProductId(id);
+            Pageable aiPageable = PageRequest.of(0, AI_REVIEW_MAX_COUNT, Sort.by(Sort.Direction.DESC, "createdAt"));
+            List<Review> reviews = reviewRepository.findByProductId(id, aiPageable).getContent();
             if (!reviews.isEmpty()) {
                 String aiSummary = aiSummaryService.generateReviewSummary(
-                        id, 
-                        product.getName(), 
+                        id,
+                        product.getName(),
                         reviews
                 );
                 productDTO.setAiSummary(aiSummary);
@@ -106,7 +110,7 @@ public class ProductServiceImpl implements ProductService {
         } catch (Exception e) {
             log.error("Error generating AI summary for product {}: {}", id, e.getMessage());
         }
-        
+
         return productDTO;
     }
 
@@ -114,13 +118,6 @@ public class ProductServiceImpl implements ProductService {
     public Product getProductById(Long id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", id));
-    }
-
-    @Override
-    public List<ReviewDTO> getReviewsByProductId(Long productId) {
-        return reviewRepository.findByProductId(productId).stream()
-                .map(this::convertToReviewDTO)
-                .collect(Collectors.toList());
     }
 
     @Override
@@ -191,7 +188,8 @@ public class ProductServiceImpl implements ProductService {
     
     @Override
     public String chatAboutProduct(Long productId, String question) {
-        List<Review> reviews = reviewRepository.findByProductId(productId);
+        Pageable aiPageable = PageRequest.of(0, AI_REVIEW_MAX_COUNT, Sort.by(Sort.Direction.DESC, "createdAt"));
+        List<Review> reviews = reviewRepository.findByProductId(productId, aiPageable).getContent();
         return aiSummaryService.chatWithReviews(productId, question, reviews);
     }
     

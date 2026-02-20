@@ -17,8 +17,6 @@ public interface ProductService {
     
     Product getProductById(Long id);
     
-    List<ReviewDTO> getReviewsByProductId(Long productId);
-    
     Page<ReviewDTO> getReviewsByProductId(Long productId, Integer rating, Pageable pageable);
     
     ReviewDTO addReview(Long productId, ReviewDTO reviewDTO);

@@ -13,10 +13,6 @@ import java.util.List;
 @Repository
 public interface ReviewRepository extends JpaRepository<Review, Long> {
     
-    @Query("SELECT r FROM Review r WHERE r.product.id = :productId")
-    List<Review> findByProductId(@Param("productId") Long productId);
-    
-    // ✨ Added paged findByProductId
     Page<Review> findByProductId(@Param("productId") Long productId, Pageable pageable);
     
     // Updated query to handle optional rating filtering

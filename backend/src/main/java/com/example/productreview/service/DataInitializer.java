@@ -130,10 +130,11 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void updateProductStats(Product product) {
-        var reviews = reviewRepository.findByProductId(product.getId());
-        double avg = reviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
-        product.setAverageRating(Math.round(avg * 10.0) / 10.0);
-        product.setReviewCount(reviews.size());
+        Object[] stats = reviewRepository.getReviewStats(product.getId()).get(0);
+        int count = stats[0] != null ? ((Number) stats[0]).intValue() : 0;
+        double average = stats[1] != null ? ((Number) stats[1]).doubleValue() : 0.0;
+        product.setReviewCount(count);
+        product.setAverageRating(Math.round(average * 10.0) / 10.0);
         productRepository.save(product);
     }
 }
