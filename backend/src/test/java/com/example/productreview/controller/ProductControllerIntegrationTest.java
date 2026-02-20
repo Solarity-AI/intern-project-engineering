@@ -107,6 +107,85 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.content").isArray());
     }
 
+    // --- Rating Filter Validation Tests ---
+
+    @Test
+    void getReviews_WithValidRating_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews").param("rating", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
+    void getReviews_WithRatingZero_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews").param("rating", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Rating must be between 1 and 5"));
+    }
+
+    @Test
+    void getReviews_WithRatingAboveFive_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews").param("rating", "10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Rating must be between 1 and 5"));
+    }
+
+    @Test
+    void getReviews_WithNegativeRating_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews").param("rating", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Rating must be between 1 and 5"));
+    }
+
+    // --- Sort Field Validation Tests ---
+
+    @Test
+    void getReviews_WithValidSortField_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews").param("sort", "rating,asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
+    void getReviews_WithInvalidSortField_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews").param("sort", "invalidField,asc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    // --- Review Pagination Edge Cases ---
+
+    @Test
+    void getReviews_WithSizeZero_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews").param("size", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Page size must be at least 1"));
+    }
+
+    @Test
+    void getReviews_WithSizeOne_ShouldReturnSingleReview() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.size").value(1));
+    }
+
+    @Test
+    void getReviews_WithOutOfBoundsPage_ShouldReturnEmptyContent() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews").param("page", "9999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content").isEmpty());
+    }
+
+    @Test
+    void getReviews_WithDefaultParams_ShouldReturnPagedWithDefaults() throws Exception {
+        mockMvc.perform(get("/api/v1/products/1/reviews"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.number").value(0));
+    }
+
     // --- Review Validation Tests ---
 
     @Test

@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -38,14 +37,12 @@ public class UserService {
     // --- Wishlist ---
 
     public List<Long> getWishlist(String userId) {
-        return wishlistRepository.findByUserId(userId).stream()
-                .map(WishlistItem::getProductId)
-                .collect(Collectors.toList());
+        return wishlistRepository.findProductIdsByUserId(userId);
     }
 
     // ✨ New method for paged wishlist products
     public Page<ProductDTO> getWishlistProducts(String userId, Pageable pageable) {
-        List<Long> productIds = getWishlist(userId);
+        List<Long> productIds = wishlistRepository.findProductIdsByUserId(userId);
         return productRepository.findByIdIn(productIds, pageable)
                 .map(p -> new ProductDTO(
                         p.getId(),
@@ -91,13 +88,9 @@ public class UserService {
         notificationRepository.save(notification);
     }
     
+    @Transactional
     public void markAllAsRead(String userId) {
-        List<AppNotification> unread = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                .filter(n -> !n.isRead())
-                .collect(Collectors.toList());
-        
-        unread.forEach(n -> n.setRead(true));
-        notificationRepository.saveAll(unread);
+        notificationRepository.markAllAsReadByUserId(userId);
     }
 
     public void createNotification(String userId, String title, String message, Long productId) {
@@ -118,7 +111,6 @@ public class UserService {
     
     @Transactional
     public void deleteAllNotifications(String userId) {
-        List<AppNotification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
-        notificationRepository.deleteAll(notifications);
+        notificationRepository.deleteAllByUserId(userId);
     }
 }
