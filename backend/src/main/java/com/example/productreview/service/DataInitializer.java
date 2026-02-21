@@ -136,8 +136,8 @@ public class DataInitializer implements CommandLineRunner {
 
         if (results != null && !results.isEmpty() && results.get(0) != null) {
             Object[] stats = results.get(0);
-            count = stats[0] != null ? ((Number) stats[0]).intValue() : 0;
-            average = stats[1] != null ? ((Number) stats[1]).doubleValue() : 0.0;
+            count = stats.length > 0 && stats[0] != null ? ((Number) stats[0]).intValue() : 0;
+            average = stats.length > 1 && stats[1] != null ? ((Number) stats[1]).doubleValue() : 0.0;
         }
 
         product.setReviewCount(count);

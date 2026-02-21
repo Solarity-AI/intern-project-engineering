@@ -212,9 +212,9 @@ public class ProductServiceImpl implements ProductService {
 
         if (results != null && !results.isEmpty() && results.get(0) != null) {
             Object[] row = results.get(0);
-            totalReviews = row[0] != null ? ((Number) row[0]).longValue() : 0L;
-            avgRating = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
-            totalProducts = row[2] != null ? ((Number) row[2]).longValue() : 0L;
+            totalReviews = row.length > 0 && row[0] != null ? ((Number) row[0]).longValue() : 0L;
+            avgRating = row.length > 1 && row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
+            totalProducts = row.length > 2 && row[2] != null ? ((Number) row[2]).longValue() : 0L;
         }
 
         avgRating = Math.round(avgRating * 10.0) / 10.0;
@@ -238,8 +238,8 @@ public class ProductServiceImpl implements ProductService {
 
         if (results != null && !results.isEmpty() && results.get(0) != null) {
             Object[] stats = results.get(0);
-            count = stats[0] != null ? ((Number) stats[0]).intValue() : 0;
-            average = stats[1] != null ? ((Number) stats[1]).doubleValue() : 0.0;
+            count = stats.length > 0 && stats[0] != null ? ((Number) stats[0]).intValue() : 0;
+            average = stats.length > 1 && stats[1] != null ? ((Number) stats[1]).doubleValue() : 0.0;
         }
 
         product.setReviewCount(count);

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
+import static org.hamcrest.Matchers.greaterThan;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -51,18 +52,18 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
     void getGlobalStats_ShouldReturnOkWithValidStructure() throws Exception {
         mockMvc.perform(get("/api/v1/products/stats"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalProducts").isNumber())
-                .andExpect(jsonPath("$.totalReviews").isNumber())
-                .andExpect(jsonPath("$.averageRating").isNumber());
+                .andExpect(jsonPath("$.totalProducts", greaterThan(0)))
+                .andExpect(jsonPath("$.totalReviews", greaterThan(0)))
+                .andExpect(jsonPath("$.averageRating", greaterThan(0.0)));
     }
 
     @Test
     void getGlobalStats_WithCategoryFilter_ShouldReturnOk() throws Exception {
         mockMvc.perform(get("/api/v1/products/stats").param("category", "Electronics"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalProducts").isNumber())
-                .andExpect(jsonPath("$.totalReviews").isNumber())
-                .andExpect(jsonPath("$.averageRating").isNumber());
+                .andExpect(jsonPath("$.totalProducts", greaterThan(0)))
+                .andExpect(jsonPath("$.totalReviews", greaterThan(0)))
+                .andExpect(jsonPath("$.averageRating", greaterThan(0.0)));
     }
 
     @Test
