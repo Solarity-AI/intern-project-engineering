@@ -582,6 +582,7 @@ const ProductDetailsContent: React.FC = () => {
                   hasMore={hasMore}
                   currentPage={currentPage}
                   totalPages={totalPages}
+                  endSubtext="Showing all reviews"
                 />
               </View>
             )}

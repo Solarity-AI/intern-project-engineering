@@ -510,6 +510,7 @@ export const WishlistScreen = () => {
                   hasMore={hasMore}
                   currentPage={currentPage}
                   totalPages={totalPages}
+                  endSubtext="Showing all wishlist items"
                 />
               }
             />
