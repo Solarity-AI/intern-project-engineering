@@ -471,6 +471,142 @@ public class ProductServiceTest {
         assertEquals(0, review.getHelpfulCount());
     }
 
+    // --- Empty Database / Zero-State Tests (#105) ---
+
+    @Test
+    void getGlobalStats_WhenDatabaseEmpty_ShouldReturnZeroState() {
+        when(productRepository.getGlobalStats()).thenReturn(Collections.emptyList());
+
+        Map<String, Object> stats = productService.getGlobalStats(null, null);
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    @Test
+    void getGlobalStats_WhenResultContainsNullAggregates_ShouldReturnZeroState() {
+        when(productRepository.getGlobalStats())
+                .thenReturn(Collections.singletonList(new Object[]{null, null, 0L}));
+
+        Map<String, Object> stats = productService.getGlobalStats(null, null);
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    @Test
+    void getGlobalStats_WithCategory_WhenEmpty_ShouldReturnZeroState() {
+        when(productRepository.getCategoryStats("NonExistent")).thenReturn(Collections.emptyList());
+
+        Map<String, Object> stats = productService.getGlobalStats("NonExistent", null);
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    @Test
+    void getGlobalStats_WithSearch_WhenEmpty_ShouldReturnZeroState() {
+        when(productRepository.getSearchStats("NoMatch")).thenReturn(Collections.emptyList());
+
+        Map<String, Object> stats = productService.getGlobalStats(null, "NoMatch");
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    @Test
+    void getGlobalStats_WithCategoryAndSearch_WhenEmpty_ShouldReturnZeroState() {
+        when(productRepository.getCategoryAndSearchStats("NonExistent", "NoMatch"))
+                .thenReturn(Collections.emptyList());
+
+        Map<String, Object> stats = productService.getGlobalStats("NonExistent", "NoMatch");
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    @Test
+    void getGlobalStats_WhenResultRowIsNull_ShouldReturnZeroState() {
+        List<Object[]> nullRowList = new ArrayList<>();
+        nullRowList.add(null);
+        when(productRepository.getGlobalStats()).thenReturn(nullRowList);
+
+        Map<String, Object> stats = productService.getGlobalStats(null, null);
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    @Test
+    void getGlobalStats_WhenRepositoryReturnsNull_ShouldReturnZeroState() {
+        when(productRepository.getGlobalStats()).thenReturn(null);
+
+        Map<String, Object> stats = productService.getGlobalStats(null, null);
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    // --- updateProductStats edge cases (#105) ---
+
+    @Test
+    void addReview_WhenReviewStatsEmpty_ShouldDefaultToZero() {
+        ReviewDTO reviewDTO = new ReviewDTO();
+        reviewDTO.setReviewerName("TestUser");
+        reviewDTO.setComment("Good product indeed");
+        reviewDTO.setRating(5);
+
+        Review review = new Review();
+        review.setId(1L);
+        review.setReviewerName("TestUser");
+        review.setRating(5);
+        review.setProduct(product);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(reviewRepository.save(any(Review.class))).thenReturn(review);
+        when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.emptyList());
+
+        ReviewDTO result = productService.addReview(1L, reviewDTO);
+
+        assertNotNull(result);
+        assertEquals(0, product.getReviewCount());
+        assertEquals(0.0, product.getAverageRating());
+    }
+
+    @Test
+    void addReview_WhenReviewStatsRowIsNull_ShouldDefaultToZero() {
+        ReviewDTO reviewDTO = new ReviewDTO();
+        reviewDTO.setReviewerName("TestUser");
+        reviewDTO.setComment("Good product indeed");
+        reviewDTO.setRating(5);
+
+        Review review = new Review();
+        review.setId(1L);
+        review.setReviewerName("TestUser");
+        review.setRating(5);
+        review.setProduct(product);
+
+        List<Object[]> nullRowList = new ArrayList<>();
+        nullRowList.add(null);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(reviewRepository.save(any(Review.class))).thenReturn(review);
+        when(reviewRepository.getReviewStats(1L)).thenReturn(nullRowList);
+
+        ReviewDTO result = productService.addReview(1L, reviewDTO);
+
+        assertNotNull(result);
+        assertEquals(0, product.getReviewCount());
+        assertEquals(0.0, product.getAverageRating());
+    }
+
     @Test
     void markReviewAsHelpful_WithNullHelpfulCount_ShouldInitializeToZero() {
         Review review = new Review();

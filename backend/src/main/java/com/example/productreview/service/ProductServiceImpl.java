@@ -206,10 +206,16 @@ public class ProductServiceImpl implements ProductService {
             results = productRepository.getGlobalStats();
         }
 
-        Object[] row = results.get(0);
-        long totalReviews = row[0] != null ? ((Number) row[0]).longValue() : 0L;
-        double avgRating = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
-        long totalProducts = row[2] != null ? ((Number) row[2]).longValue() : 0L;
+        long totalReviews = 0L;
+        double avgRating = 0.0;
+        long totalProducts = 0L;
+
+        if (results != null && !results.isEmpty() && results.get(0) != null) {
+            Object[] row = results.get(0);
+            totalReviews = row[0] != null ? ((Number) row[0]).longValue() : 0L;
+            avgRating = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
+            totalProducts = row[2] != null ? ((Number) row[2]).longValue() : 0L;
+        }
 
         avgRating = Math.round(avgRating * 10.0) / 10.0;
 
@@ -225,9 +231,16 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private void updateProductStats(Product product) {
-        Object[] stats = reviewRepository.getReviewStats(product.getId()).get(0);
-        int count = stats[0] != null ? ((Number) stats[0]).intValue() : 0;
-        double average = stats[1] != null ? ((Number) stats[1]).doubleValue() : 0.0;
+        List<Object[]> results = reviewRepository.getReviewStats(product.getId());
+
+        int count = 0;
+        double average = 0.0;
+
+        if (results != null && !results.isEmpty() && results.get(0) != null) {
+            Object[] stats = results.get(0);
+            count = stats[0] != null ? ((Number) stats[0]).intValue() : 0;
+            average = stats[1] != null ? ((Number) stats[1]).doubleValue() : 0.0;
+        }
 
         product.setReviewCount(count);
         product.setAverageRating(Math.round(average * 10.0) / 10.0);

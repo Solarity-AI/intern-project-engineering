@@ -45,6 +45,46 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.reviewerName").value("Jane Doe"));
     }
 
+    // --- Stats Endpoint Tests (#105) ---
+
+    @Test
+    void getGlobalStats_ShouldReturnOkWithValidStructure() throws Exception {
+        mockMvc.perform(get("/api/v1/products/stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalProducts").isNumber())
+                .andExpect(jsonPath("$.totalReviews").isNumber())
+                .andExpect(jsonPath("$.averageRating").isNumber());
+    }
+
+    @Test
+    void getGlobalStats_WithCategoryFilter_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/products/stats").param("category", "Electronics"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalProducts").isNumber())
+                .andExpect(jsonPath("$.totalReviews").isNumber())
+                .andExpect(jsonPath("$.averageRating").isNumber());
+    }
+
+    @Test
+    void getGlobalStats_WithSearchFilter_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/products/stats").param("search", "NonExistentProduct"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalProducts").value(0))
+                .andExpect(jsonPath("$.totalReviews").value(0))
+                .andExpect(jsonPath("$.averageRating").value(0.0));
+    }
+
+    @Test
+    void getGlobalStats_WithNonExistentCategoryAndSearch_ShouldReturnZeroState() throws Exception {
+        mockMvc.perform(get("/api/v1/products/stats")
+                .param("category", "NonExistentCategory")
+                .param("search", "NonExistentProduct"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalProducts").value(0))
+                .andExpect(jsonPath("$.totalReviews").value(0))
+                .andExpect(jsonPath("$.averageRating").value(0.0));
+    }
+
     // --- Pagination Validation Tests ---
 
     @Test
