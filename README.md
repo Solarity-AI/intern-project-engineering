@@ -146,9 +146,10 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 ## 🌐 Deployment
 
 ### Production Environment
-*   **Backend:** Deployment platform migration in progress
-*   **Frontend Web:** Deployment platform migration in progress
+*   **Backend:** [Render](https://render.com) (Java web service + managed PostgreSQL)
+*   **Frontend Web:** [Cloudflare Pages](https://pages.cloudflare.com) (edge-deployed SPA)
 *   **Mobile App:** Distributed via **EAS Build (APK)** with **OTA Updates** support.
+*   **CI/CD:** GitHub Actions (`.github/workflows/deploy.yml`) — deploys both on push to `main`
 
 ### Color Palette (Updated 2026-02)
 The application features a premium dark SaaS design with glassmorphism effects:

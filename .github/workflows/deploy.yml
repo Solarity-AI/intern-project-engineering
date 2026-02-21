@@ -1,0 +1,46 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend to Render
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy
+        run: |
+          curl -sf "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            || (echo "Failed to trigger Render deploy" && exit 1)
+
+  deploy-frontend:
+    name: Deploy Frontend to Cloudflare Pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: mobile
+
+      - name: Build web app
+        run: npm run build
+        working-directory: mobile
+        env:
+          EXPO_PUBLIC_API_URL: ${{ secrets.RENDER_BACKEND_URL }}
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=solarity-review
+          workingDirectory: mobile

@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: solarity-review-api
+    runtime: java
+    plan: free
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: ./mvnw clean package -DskipTests
+    startCommand: >-
+      sh -c 'export JDBC_DATABASE_URL=$(echo "$DATABASE_URL" |
+      sed "s|^postgres://|jdbc:postgresql://|;s|^postgresql://|jdbc:postgresql://|")
+      && java -Dserver.port=$PORT -jar target/*.jar'
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATABASE_URL
+        fromDatabase:
+          name: solarity-review-db
+          property: connectionURI
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+
+databases:
+  - name: solarity-review-db
+    plan: free
+    region: oregon
