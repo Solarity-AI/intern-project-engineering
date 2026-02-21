@@ -1,6 +1,6 @@
-# 📱 Product Review Full-Stack Application
+# 📱 Solarity Review Full-Stack Application
 
-Welcome to the **Product Review Application**! This project is a comprehensive full-stack ecosystem designed to demonstrate modern software architecture, clean code principles, and seamless cross-platform integration.
+Welcome to the **Solarity Review Application**! This project is a comprehensive full-stack ecosystem designed to demonstrate modern software architecture, clean code principles, and seamless cross-platform integration.
 
 The system allows users to explore products, manage wishlists, interact with an AI Assistant for review analysis, and submit real-time feedback.
 

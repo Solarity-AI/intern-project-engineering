@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Product Review Application** - A full-stack cross-platform ecosystem for product reviews with AI-powered insights. Users can browse products, manage wishlists, submit reviews, and interact with an AI assistant for review analysis.
+**Solarity Review Application** - A full-stack cross-platform ecosystem for product reviews with AI-powered insights. Users can browse products, manage wishlists, submit reviews, and interact with an AI assistant for review analysis.
 
 ## Tech Stack
 
@@ -153,6 +153,12 @@ All endpoints are versioned under `/api/v1/`. Swagger UI available at `/swagger-
 - `backend/src/main/resources/application-prod.properties` - Production overrides
 - `backend/src/main/resources/db/migration/` - Flyway SQL migrations
 
+### Deployment
+- `.github/workflows/deploy.yml` - CI/CD workflow (Render deploy hook + Cloudflare Pages wrangler)
+- `render.yaml` - Render Blueprint (backend Docker service + PostgreSQL)
+- `backend/Dockerfile` - Multi-stage Docker build for Spring Boot
+- `backend/entrypoint.sh` - Parses DATABASE_URL into JDBC format + credentials at container startup
+
 ### Frontend (React Native)
 - `mobile/src/services/api.ts` - API client (retry, cache, dedup, structured errors, mutation cache invalidation)
 - `mobile/src/context/` - State management (Theme, Wishlist, Notifications, Network)
@@ -227,4 +233,6 @@ cd backend && ./mvnw test
 - Rate limiting: 60 requests/minute per client (keyed by X-User-ID or IP)
 - CORS: configured via properties, not controller annotations
 - Deployment: backend on Render (deploy hook), frontend on Cloudflare Pages (wrangler), automated via `.github/workflows/deploy.yml`
-- Render converts `DATABASE_URL` (postgres://) to JDBC format at startup via `render.yaml` start command
+- Render converts `DATABASE_URL` (postgres://) to JDBC format at startup via `backend/entrypoint.sh`
+- `render.yaml` defines backend service (Docker) + PostgreSQL database as infrastructure-as-code
+- Icon fonts loaded explicitly via `useFonts` in `App.tsx` for web production builds
