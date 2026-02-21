@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
+import static org.hamcrest.Matchers.greaterThan;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -43,6 +44,46 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
                 .content(objectMapper.writeValueAsString(reviewDTO)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reviewerName").value("Jane Doe"));
+    }
+
+    // --- Stats Endpoint Tests (#105) ---
+
+    @Test
+    void getGlobalStats_ShouldReturnOkWithValidStructure() throws Exception {
+        mockMvc.perform(get("/api/v1/products/stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalProducts", greaterThan(0)))
+                .andExpect(jsonPath("$.totalReviews", greaterThan(0)))
+                .andExpect(jsonPath("$.averageRating", greaterThan(0.0)));
+    }
+
+    @Test
+    void getGlobalStats_WithCategoryFilter_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/products/stats").param("category", "Electronics"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalProducts", greaterThan(0)))
+                .andExpect(jsonPath("$.totalReviews", greaterThan(0)))
+                .andExpect(jsonPath("$.averageRating", greaterThan(0.0)));
+    }
+
+    @Test
+    void getGlobalStats_WithSearchFilter_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/products/stats").param("search", "NonExistentProduct"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalProducts").value(0))
+                .andExpect(jsonPath("$.totalReviews").value(0))
+                .andExpect(jsonPath("$.averageRating").value(0.0));
+    }
+
+    @Test
+    void getGlobalStats_WithNonExistentCategoryAndSearch_ShouldReturnZeroState() throws Exception {
+        mockMvc.perform(get("/api/v1/products/stats")
+                .param("category", "NonExistentCategory")
+                .param("search", "NonExistentProduct"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalProducts").value(0))
+                .andExpect(jsonPath("$.totalReviews").value(0))
+                .andExpect(jsonPath("$.averageRating").value(0.0));
     }
 
     // --- Pagination Validation Tests ---

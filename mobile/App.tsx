@@ -5,6 +5,8 @@ import { NavigationContainer, DefaultTheme, DarkTheme, LinkingOptions } from '@r
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
+import { useFonts } from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
 
 import { ProductListScreen } from './src/screens/ProductListScreen';
 import { ProductDetailsScreen } from './src/screens/ProductDetailsScreen';
@@ -113,6 +115,18 @@ function AppNavigator() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    ...Ionicons.font,
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#10B981" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>

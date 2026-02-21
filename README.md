@@ -82,7 +82,7 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 
 ### Frontend — React Native (Mobile/Web)
 *   **State Management:** React Context API for Wishlist, Search, and Notifications.
-*   **Responsive Design:** Adaptive layouts for Mobile (Android/iOS) and Web (Heroku).
+*   **Responsive Design:** Adaptive layouts for Mobile (Android/iOS) and Web.
 *   **Networking:** Centralized API service with retry logic (exponential backoff), request deduplication, memory caching, and structured error handling.
 *   **UI Design:** Glassmorphism theme with Glass cards, Gradients, and Glow effects.
 
@@ -127,7 +127,7 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 │   ├── src/components/     # Reusable UI Components
 │   ├── src/screens/        # Screen-level Components
 │   ├── src/context/        # Global State Management
-│   └── Procfile             # Heroku process definition
+│   └── src/                 # Source code
 ├── ios/                    # Native iOS App (Swift/SwiftUI)
 │   ├── ProductReview/      # Main app source
 │   │   ├── App/            # App entry, navigation, core utilities
@@ -146,31 +146,10 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 ## 🌐 Deployment
 
 ### Production Environment
-*   **Backend:** Heroku (Java buildpack, PostgreSQL addon)
-*   **Frontend Web:** Heroku (static SPA via `serve`)
+*   **Backend:** [Render](https://render.com) (Java web service + managed PostgreSQL)
+*   **Frontend Web:** [Cloudflare Pages](https://pages.cloudflare.com) (edge-deployed SPA)
 *   **Mobile App:** Distributed via **EAS Build (APK)** with **OTA Updates** support.
-
-### Why Heroku?
-- ✅ Single platform for both backend and frontend
-- ✅ Automatic HTTPS
-- ✅ GitHub Actions integration for auto-deploy on push to `main`
-- ✅ Managed PostgreSQL addon
-- ✅ Health check support
-- ✅ Easy environment variable management
-
-### Deployment Workflow
-The project includes automated CI/CD via GitHub Actions:
-- Push to `main` branch triggers parallel deployment of backend and frontend to Heroku
-- Manual deployment available via `workflow_dispatch`
-- See `.github/workflows/deploy-heroku.yml` for workflow configuration
-
-### Quick Deploy Commands
-```bash
-# Heroku apps are deployed automatically via GitHub Actions
-# For manual Heroku CLI usage:
-heroku logs --tail --app <backend-app-name>    # View backend logs
-heroku logs --tail --app <frontend-app-name>   # View frontend logs
-```
+*   **CI/CD:** GitHub Actions (`.github/workflows/deploy.yml`) — deploys both on push to `main`
 
 ### Color Palette (Updated 2026-02)
 The application features a premium dark SaaS design with glassmorphism effects:
@@ -203,7 +182,7 @@ Future interns are expected to:
 
 *   **Port 8080 Conflict:** If the backend fails to start, check if another process is using port 8080.
 *   **Network Issues:** Ensure the `BASE_URL` in `mobile/src/services/api.ts` matches your backend IP (use local IP for physical devices).
-*   **Heroku 404 on Refresh:** SPA routing is handled by `serve -s` in `mobile/Procfile`, which rewrites all 404s to `/index.html`.
+*   **SPA 404 on Refresh:** Ensure SPA routing rewrites all 404s to `/index.html` on your hosting platform.
 *   **iOS — XcodeGen:** If the `.xcodeproj` is missing, install XcodeGen (`brew install xcodegen`) and run `xcodegen generate` inside the `ios/` directory.
 *   **iOS — Simulator:** Requires Xcode 15.0+ and macOS Sonoma (14.0+). Target device must be iOS 17.0+.
 
@@ -218,7 +197,7 @@ The final submission must include the following items:
 3. **Backend Code Walkthrough:** A 3–5 minute demo video [Google Drive Link] explaining the backend architecture.
 4. **Application Demo:** A 3–5 minute video [Google Drive Link] showcasing all features on an emulator or real device.
 5. **Build Artifacts:** A [Google Drive Link] to download the generated APK (Android) or IPA (iOS).
-6. **Web Access:** A public web application link (e.g., Heroku) for testing in a browser.
+6. **Web Access:** A public web application link for testing in a browser.
 7. **Future Improvements:** A section describing potential enhancements (see Roadmap below).
 8. **Final Presentation:** A slide deck summarizing the project and learnings.
 

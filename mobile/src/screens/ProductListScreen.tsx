@@ -656,17 +656,17 @@ export const ProductListScreen = () => {
           colorScheme === 'dark' ? Glass.elevated : { backgroundColor: colors.card, ...Shadow.medium },
         ]}>
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: colors.foreground }]}>{stats.avgRating.toFixed(1)}</Text>
+            <Text style={[styles.statNumber, { color: colors.foreground }]}>{(stats.avgRating ?? 0).toFixed(1)}</Text>
             <Text style={styles.statUpperLabel}>AVG RATING</Text>
           </View>
           <View style={[styles.statSeparator, { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: colors.foreground }]}>{String(stats.totalReviews)}</Text>
+            <Text style={[styles.statNumber, { color: colors.foreground }]}>{String(stats.totalReviews ?? 0)}</Text>
             <Text style={styles.statUpperLabel}>REVIEWS</Text>
           </View>
           <View style={[styles.statSeparator, { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: colors.foreground }]}>{String(stats.productCount)}</Text>
+            <Text style={[styles.statNumber, { color: colors.foreground }]}>{String(stats.productCount ?? 0)}</Text>
             <Text style={styles.statUpperLabel}>PRODUCTS</Text>
           </View>
         </View>

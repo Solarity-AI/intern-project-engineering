@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: solarity-review-api
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    rootDir: backend
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATABASE_URL
+        fromDatabase:
+          name: solarity-review-db
+          property: connectionString
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+
+databases:
+  - name: solarity-review-db
+    plan: free
+    region: oregon
