@@ -10,4 +10,4 @@ WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 10000
 ENV PORT=10000
-CMD ["sh", "-c", "java -Dserver.port=${PORT} -jar app.jar"]
+CMD ["sh", "-c", "export JDBC_DATABASE_URL=$(echo \"$DATABASE_URL\" | sed 's|^postgres://|jdbc:postgresql://|;s|^postgresql://|jdbc:postgresql://|') && java -Dserver.port=${PORT} -jar app.jar"]
