@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.example</groupId>
-	<artifactId>product-review</artifactId>
+	<artifactId>solarity-review</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>product-review</name>
-	<description>Product Review Application Backend</description>
+	<name>solarity-review</name>
+	<description>Solarity Review Application Backend</description>
 	<properties>
 		<java.version>17</java.version>
 		<lombok.version>1.18.30</lombok.version>
