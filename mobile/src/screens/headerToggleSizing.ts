@@ -3,7 +3,7 @@ export type WebBreakpoint = 'mobile' | 'narrow' | 'medium' | 'wide';
 type HeaderToggleSizingInput = {
   isWeb: boolean;
   breakpoint: WebBreakpoint;
-  numColumns: 1 | 2 | 3;
+  numColumns: 1 | 2 | 3 | 4;
 };
 
 export type HeaderToggleSizing = {
@@ -30,12 +30,10 @@ export function getHeaderToggleSizing({
         : { buttonSize: 40, iconSize: 18, actionGap: 6 }
     : { buttonSize: 38, iconSize: 18, actionGap: 8 };
 
-  const modeScale = isWeb && numColumns === 1 ? 0.9 : isWeb && numColumns === 2 ? 0.92 : 1;
-
-  const buttonSize = clamp(Math.round(baseByBreakpoint.buttonSize * modeScale), 36, 44);
-  const iconSize = clamp(Math.round(baseByBreakpoint.iconSize * modeScale), 16, 20);
+  const buttonSize = clamp(baseByBreakpoint.buttonSize, 36, 44);
+  const iconSize = clamp(baseByBreakpoint.iconSize, 16, 20);
   const emphasisIconSize = clamp(iconSize + 2, 18, 22);
-  const actionGap = clamp(Math.round(baseByBreakpoint.actionGap * (numColumns < 3 ? 0.9 : 1)), 6, 10);
+  const actionGap = clamp(baseByBreakpoint.actionGap, 6, 10);
 
   return {
     buttonSize,

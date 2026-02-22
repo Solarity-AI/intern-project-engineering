@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useTheme } from '../context/ThemeContext';
 import { RootStackParamList } from '../types';
-import { Spacing, FontSize, BorderRadius, FontWeight, Shadow, Glass, Gradients } from '../constants/theme';
+import { Spacing, FontSize, BorderRadius, FontWeight, Shadow, Glass, Gradients, getDetailMaxWidth } from '../constants/theme';
 import { chatWithAI, getUserMessage } from '../services/api';
 
 type RouteType = RouteProp<RootStackParamList, 'AIAssistant'>;
@@ -51,12 +51,11 @@ export const AIAssistantScreen: React.FC = () => {
 
   const { width: windowWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
-  const MAX_CONTENT_WIDTH = 600;
-  const isWideScreen = windowWidth > MAX_CONTENT_WIDTH;
+  const contentMaxWidth = isWeb ? getDetailMaxWidth(windowWidth) : undefined;
 
   const responsiveContainerStyle = {
     width: '100%' as const,
-    maxWidth: isWeb ? MAX_CONTENT_WIDTH : undefined,
+    maxWidth: contentMaxWidth,
     alignSelf: 'center' as const,
     flex: 1,
   };

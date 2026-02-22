@@ -43,7 +43,7 @@ import { useSearch } from '../context/SearchContext';
 import { useNetwork } from '../context/NetworkContext';
 
 import { RootStackParamList } from '../types';
-import { BorderRadius, FontSize, FontWeight, Spacing, Gradients, Glass, Glow, Shadow } from '../constants/theme';
+import { BorderRadius, FontSize, FontWeight, Spacing, Gradients, Glass, Glow, Shadow, getGridMaxWidth, getDetailMaxWidth, Breakpoints } from '../constants/theme';
 import { useDebounce } from '../hooks/useDebounce';
 import { getHeaderToggleSizing } from './headerToggleSizing';
 
@@ -74,8 +74,25 @@ export const ProductListScreen = () => {
   const webBp = !isWeb ? 'mobile' : width < 720 ? 'narrow' : width < 1100 ? 'medium' : 'wide';
   const isCompactWebHeader = isWeb && width < 430;
 
-  const containerMaxWidth =
-    !isWeb ? undefined : webBp === 'wide' ? 1200 : webBp === 'medium' ? 1040 : 900;
+  const containerMaxWidth = !isWeb ? undefined : getGridMaxWidth(width);
+
+  // Narrower cap for content elements (stats bar, search bar) — grid width is too wide for these
+  const contentBarMaxWidth = isWeb ? getDetailMaxWidth(width) : undefined;
+
+  // Hero title font size — scales with viewport on web
+  const heroTitleFontSize = !isWeb ? FontSize['5xl']
+    : width >= Breakpoints.ultrawide ? 96
+    : width >= Breakpoints.largeDesktop ? 80
+    : width >= Breakpoints.desktop ? 64
+    : width >= Breakpoints.tablet ? 52
+    : FontSize['5xl'];
+  const heroSubtitleFontSize = !isWeb ? FontSize.base
+    : width >= Breakpoints.largeDesktop ? 20
+    : width >= Breakpoints.desktop ? 18
+    : FontSize.base;
+
+  // Floating bar inset: keep the bar aligned with the content container on wide web viewports
+  const floatingBarInset = isWeb && containerMaxWidth ? Math.max(0, (width - containerMaxWidth) / 2) : 0;
 
   // Hero breakout: cancel the contentContainerStyle padding/maxWidth so the hero is truly full-bleed
   const heroBreakoutStyle = useMemo(() => {
@@ -91,8 +108,8 @@ export const ProductListScreen = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const fetchIdRef = useRef(0);
 
-  // Grid mode: 1 / 2 / 3
-  const [gridMode, setGridMode] = useState<1 | 2 | 3>(2);
+  // Grid mode: 1 / 2 / 3 / 4 (4 auto-selected on ultrawide screens ≥1920px)
+  const [gridMode, setGridMode] = useState<1 | 2 | 3 | 4>(2);
   const numColumns = gridMode;
 
   const headerToggleSizing = getHeaderToggleSizing({ isWeb, breakpoint: webBp, numColumns });
@@ -105,7 +122,7 @@ export const ProductListScreen = () => {
     if (!isWeb) return;
     if (gridTouchedRef.current) return;
 
-    const next: 1 | 2 | 3 = width < 720 ? 1 : width < 1100 ? 2 : 3;
+    const next: 1 | 2 | 3 | 4 = width < 720 ? 1 : width < 1100 ? 2 : width < 1920 ? 3 : 4;
     if (gridMode !== next) setGridMode(next);
   }, [isWeb, width, gridMode]);
 
@@ -639,18 +656,24 @@ export const ProductListScreen = () => {
 
         {/* Hero text — LEFT-ALIGNED, massive tight headlines */}
         <View style={[styles.heroContent, isWeb && { maxWidth: containerMaxWidth, alignSelf: 'center', width: '100%' }]}>
-          <Text style={[styles.heroTitle, isWeb && styles.heroTitleWeb, { color: colors.foreground }]}>
+          <Text style={[styles.heroTitle, { color: colors.foreground, fontSize: heroTitleFontSize, lineHeight: heroTitleFontSize * 1.05 }]}>
             Discover{'\n'}Products You'll{' '}
             <Text style={{ color: '#10B981' }}>Love</Text>
           </Text>
-          <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>
+          <Text style={[styles.heroSubtitle, { color: colors.mutedForeground, fontSize: heroSubtitleFontSize }]}>
             AI-powered insights from real reviews
           </Text>
         </View>
+
+        {/* Bottom fade — hero → page background, adapts to light/dark */}
+        <LinearGradient
+          colors={['transparent', colors.background] as [string, string]}
+          style={styles.heroBottomFade}
+        />
       </View>
 
       {/* ===== FLOATING STATS BAR — overlaps hero bottom ===== */}
-      <View style={[styles.floatingStatsContainer, isWeb && { maxWidth: containerMaxWidth, alignSelf: 'center', width: '100%' }]}>
+      <View style={[styles.floatingStatsContainer, isWeb && { maxWidth: contentBarMaxWidth, alignSelf: 'center', width: '100%' }]}>
         <View style={[
           styles.floatingStats,
           colorScheme === 'dark' ? Glass.elevated : { backgroundColor: colors.card, ...Shadow.medium },
@@ -673,7 +696,7 @@ export const ProductListScreen = () => {
       </View>
 
       {/* ===== SEARCH — pill-shaped ===== */}
-      <View style={[styles.searchSection, isWeb && styles.searchSectionWeb, isWeb && { maxWidth: containerMaxWidth }]}>
+      <View style={[styles.searchSection, isWeb && styles.searchSectionWeb, isWeb && { maxWidth: contentBarMaxWidth }]}>
         <SearchBar value={searchQuery} onChangeText={setSearchQuery} onSearchSubmit={handleSearchSubmit} />
       </View>
 
@@ -974,7 +997,7 @@ export const ProductListScreen = () => {
           />
 
           {isSelectionMode && selectedItems.size > 0 && (
-            <View style={[styles.floatingBar, colorScheme === 'dark' ? Glass.card : { backgroundColor: colors.card }]}>
+            <View style={[styles.floatingBar, floatingBarInset > 0 && { left: floatingBarInset, right: floatingBarInset }, colorScheme === 'dark' ? Glass.card : { backgroundColor: colors.card }]}>
               <TouchableOpacity
                 style={[
                   styles.floatingButton,
@@ -1008,6 +1031,13 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     // NO borderRadius, NO margin — full-bleed
+  },
+  heroBottomFade: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 96,
   },
   heroOrbGreen: {
     position: 'absolute',
@@ -1111,10 +1141,6 @@ const styles = StyleSheet.create({
     lineHeight: FontSize['5xl'] * 1.1,
     letterSpacing: -1,
     textAlign: 'left',
-  },
-  heroTitleWeb: {
-    fontSize: FontSize['6xl'],
-    lineHeight: FontSize['6xl'] * 1.05,
   },
   heroSubtitle: {
     fontSize: FontSize.base,

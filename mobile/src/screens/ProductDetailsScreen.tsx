@@ -39,7 +39,7 @@ import { useTheme } from '../context/ThemeContext';
 import { ToastProvider, useToast } from '../context/ToastContext';
 
 import { RootStackParamList, Review } from '../types';
-import { Spacing, FontSize, FontWeight, BorderRadius, Shadow, Glass, Gradients, Glow } from '../constants/theme';
+import { Spacing, FontSize, FontWeight, BorderRadius, Shadow, Glass, Gradients, Glow, getDetailMaxWidth } from '../constants/theme';
 import { getProduct, postReview, getReviews, markReviewAsHelpful, getUserVotedReviews, ApiReview, getUserMessage } from '../services/api';
 
 type RouteType = RouteProp<RootStackParamList, 'ProductDetails'>;
@@ -65,11 +65,18 @@ const ProductDetailsContent: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
-  const MAX_CONTENT_WIDTH = 600;
-  const isWideScreen = windowWidth > MAX_CONTENT_WIDTH;
+  const contentMaxWidth = isWeb ? getDetailMaxWidth(windowWidth) : undefined;
+  const isWideScreen = isWeb && contentMaxWidth !== undefined;
 
-  const contentWidth = isWeb && isWideScreen ? MAX_CONTENT_WIDTH : windowWidth;
-  const heroImageHeight = useMemo(() => Math.min(contentWidth * (5 / 4), 500), [contentWidth]);
+  const contentWidth = isWeb && contentMaxWidth ? Math.min(windowWidth, contentMaxWidth) : windowWidth;
+  // Web: use 3:4 ratio (portrait-friendly for product photos), cap at 700px
+  // Native: original 4:5 formula capped at 500px (narrower screen)
+  const heroImageHeight = useMemo(
+    () => isWeb
+      ? Math.min(Math.round(contentWidth * 0.75), 700)
+      : Math.min(contentWidth * (5 / 4), 500),
+    [isWeb, contentWidth],
+  );
 
   const scrollViewRef = useRef<ScrollView>(null);
   const reviewsSectionRef = useRef<View>(null);
@@ -366,7 +373,7 @@ const ProductDetailsContent: React.FC = () => {
 
   const responsiveContainerStyle = {
     width: '100%' as const,
-    maxWidth: isWeb ? MAX_CONTENT_WIDTH : undefined,
+    maxWidth: contentMaxWidth,
     alignSelf: 'center' as const,
   };
 
@@ -375,87 +382,108 @@ const ProductDetailsContent: React.FC = () => {
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={isWeb && isWideScreen ? { alignItems: 'center' } : undefined}
       >
-        <View style={responsiveContainerStyle}>
-          {/* ===== CINEMATIC HERO IMAGE ===== */}
-          {imageUrl && (
+        {/* ===== CINEMATIC HERO IMAGE — full-bleed on web ===== */}
+        {imageUrl && (
+          <View style={[
+            styles.heroImage,
+            { height: heroImageHeight },
+          ]}>
+            <Animated.Image
+              source={{ uri: imageUrl }}
+              style={[styles.heroImg, { opacity: heroImageOpacity }]}
+              resizeMode="cover"
+              onLoad={onHeroImageLoad}
+            />
+            {/* Top gradient for buttons */}
+            <LinearGradient
+              colors={[colorScheme === 'dark' ? 'rgba(11,17,32,0.6)' : 'rgba(0,0,0,0.35)', 'transparent'] as [string, string]}
+              style={styles.heroTopGradient}
+            />
+            {/* Bottom gradient — fades to page background for seamless light/dark transition */}
+            <LinearGradient
+              colors={['transparent', colors.background] as [string, string]}
+              style={styles.heroBottomGradient}
+            />
+
+            {/* Back button — top left glass circle */}
+            <TouchableOpacity
+              style={[styles.heroBackButton, { top: insets.top + Spacing.sm }, colorScheme === 'dark' ? Glass.strong : Glass.strongLight]}
+              onPress={handleBack}
+            >
+              <Ionicons name="chevron-back" size={22} color={colorScheme === 'dark' ? '#fff' : colors.foreground} />
+            </TouchableOpacity>
+
+            {/* Wishlist button — top right glass circle */}
+            <TouchableOpacity
+              onPress={handleWishlistToggle}
+              style={[styles.heroWishlistButton, { top: insets.top + Spacing.sm }, colorScheme === 'dark' ? Glass.strong : Glass.strongLight]}
+            >
+              <Ionicons
+                name={inWishlist ? 'heart' : 'heart-outline'}
+                size={24}
+                color={inWishlist ? '#F87171' : colorScheme === 'dark' ? '#fff' : colors.foreground}
+              />
+            </TouchableOpacity>
+
+            {/* Overlaid product info at bottom — inset to content width on desktop */}
             <View style={[
-              styles.heroImage,
-              { height: heroImageHeight },
-              isWeb && { borderRadius: 0 },
+              styles.heroOverlayInfo,
+              isWideScreen && contentMaxWidth && {
+                left: Math.max(0, (windowWidth - contentMaxWidth) / 2),
+                right: Math.max(0, (windowWidth - contentMaxWidth) / 2),
+              },
             ]}>
-              <Animated.Image
-                source={{ uri: imageUrl }}
-                style={[styles.heroImg, { opacity: heroImageOpacity }]}
-                resizeMode="cover"
-                onLoad={onHeroImageLoad}
-              />
-              {/* Top gradient for buttons */}
-              <LinearGradient
-                colors={[colorScheme === 'dark' ? 'rgba(11,17,32,0.6)' : 'rgba(0,0,0,0.35)', 'transparent'] as [string, string]}
-                style={styles.heroTopGradient}
-              />
-              {/* Bottom 50% gradient for info */}
-              <LinearGradient
-                colors={['transparent', colorScheme === 'dark' ? 'rgba(11,17,32,0.85)' : 'rgba(0,0,0,0.55)'] as [string, string]}
-                style={styles.heroBottomGradient}
-              />
-
-              {/* Back button — top left glass circle */}
-              <TouchableOpacity
-                style={[styles.heroBackButton, { top: insets.top + Spacing.sm }, colorScheme === 'dark' ? Glass.strong : Glass.strongLight]}
-                onPress={handleBack}
-              >
-                <Ionicons name="chevron-back" size={22} color={colorScheme === 'dark' ? '#fff' : colors.foreground} />
-              </TouchableOpacity>
-
-              {/* Wishlist button — top right glass circle */}
-              <TouchableOpacity
-                onPress={handleWishlistToggle}
-                style={[styles.heroWishlistButton, { top: insets.top + Spacing.sm }, colorScheme === 'dark' ? Glass.strong : Glass.strongLight]}
-              >
-                <Ionicons
-                  name={inWishlist ? 'heart' : 'heart-outline'}
-                  size={24}
-                  color={inWishlist ? '#F87171' : colorScheme === 'dark' ? '#fff' : colors.foreground}
-                />
-              </TouchableOpacity>
-
-              {/* Overlaid product info at bottom */}
-              <View style={styles.heroOverlayInfo}>
-                {product.categories && product.categories.length > 0 && (
-                  <View style={styles.heroCategoryRow}>
-                    {product.categories.map((cat: string) => (
-                      <View key={cat} style={styles.heroCategoryPill}>
-                        <Text style={styles.heroCategoryText}>{cat}</Text>
-                      </View>
-                    ))}
+              {product.categories && product.categories.length > 0 && (
+                <View style={styles.heroCategoryRow}>
+                  {product.categories.map((cat: string) => (
+                    <View key={cat} style={[
+                      styles.heroCategoryPill,
+                      { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)' },
+                    ]}>
+                      <Text style={[
+                        styles.heroCategoryText,
+                        { color: colorScheme === 'dark' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.75)' },
+                      ]}>{cat}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              <Text style={[
+                styles.heroProductName,
+                isWideScreen && styles.heroProductNameWeb,
+                { color: colorScheme === 'dark' ? '#fff' : colors.foreground },
+              ]}>{displayName}</Text>
+              <View style={styles.heroPriceRatingRow}>
+                <Text style={[styles.heroPrice, isWideScreen && styles.heroPriceWeb]}>${(product.price ?? 0).toFixed(2)}</Text>
+                {product.averageRating !== undefined && (
+                  <View style={[
+                    styles.heroRatingChip,
+                    { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' },
+                  ]}>
+                    <Ionicons name="star" size={14} color="#FBBF24" />
+                    <Text style={[
+                      styles.heroRatingText,
+                      { color: colorScheme === 'dark' ? '#FBBF24' : '#B45309' },
+                    ]}>{product.averageRating.toFixed(1)}</Text>
                   </View>
                 )}
-                <Text style={styles.heroProductName}>{displayName}</Text>
-                <View style={styles.heroPriceRatingRow}>
-                  <Text style={styles.heroPrice}>${(product.price ?? 0).toFixed(2)}</Text>
-                  {product.averageRating !== undefined && (
-                    <View style={styles.heroRatingChip}>
-                      <Ionicons name="star" size={14} color="#FBBF24" />
-                      <Text style={styles.heroRatingText}>{product.averageRating.toFixed(1)}</Text>
-                    </View>
-                  )}
-                </View>
               </View>
             </View>
-          )}
+          </View>
+        )}
 
-          {/* No image — show back button normally */}
-          {!imageUrl && (
-            <TouchableOpacity style={styles.plainBackButton} onPress={handleBack}>
-              <Ionicons name="chevron-back" size={20} color={colors.foreground} />
-              <Text style={[styles.plainBackText, { color: colors.foreground }]}>Back</Text>
-            </TouchableOpacity>
-          )}
+        {/* No image — show back button normally */}
+        {!imageUrl && (
+          <TouchableOpacity style={styles.plainBackButton} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={20} color={colors.foreground} />
+            <Text style={[styles.plainBackText, { color: colors.foreground }]}>Back</Text>
+          </TouchableOpacity>
+        )}
 
-          {/* ===== OVERLAPPING INFO BAR ===== */}
+        {/* ===== CONTENT CONTAINER — centered on wide screens ===== */}
+        <View style={responsiveContainerStyle}>
+          {/* INFO BAR — always full container width, overlapping hero bottom */}
           <View style={styles.infoBarContainer}>
             <View style={[
               styles.infoBar,
@@ -487,60 +515,115 @@ const ProductDetailsContent: React.FC = () => {
             </View>
           </View>
 
-          {/* Description */}
-          {product.description && (
-            <View style={styles.section}>
-              <Text style={[styles.description, { color: colors.foreground }]}>
-                {product.description}
-              </Text>
-            </View>
-          )}
+          {isWideScreen ? (
+            /* ===== DESKTOP: 2-column layout ===== */
+            <View style={styles.desktopTwoCol}>
+              {/* Left column: description + AI */}
+              <View style={styles.desktopMainCol}>
+                {product.description && (
+                  <View style={styles.section}>
+                    <Text style={[styles.description, { color: colors.foreground }]}>
+                      {product.description}
+                    </Text>
+                  </View>
+                )}
 
-          {/* ===== AI ASSISTANT BANNER ===== */}
-          <View style={styles.section}>
-            <TouchableOpacity
-              onPress={handleAIAssistant}
-              activeOpacity={0.85}
-              style={styles.aiBanner}
-            >
-              <LinearGradient
-                colors={Gradients.ai as [string, string]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.aiBannerGradient, Glow.ai]}
-              >
-                <Ionicons name="sparkles" size={22} color="#fff" />
-                <Text style={styles.aiBannerText}>Ask AI about this product</Text>
-                <Ionicons name="arrow-forward" size={20} color="rgba(255,255,255,0.7)" />
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+                <View style={styles.section}>
+                  <TouchableOpacity
+                    onPress={handleAIAssistant}
+                    activeOpacity={0.85}
+                    style={styles.aiBanner}
+                  >
+                    <LinearGradient
+                      colors={Gradients.ai as [string, string]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.aiBannerGradient, Glow.ai]}
+                    >
+                      <Ionicons name="sparkles" size={22} color="#fff" />
+                      <Text style={styles.aiBannerText}>Ask AI about this product</Text>
+                      <Ionicons name="arrow-forward" size={20} color="rgba(255,255,255,0.7)" />
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
 
-          {/* AI Summary Section */}
-          {product.aiSummary && (
-            <View style={styles.section}>
-              <AISummaryCard summary={product.aiSummary} />
+                {product.aiSummary && (
+                  <View style={styles.section}>
+                    <AISummaryCard summary={product.aiSummary} />
+                  </View>
+                )}
+              </View>
+
+              {/* Right column: rating breakdown */}
+              <View style={styles.desktopSideCol}>
+                <View style={styles.section}>
+                  <SectionHeader title="Rating Breakdown" accentColor="#FBBF24" />
+                  <View style={{ marginTop: Spacing.md }}>
+                    <RatingBreakdown
+                      breakdown={product.ratingBreakdown}
+                      totalCount={product.reviewCount}
+                      selectedRating={selectedRating}
+                      onSelectRating={setSelectedRating}
+                    />
+                  </View>
+                </View>
+              </View>
             </View>
+          ) : (
+            /* ===== MOBILE: single column ===== */
+            <>
+              {product.description && (
+                <View style={styles.section}>
+                  <Text style={[styles.description, { color: colors.foreground }]}>
+                    {product.description}
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.section}>
+                <TouchableOpacity
+                  onPress={handleAIAssistant}
+                  activeOpacity={0.85}
+                  style={styles.aiBanner}
+                >
+                  <LinearGradient
+                    colors={Gradients.ai as [string, string]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.aiBannerGradient, Glow.ai]}
+                  >
+                    <Ionicons name="sparkles" size={22} color="#fff" />
+                    <Text style={styles.aiBannerText}>Ask AI about this product</Text>
+                    <Ionicons name="arrow-forward" size={20} color="rgba(255,255,255,0.7)" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+
+              {product.aiSummary && (
+                <View style={styles.section}>
+                  <AISummaryCard summary={product.aiSummary} />
+                </View>
+              )}
+
+              <GradientDivider />
+
+              <View style={styles.section}>
+                <SectionHeader title="Rating Breakdown" accentColor="#FBBF24" />
+                <View style={{ marginTop: Spacing.md }}>
+                  <RatingBreakdown
+                    breakdown={product.ratingBreakdown}
+                    totalCount={product.reviewCount}
+                    selectedRating={selectedRating}
+                    onSelectRating={setSelectedRating}
+                  />
+                </View>
+              </View>
+            </>
           )}
 
           <GradientDivider />
 
-          {/* Rating Breakdown */}
-          <View style={styles.section}>
-            <SectionHeader title="Rating Breakdown" accentColor="#FBBF24" />
-            <View style={{ marginTop: Spacing.md }}>
-              <RatingBreakdown
-                breakdown={product.ratingBreakdown}
-                totalCount={product.reviewCount}
-                selectedRating={selectedRating}
-                onSelectRating={setSelectedRating}
-              />
-            </View>
-          </View>
-
-          <GradientDivider />
-
-          {/* Reviews Section */}
+          {/* Reviews — always full container width */}
           <View ref={reviewsSectionRef} style={styles.section} collapsable={false}>
             <View style={styles.reviewsHeader}>
               <View style={styles.reviewsHeaderTitle}>
@@ -643,7 +726,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '50%',
+    height: '65%',
   },
   heroBackButton: {
     position: 'absolute',
@@ -698,6 +781,10 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     lineHeight: FontSize['4xl'] * 1.1,
   },
+  heroProductNameWeb: {
+    fontSize: FontSize['5xl'],
+    lineHeight: FontSize['5xl'] * 1.05,
+  },
   heroPriceRatingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -707,6 +794,9 @@ const styles = StyleSheet.create({
     color: '#10B981',
     fontSize: FontSize['2xl'],
     fontWeight: FontWeight.bold,
+  },
+  heroPriceWeb: {
+    fontSize: FontSize['3xl'],
   },
   heroRatingChip: {
     flexDirection: 'row',
@@ -777,6 +867,19 @@ const styles = StyleSheet.create({
   section: {
     padding: Spacing.lg,
     gap: Spacing.md,
+  },
+
+  /* ===== DESKTOP 2-COLUMN LAYOUT ===== */
+  desktopTwoCol: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.lg,
+  },
+  desktopMainCol: {
+    flex: 3,
+  },
+  desktopSideCol: {
+    flex: 2,
   },
 
   /* ===== AI BANNER ===== */

@@ -199,6 +199,53 @@ export const BorderRadius = {
   full: 9999,
 };
 
+// ─── Responsive Breakpoints ──────────────────────────────────────────────────
+// Single source of truth for all web viewport breakpoints.
+// Use these instead of hardcoding pixel values in individual screens.
+
+export type WebBreakpoint = 'mobile' | 'tablet' | 'desktop' | 'largeDesktop' | 'ultrawide';
+
+export const Breakpoints = {
+  tablet: 768,       // ≥ 768px
+  desktop: 1024,     // ≥ 1024px
+  largeDesktop: 1440,// ≥ 1440px
+  ultrawide: 1920,   // ≥ 1920px
+} as const;
+
+/** Returns a named breakpoint based on viewport width. */
+export function getWebBreakpoint(width: number): WebBreakpoint {
+  if (width >= Breakpoints.ultrawide) return 'ultrawide';
+  if (width >= Breakpoints.largeDesktop) return 'largeDesktop';
+  if (width >= Breakpoints.desktop) return 'desktop';
+  if (width >= Breakpoints.tablet) return 'tablet';
+  return 'mobile';
+}
+
+/**
+ * Returns the max content width for single-column layouts
+ * (ProductDetails, AIAssistant, Notifications).
+ * Returns undefined on mobile (= full viewport width).
+ */
+export function getDetailMaxWidth(width: number): number | undefined {
+  if (width >= Breakpoints.ultrawide) return 1280;
+  if (width >= Breakpoints.largeDesktop) return 1100;
+  if (width >= Breakpoints.desktop) return 900;
+  if (width >= Breakpoints.tablet) return 760;
+  return undefined;
+}
+
+/**
+ * Returns the max content width for grid layouts (ProductList).
+ * Scales up to 2100px on ultrawide to fill ≥80 % of the viewport.
+ */
+export function getGridMaxWidth(width: number): number {
+  if (width >= Breakpoints.ultrawide) return 2100;
+  if (width >= Breakpoints.largeDesktop) return 1600;
+  if (width >= Breakpoints.desktop) return 1200;
+  if (width >= 720) return 1040;
+  return 900;
+}
+
 export const Shadow = {
   soft: Platform.select({
     web: { boxShadow: '0px 4px 12px rgba(11, 17, 32, 0.15)' },

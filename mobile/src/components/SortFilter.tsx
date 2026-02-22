@@ -8,9 +8,11 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Spacing, FontSize, BorderRadius, FontWeight, Glow, Shadow } from '../constants/theme';
+import { Spacing, FontSize, BorderRadius, FontWeight, Glow, Shadow, Breakpoints } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 export type SortOption = {
@@ -38,6 +40,47 @@ export const SortFilter: React.FC<SortFilterProps> = ({
   onSortChange,
 }) => {
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  // On desktop-width web viewports, wrap chips instead of horizontal scroll
+  const useWrapLayout = isWeb && width >= Breakpoints.desktop;
+
+  const chips = SORT_OPTIONS.map((option) => {
+    const isSelected = selectedSort === option.value;
+
+    return (
+      <TouchableOpacity
+        key={option.value}
+        onPress={() => onSortChange(option.value)}
+        activeOpacity={0.7}
+        style={[
+          styles.chip,
+          {
+            backgroundColor: isSelected ? colors.primary : colors.secondary,
+            borderColor: isSelected ? colors.primary : colors.border,
+            ...(isSelected ? Glow.primarySoft : {}),
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.chipText,
+            { color: isSelected ? colors.primaryForeground : colors.secondaryForeground },
+          ]}
+        >
+          {option.label}
+        </Text>
+      </TouchableOpacity>
+    );
+  });
+
+  if (useWrapLayout) {
+    return (
+      <View style={styles.wrapContent}>
+        {chips}
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -45,34 +88,7 @@ export const SortFilter: React.FC<SortFilterProps> = ({
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
     >
-      {SORT_OPTIONS.map((option) => {
-        const isSelected = selectedSort === option.value;
-
-        return (
-          <TouchableOpacity
-            key={option.value}
-            onPress={() => onSortChange(option.value)}
-            activeOpacity={0.7}
-            style={[
-              styles.chip,
-              {
-                backgroundColor: isSelected ? colors.primary : colors.secondary,
-                borderColor: isSelected ? colors.primary : colors.border,
-                ...(isSelected ? Glow.primarySoft : {}),
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.chipText,
-                { color: isSelected ? colors.primaryForeground : colors.secondaryForeground },
-              ]}
-            >
-              {option.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+      {chips}
     </ScrollView>
   );
 };
@@ -82,6 +98,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     gap: Spacing.sm,
     flexDirection: 'row',
+    paddingVertical: Spacing.sm,
+  },
+  wrapContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
     paddingVertical: Spacing.sm,
   },
   chip: {

@@ -116,7 +116,7 @@ function AppNavigator() {
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    ...Ionicons.font,
+    Ionicons: require('./assets/fonts/Ionicons.ttf'),
   });
 
   if (!fontsLoaded) {
