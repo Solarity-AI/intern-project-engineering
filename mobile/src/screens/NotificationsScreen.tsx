@@ -25,6 +25,7 @@ import {
   BorderRadius,
   Shadow,
   Glass,
+  getDetailMaxWidth,
 } from '../constants/theme';
 
 type FilterType = 'all' | NotificationType;
@@ -76,14 +77,8 @@ export const NotificationsScreen: React.FC = () => {
 
   const { width: windowWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
-  const MAX_CONTENT_WIDTH = isWeb ? (windowWidth >= 1200 ? 760 : 600) : 600;
-
-  const responsiveContainerStyle = {
-    flex: 1 as const,
-    width: '100%' as const,
-    maxWidth: isWeb ? MAX_CONTENT_WIDTH : undefined,
-    alignSelf: 'center' as const,
-  };
+  // Passed to ScreenWrapper.contentMaxWidth — centering is handled there
+  const contentMaxWidth = isWeb ? getDetailMaxWidth(windowWidth) : undefined;
 
   const filteredNotifications = useMemo(() => {
     if (selectedFilter === 'all') return notifications;
@@ -212,8 +207,7 @@ export const NotificationsScreen: React.FC = () => {
   );
 
   return (
-    <ScreenWrapper backgroundColor={colors.background}>
-      <View style={responsiveContainerStyle}>
+    <ScreenWrapper backgroundColor={colors.background} contentMaxWidth={contentMaxWidth}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <View style={styles.headerLeft}>
@@ -247,7 +241,6 @@ export const NotificationsScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
         />
-      </View>
     </ScreenWrapper>
   );
 };

@@ -31,7 +31,7 @@ import { useNetwork } from '../context/NetworkContext';
 import { getWishlistProducts, ApiProduct, getUserMessage } from '../services/api';
 
 import { RootStackParamList } from '../types';
-import { BorderRadius, FontSize, FontWeight, Spacing, Glass, Shadow, Glow } from '../constants/theme';
+import { BorderRadius, FontSize, FontWeight, Spacing, Glass, Shadow, Glow, getGridMaxWidth } from '../constants/theme';
 import { getHeaderToggleSizing } from './headerToggleSizing';
 
 type WishlistNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Wishlist'>;
@@ -49,6 +49,7 @@ export const WishlistScreen = () => {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
   const webBp = !isWeb ? 'mobile' : width < 720 ? 'narrow' : width < 1100 ? 'medium' : 'wide';
+  const containerMaxWidth = isWeb ? getGridMaxWidth(width) : undefined;
 
   const [gridMode, setGridMode] = useState<1 | 2 | 3>(2);
   const numColumns = gridMode;
@@ -299,7 +300,7 @@ export const WishlistScreen = () => {
           <OfflineBanner onRetry={() => fetchWishlist(0, false)} />
 
           {/* Header */}
-          <View style={isWeb ? styles.webPageContainer : undefined}>
+          <View style={isWeb ? [styles.webPageContainer, { maxWidth: containerMaxWidth }] : undefined}>
             <View style={[styles.header, { backgroundColor: colors.background }, isWeb && styles.headerWeb]}>
               <TouchableOpacity
                 style={[
@@ -437,7 +438,7 @@ export const WishlistScreen = () => {
             <View style={[
               styles.skeletonGrid,
               numColumns > 1 && styles.skeletonGridMultiCol,
-              isWeb ? styles.webListContent : { paddingHorizontal: Spacing.lg },
+              isWeb ? [styles.webListContent, { maxWidth: containerMaxWidth }] : { paddingHorizontal: Spacing.lg },
             ]}>
               {Array.from({ length: numColumns === 1 ? 3 : 4 }).map((_, i) => (
                 <View
@@ -497,7 +498,7 @@ export const WishlistScreen = () => {
               }
               contentContainerStyle={[
                 styles.listContent,
-                isWeb && styles.webListContent,
+                isWeb && [styles.webListContent, { maxWidth: containerMaxWidth }],
                 !isWeb && { paddingHorizontal: Spacing.lg },
               ]}
               columnWrapperStyle={
@@ -519,7 +520,7 @@ export const WishlistScreen = () => {
           {/* Floating bottom bar for selection mode */}
           {isSelectionMode && selectedItems.size > 0 && (
             <View style={[styles.floatingBar, colorScheme === 'dark' ? Glass.card : { backgroundColor: colors.card }]}>
-              <View style={isWeb ? styles.floatingBarInnerWeb : undefined}>
+              <View style={isWeb ? [styles.floatingBarInnerWeb, { maxWidth: containerMaxWidth }] : undefined}>
                 <TouchableOpacity
                   style={[styles.floatingButton, { backgroundColor: colors.destructive }]}
                   onPress={handleRemoveSelected}
@@ -543,7 +544,6 @@ export const WishlistScreen = () => {
 const styles = StyleSheet.create({
   webPageContainer: {
     width: '100%',
-    maxWidth: 1200,
     alignSelf: 'center',
     paddingHorizontal: Spacing.lg,
   },
@@ -626,7 +626,6 @@ const styles = StyleSheet.create({
   },
   webListContent: {
     width: '100%',
-    maxWidth: 1200,
     alignSelf: 'center',
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing['5xl'] + Spacing.xl,
@@ -719,7 +718,6 @@ const styles = StyleSheet.create({
   },
   floatingBarInnerWeb: {
     width: '100%',
-    maxWidth: 1200,
     alignSelf: 'center',
     paddingHorizontal: Spacing.lg,
   },
