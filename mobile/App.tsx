@@ -116,7 +116,7 @@ function AppNavigator() {
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    Ionicons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'),
+    Ionicons: require('./assets/fonts/Ionicons.ttf'),
   });
 
   if (!fontsLoaded) {
