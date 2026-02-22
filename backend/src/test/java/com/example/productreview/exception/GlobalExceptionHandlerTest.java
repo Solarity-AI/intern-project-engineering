@@ -43,11 +43,12 @@ class GlobalExceptionHandlerTest extends BaseIntegrationTest {
     }
 
     @Test
-    void validationException_shouldReturn400() throws Exception {
-        mockMvc.perform(get("/api/v1/products").param("page", "-1"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.message").value("Page index must not be negative"))
-                .andExpect(jsonPath("$.timestamp").exists());
+    void resourceNotFound_shouldIncludeTimestampAndCode() throws Exception {
+        mockMvc.perform(get("/api/v1/products/888888"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(404))
+                .andExpect(jsonPath("$.message").value("Product not found with id: 888888"))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.details").doesNotExist());
     }
 }

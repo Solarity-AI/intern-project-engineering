@@ -98,16 +98,30 @@ class RateLimitingFilterTest {
 
     @Test
     void resolveClientId_WithoutForwardedHeader_ShouldUseRemoteAddr() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI("/api/v1/products");
-        request.setRemoteAddr("192.168.1.100");
+        MockHttpServletRequest request1 = new MockHttpServletRequest();
+        request1.setRequestURI("/api/v1/products");
+        request1.setRemoteAddr("192.168.1.100");
 
-        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockHttpServletRequest request2 = new MockHttpServletRequest();
+        request2.setRequestURI("/api/v1/products");
+        request2.setRemoteAddr("192.168.1.101");
+
+        // Exhaust the bucket for request1's remoteAddr
+        for (int i = 0; i < 2; i++) {
+            filter.doFilterInternal(request1, new MockHttpServletResponse(), mock(FilterChain.class));
+        }
+
+        // request1 is now rate limited
+        MockHttpServletResponse blockedResponse = new MockHttpServletResponse();
+        filter.doFilterInternal(request1, blockedResponse, mock(FilterChain.class));
+        assertEquals(429, blockedResponse.getStatus());
+
+        // request2 (different remoteAddr) should still be allowed — independent bucket
+        MockHttpServletResponse allowedResponse = new MockHttpServletResponse();
         FilterChain filterChain = mock(FilterChain.class);
-
-        filter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain).doFilter(request, response);
+        filter.doFilterInternal(request2, allowedResponse, filterChain);
+        verify(filterChain).doFilter(request2, allowedResponse);
+        assertNotEquals(429, allowedResponse.getStatus());
     }
 
     @Test

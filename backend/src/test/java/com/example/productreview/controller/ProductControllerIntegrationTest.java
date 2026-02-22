@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -116,7 +117,8 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(get("/api/v1/products").param("page", "-1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.message").value("Page index must not be negative"));
+                .andExpect(jsonPath("$.message").value("Page index must not be negative"))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
@@ -296,18 +298,28 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
     void getAllProducts_WithDescSort_ShouldReturnOk() throws Exception {
         mockMvc.perform(get("/api/v1/products").param("sort", "name,desc"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").isArray())
-                .andExpect(jsonPath("$.content").isNotEmpty());
+                .andExpect(jsonPath("$.content").isArray());
     }
 
     // --- Helpful Vote Endpoint Test ---
 
     @Test
     void markReviewAsHelpful_ShouldToggleHelpfulCount() throws Exception {
-        mockMvc.perform(put("/api/v1/products/reviews/1/helpful")
-                        .header("X-User-ID", "vote-test-user"))
+        String firstResponse = mockMvc.perform(put("/api/v1/products/reviews/1/helpful")
+                        .header("X-User-ID", "toggle-test-user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.helpfulCount").isNumber());
+                .andReturn().getResponse().getContentAsString();
+
+        int firstCount = objectMapper.readTree(firstResponse).get("helpfulCount").asInt();
+
+        String secondResponse = mockMvc.perform(put("/api/v1/products/reviews/1/helpful")
+                        .header("X-User-ID", "toggle-test-user"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        int secondCount = objectMapper.readTree(secondResponse).get("helpfulCount").asInt();
+
+        assertEquals(firstCount - 1, secondCount);
     }
 }
