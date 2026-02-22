@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -240,5 +241,73 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(reviewDTO)))
                 .andExpect(status().isBadRequest());
+    }
+
+    // --- Voted Reviews Endpoint Tests ---
+
+    @Test
+    void getUserVotedReviews_ShouldReturnEmptyList() throws Exception {
+        mockMvc.perform(get("/api/v1/products/reviews/voted")
+                        .header("X-User-ID", "user-with-no-votes"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void getUserVotedReviews_WithoutHeader_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/products/reviews/voted"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // --- Chat Endpoint Tests ---
+
+    @Test
+    void chatAboutProduct_WithValidQuestion_ShouldReturnAnswer() throws Exception {
+        mockMvc.perform(post("/api/v1/products/1/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"How many reviews does this product have?\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.answer").exists())
+                .andExpect(jsonPath("$.answer").isString());
+    }
+
+    @Test
+    void chatAboutProduct_WithEmptyQuestion_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/products/1/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Question is required"));
+    }
+
+    @Test
+    void chatAboutProduct_WithMissingQuestionKey_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/products/1/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"This has no question key\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Question is required"));
+    }
+
+    // --- Sort Direction Tests ---
+
+    @Test
+    void getAllProducts_WithDescSort_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/api/v1/products").param("sort", "name,desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content").isNotEmpty());
+    }
+
+    // --- Helpful Vote Endpoint Test ---
+
+    @Test
+    void markReviewAsHelpful_ShouldToggleHelpfulCount() throws Exception {
+        mockMvc.perform(put("/api/v1/products/reviews/1/helpful")
+                        .header("X-User-ID", "vote-test-user"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.helpfulCount").isNumber());
     }
 }

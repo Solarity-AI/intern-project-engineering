@@ -32,4 +32,22 @@ class GlobalExceptionHandlerTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Validation failed"))
                 .andExpect(jsonPath("$.details").isMap());
     }
+
+    @Test
+    void missingHeader_shouldReturn400WithHeaderName() throws Exception {
+        mockMvc.perform(get("/api/v1/products/reviews/voted"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Required header 'X-User-ID' is missing"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void validationException_shouldReturn400() throws Exception {
+        mockMvc.perform(get("/api/v1/products").param("page", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Page index must not be negative"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
 }
