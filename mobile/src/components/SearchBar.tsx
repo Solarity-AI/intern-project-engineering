@@ -11,11 +11,11 @@ import {
   FlatList,
   Keyboard,
   Platform,
-  Dimensions,
   KeyboardEvent,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Spacing, FontSize, BorderRadius, Shadow, Glow, Glass } from '../constants/theme';
+import { Spacing, FontSize, BorderRadius, Shadow, Glow, Glass, Breakpoints } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { useSearch } from '../context/SearchContext';
 
@@ -34,6 +34,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 }) => {
   const { colors, colorScheme } = useTheme();
   const { searchHistory, removeSearchTerm, clearHistory } = useSearch();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  // Dropdown height scales with viewport on large screens
+  const dropdownMaxHeight = isWeb && windowWidth >= Breakpoints.desktop ? 420 : 300;
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const [layout, setLayout] = useState({ x: 0, y: 0, width: 0, height: 0 });
@@ -175,8 +179,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                   default: {},
                 }),
                 maxHeight: keyboardHeight > 0
-                  ? Math.max(150, Dimensions.get('window').height - keyboardHeight - absoluteY - 40)
-                  : 350
+                  ? Math.max(150, windowHeight - keyboardHeight - absoluteY - 40)
+                  : dropdownMaxHeight
               }
             ]}
           >
@@ -228,7 +232,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   );
 };
 
-const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
+// Overlay and dropdown sizing are now computed inside the component using
+// useWindowDimensions so they react correctly to viewport resizes on web.
+// A large static fallback (9999) covers the dismiss-tap area on native.
+const OVERLAY_EXTENT = 9999;
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -250,9 +257,9 @@ const styles = StyleSheet.create({
   overlay: {
     position: 'absolute',
     top: 56,
-    left: -screenWidth,
-    right: -screenWidth,
-    bottom: -screenHeight * 1.5,
+    left: -OVERLAY_EXTENT,
+    right: -OVERLAY_EXTENT,
+    bottom: -OVERLAY_EXTENT,
     backgroundColor: 'transparent',
     zIndex: 9998,
   },
@@ -264,7 +271,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     borderRadius: BorderRadius.xl,
     borderWidth: 1,
-    maxHeight: 300,
+    // maxHeight is applied inline via dropdownMaxHeight (responsive)
     ...Shadow.medium,
     zIndex: 9999,
     elevation: Platform.OS === 'android' ? 50 : 10,

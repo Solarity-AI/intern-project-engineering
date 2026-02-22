@@ -8,10 +8,12 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { categories } from '../constants/data';
-import { Spacing, FontSize, BorderRadius, Shadow, Gradients, Glow } from '../constants/theme';
+import { Spacing, FontSize, BorderRadius, Shadow, Gradients, Glow, Breakpoints } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 interface CategoryFilterProps {
@@ -24,6 +26,56 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   onCategoryChange,
 }) => {
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  // On desktop-width web viewports, wrap chips instead of horizontal scroll
+  const useWrapLayout = isWeb && width >= Breakpoints.desktop;
+
+  const chips = categories.map((category) => {
+    const isSelected = selectedCategory === category;
+
+    if (isSelected) {
+      return (
+        <TouchableOpacity
+          key={category}
+          onPress={() => onCategoryChange(category)}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={Gradients.brand}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.chip, Glow.primarySoft]}
+          >
+            <Text style={[styles.chipText, { color: colors.primaryForeground }]}>
+              {category}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        key={category}
+        onPress={() => onCategoryChange(category)}
+        activeOpacity={0.7}
+        style={[styles.chip, { backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border }]}
+      >
+        <Text style={[styles.chipText, { color: colors.secondaryForeground }]}>
+          {category}
+        </Text>
+      </TouchableOpacity>
+    );
+  });
+
+  if (useWrapLayout) {
+    return (
+      <View style={styles.wrapContent}>
+        {chips}
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -31,43 +83,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
     >
-      {categories.map((category) => {
-        const isSelected = selectedCategory === category;
-
-        if (isSelected) {
-          return (
-            <TouchableOpacity
-              key={category}
-              onPress={() => onCategoryChange(category)}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={Gradients.brand}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.chip, Glow.primarySoft]}
-              >
-                <Text style={[styles.chipText, { color: colors.primaryForeground }]}>
-                  {category}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          );
-        }
-
-        return (
-          <TouchableOpacity
-            key={category}
-            onPress={() => onCategoryChange(category)}
-            activeOpacity={0.7}
-            style={[styles.chip, { backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border }]}
-          >
-            <Text style={[styles.chipText, { color: colors.secondaryForeground }]}>
-              {category}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+      {chips}
     </ScrollView>
   );
 };
@@ -77,6 +93,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     gap: Spacing.sm,
     flexDirection: 'row',
+  },
+  wrapContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
   },
   chip: {
     paddingHorizontal: Spacing.xl,

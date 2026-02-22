@@ -19,7 +19,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { StarRating } from './StarRating';
 import { Button } from './Button';
-import { Colors, Spacing, FontSize, BorderRadius, FontWeight, Shadow, Glass } from '../constants/theme';
+import { Colors, Spacing, FontSize, BorderRadius, FontWeight, Shadow, Glass, Breakpoints } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 // ✅ IMPORTANT: ToastProvider MUST be inside <Modal> to render in the same native layer.
@@ -49,10 +49,15 @@ const AddReviewModalContent: React.FC<Omit<AddReviewModalProps, 'visible'> & { o
   const { showToast } = useToast();
   const { width } = useWindowDimensions();
   
-  // ✨ Responsive breakpoints
+  // Responsive breakpoints — use centralized Breakpoints constants from theme
   const isWeb = Platform.OS === 'web';
   const isNarrow = width < 600;
-  const maxFormWidth = isWeb ? 520 : undefined;
+  const maxFormWidth = isWeb
+    ? width >= Breakpoints.largeDesktop ? 960
+    : width >= Breakpoints.desktop ? 800
+    : width >= Breakpoints.tablet ? 640
+    : 520
+    : undefined;
 
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');

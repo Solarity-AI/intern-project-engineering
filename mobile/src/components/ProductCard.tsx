@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import { StarRating } from './StarRating';
 import { RootStackParamList } from '../types';
-import { Spacing, BorderRadius, Shadow, FontWeight, Glass } from '../constants/theme';
+import { Spacing, BorderRadius, Shadow, FontWeight, Glass, Breakpoints } from '../constants/theme';
 import { ApiProduct } from '../services/api';
 import { useWishlist } from '../context/WishlistContext';
 import { useTheme } from '../context/ThemeContext';
@@ -30,6 +30,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, numColumns = 
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors, colorScheme } = useTheme();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const { width: screenWidth } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+
+  // Responsive image height caps — scale up on large web viewports so cards
+  // don't look squat when columns are wide (e.g. 3-col at 1600px = ~520px wide).
+  const compactImageMaxHeight = useMemo(() => {
+    if (!isWeb) return 260;
+    if (screenWidth >= Breakpoints.largeDesktop) return undefined; // uncapped
+    if (screenWidth >= Breakpoints.desktop) return 340;
+    return 260;
+  }, [isWeb, screenWidth]);
+
+  const largeImageMaxHeight = useMemo(() => {
+    if (!isWeb) return 300;
+    if (screenWidth >= Breakpoints.desktop) return undefined; // uncapped
+    return 300;
+  }, [isWeb, screenWidth]);
 
   const productId = String(product.id ?? '');
   const inWishlist = isInWishlist(productId);
@@ -94,8 +111,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, numColumns = 
       <View style={[
         styles.imageContainer,
         numColumns >= 3 && styles.imageContainerCompact,
-        // ✨ iOS Single Column: Larger Image
-        (Platform.OS === 'ios' && numColumns === 1) && styles.imageContainerLarge
+        numColumns >= 3 && compactImageMaxHeight !== undefined && { maxHeight: compactImageMaxHeight },
+        // iOS Single Column: Larger Image
+        (Platform.OS === 'ios' && numColumns === 1) && styles.imageContainerLarge,
+        (Platform.OS === 'ios' && numColumns === 1) && largeImageMaxHeight !== undefined && { maxHeight: largeImageMaxHeight },
       ]}>
         <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
 
@@ -179,16 +198,16 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
     aspectRatio: 16 / 9,
-    maxHeight: 220,
+    // No maxHeight — let aspect ratio scale naturally on large screens
   },
   imageContainerCompact: {
     aspectRatio: 1,
-    maxHeight: 150,
+    // maxHeight applied inline via compactImageMaxHeight (responsive)
   },
-  // ✨ Larger image for single column
+  // Larger image for single column
   imageContainerLarge: {
-    aspectRatio: 4 / 3, // More square-ish
-    maxHeight: 300,
+    aspectRatio: 4 / 3,
+    // maxHeight applied inline via largeImageMaxHeight (responsive)
   },
 
   image: {
