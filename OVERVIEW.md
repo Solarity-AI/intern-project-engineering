@@ -2,7 +2,7 @@
 
 ## 1. Project Summary
 
-The **Product Review Application** is a comprehensive full-stack ecosystem demonstrating modern software architecture, clean code principles, and cross-platform integration. The system enables users to:
+The **Solarity Review Application** (`solarity-review`) is a comprehensive full-stack ecosystem demonstrating modern software architecture, clean code principles, and cross-platform integration. The system enables users to:
 
 - Browse and search products with advanced filtering and pagination
 - View detailed product information with AI-generated review summaries
@@ -54,7 +54,7 @@ The application serves as an internship training platform where the backend API 
 | **React Navigation** | 7.x | Screen navigation |
 | **AsyncStorage** | 2.2.0 | Local persistence |
 | **Expo Linear Gradient** | 15.0.8 | UI gradients |
-| **serve** | 14.x | Static SPA server (development) |
+| **expo-font** | 14.x | Explicit icon font loading for web builds |
 
 ### iOS Native (Swift/SwiftUI)
 
@@ -74,8 +74,10 @@ The application serves as an internship training platform where the backend API 
 
 | Platform | Purpose |
 |----------|---------|
+| **Render** | Backend hosting (Docker) + managed PostgreSQL |
+| **Cloudflare Pages** | Frontend web hosting (edge-deployed SPA) |
 | **EAS Build** | Mobile app builds (APK/IPA) |
-| **GitHub Actions** | CI/CD automation |
+| **GitHub Actions** | CI/CD automation (`.github/workflows/deploy.yml`) |
 
 ---
 
@@ -236,14 +238,13 @@ The application serves as an internship training platform where the backend API 
 │   └── README.md                     # iOS-specific documentation
 │
 ├── .github/workflows/                # CI/CD
-│   └── ...                           # CI/CD workflows
+│   └── deploy.yml                    # Render + Cloudflare Pages deployment
 ├── .vscode/                          # IDE configuration
 │   ├── settings.json
 │   └── launch.json
-├── Procfile                          # (removed)
+├── render.yaml                       # Render Blueprint (IaC)
 ├── swift-issues/                     # iOS UI redesign issue tracking
 ├── pom.xml                           # Parent Maven project
-├── backend/                          # Spring Boot REST API
 ├── CLAUDE.md                         # Project documentation
 └── README.md                         # Main documentation
 ```
@@ -469,24 +470,23 @@ spring.cache.caffeine.spec=maximumSize=100,expireAfterWrite=1h
 management.endpoints.web.exposure.include=health,info
 ```
 
-**application-prod.properties (Production — PostgreSQL):**
+**application-prod.properties (Production — PostgreSQL on Render):**
 ```properties
-# PostgreSQL Datasource (JDBC_DATABASE_URL provided by hosting platform)
+# PostgreSQL Datasource (JDBC_DATABASE_URL set by entrypoint.sh from DATABASE_URL)
 spring.datasource.url=${JDBC_DATABASE_URL}
 spring.datasource.driverClassName=org.postgresql.Driver
 
-# JPA — validate schema against Flyway migrations
-spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
-spring.jpa.hibernate.ddl-auto=validate
+# JPA — Flyway manages schema; dialect auto-detected from driver
+spring.jpa.hibernate.ddl-auto=none
 
 # Flyway (enabled for PostgreSQL migrations)
 spring.flyway.enabled=true
 spring.flyway.baseline-on-migrate=true
 
-# CORS - production origins (configurable via env var)
-cors.allowed-origins=${CORS_ALLOWED_ORIGINS:https://localhost:3000}
+# CORS - production origins (set to Cloudflare Pages URL)
+cors.allowed-origins=${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
-# HikariCP — tuned for production
+# HikariCP — tuned for Render free tier (limited RAM, single vCPU)
 spring.datasource.hikari.maximum-pool-size=5
 spring.datasource.hikari.minimum-idle=2
 spring.datasource.hikari.leak-detection-threshold=0
@@ -502,8 +502,8 @@ springdoc.api-docs.enabled=false
 |----------|----------|---------|
 | `PORT` | No | Server port (default: 8080) |
 | `OPENAI_API_KEY` | No | AI features (falls back to mock) |
-| `JDBC_DATABASE_URL` | Prod | PostgreSQL JDBC URL (provided by hosting platform) |
-| `CORS_ALLOWED_ORIGINS` | Prod | Comma-separated CORS origins |
+| `DATABASE_URL` | Prod | PostgreSQL URL (auto-provided by Render; converted to JDBC by entrypoint.sh) |
+| `CORS_ALLOWED_ORIGINS` | Prod | Comma-separated CORS origins (Cloudflare Pages URL) |
 | `cors.allowed-origins` | No | Comma-separated CORS origins (default: localhost dev ports) |
 | `rate-limit.requests-per-minute` | No | Rate limit per client (default: 60) |
 | `spring.profiles.active` | No | Set to `prod` for production profile |
@@ -538,19 +538,23 @@ static let useLocalServer = false
 
 ## 7. Deployment & Operations
 
-### 7.1 Backend Deployment
+### 7.1 Backend Deployment (Render)
 
-**Configuration:**
-- Health check: `/actuator/health`
-- PostgreSQL with `JDBC_DATABASE_URL`
-- Environment: `SPRING_PROFILES_ACTIVE=prod`, `OPENAI_API_KEY`, `CORS_ALLOWED_ORIGINS`
+**Platform:** Render (Docker runtime)
+- **Blueprint:** `render.yaml` defines service + PostgreSQL database
+- **Container:** Multi-stage Docker build (`backend/Dockerfile`)
+- **Startup:** `backend/entrypoint.sh` parses `DATABASE_URL` → JDBC URL + credentials
+- **Health check:** `/actuator/health`
+- **Environment:** `SPRING_PROFILES_ACTIVE=prod`, `DATABASE_URL` (auto), `CORS_ALLOWED_ORIGINS`, `OPENAI_API_KEY`
+- **CI/CD:** Deploy hook triggered by GitHub Actions on push to `main`
 
-### 7.2 Frontend Web Deployment
+### 7.2 Frontend Web Deployment (Cloudflare Pages)
 
-**Build:**
-- Node.js 20 with npm ci
-- Builds with `EXPO_PUBLIC_API_URL` env var
-- Output: `dist/` directory (static SPA)
+**Platform:** Cloudflare Pages (edge-deployed SPA)
+- **Build:** Node.js 20, `npm ci && npm run build` (Expo web export)
+- **Environment:** `EXPO_PUBLIC_API_URL` set to Render backend URL
+- **Output:** `dist/` directory with SPA routing (`_redirects`), cache headers (`_headers`)
+- **CI/CD:** Built and deployed via `wrangler` in GitHub Actions on push to `main`
 
 ### 7.3 Mobile App Builds (EAS)
 
@@ -562,7 +566,7 @@ static let useLocalServer = false
 
 | Aspect | Details |
 |--------|---------|
-| Cold Start | Backend: ~30-60s on free-tier hosting |
+| Cold Start | Backend: ~30-60s on Render free tier (spins down after inactivity) |
 | Database | H2 in-memory (dev), PostgreSQL (prod via Flyway migrations) |
 | Connection Pool | HikariCP: 10 max (dev), 5 max (prod) |
 | Caching | AI summaries cached 1 hour |
@@ -720,7 +724,7 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 
 ### Scalability Considerations
 
-- Database: H2 in-memory for development; PostgreSQL with Flyway migrations for production
+- Database: H2 in-memory for development; PostgreSQL on Render with Flyway migrations for production
 - Caching: Caffeine is local; distributed cache (Redis) for multi-instance
 - AI Calls: Rate-limited by caching; consider queue for high volume
 
@@ -841,6 +845,10 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 
 | Purpose | Path |
 |---------|------|
+| CI/CD Workflow | `.github/workflows/deploy.yml` |
+| Render Blueprint | `render.yaml` |
+| Backend Dockerfile | `backend/Dockerfile` |
+| DB URL Entrypoint | `backend/entrypoint.sh` |
 | Backend Entry | `backend/src/main/java/.../ProductReviewApplication.java` |
 | API Controllers | `backend/src/main/java/.../controller/` |
 | Backend Config | `backend/src/main/resources/application.properties` |
