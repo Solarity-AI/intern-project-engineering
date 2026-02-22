@@ -75,6 +75,17 @@ jest.mock('../../context/WishlistContext', () => {
   };
 });
 
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+    SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
+    SafeAreaView: ({ children, ...props }: any) => React.createElement(View, props, children),
+    SafeAreaConsumer: ({ children }: any) => children({ top: 0, right: 0, bottom: 0, left: 0 }),
+  };
+});
+
 jest.mock('../../components/ScreenWrapper', () => {
   const React = require('react');
   const { View } = require('react-native');
