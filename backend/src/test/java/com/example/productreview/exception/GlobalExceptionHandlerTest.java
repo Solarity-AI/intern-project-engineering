@@ -32,4 +32,23 @@ class GlobalExceptionHandlerTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Validation failed"))
                 .andExpect(jsonPath("$.details").isMap());
     }
+
+    @Test
+    void missingHeader_shouldReturn400WithHeaderName() throws Exception {
+        mockMvc.perform(get("/api/v1/products/reviews/voted"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Required header 'X-User-ID' is missing"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void resourceNotFound_shouldIncludeTimestampAndCode() throws Exception {
+        mockMvc.perform(get("/api/v1/products/888888"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(404))
+                .andExpect(jsonPath("$.message").value("Product not found with id: 888888"))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.details").doesNotExist());
+    }
 }
