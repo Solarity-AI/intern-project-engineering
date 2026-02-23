@@ -68,15 +68,15 @@ public class ProductServiceImpl implements ProductService {
             products = productRepository.findAll(pageable);
         }
         
-        // ✨ Log categories for debugging
-        products.getContent().forEach(p -> 
-            log.info("Product: {}, Categories: {}", p.getName(), p.getCategories())
+        products.getContent().forEach(p ->
+            log.debug("Product: {}, Categories: {}", p.getName(), p.getCategories())
         );
         
         return products.map(this::convertToProductDTO);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ProductDTO getProductDTOById(Long id) {
         Product product = getProductById(id);
         ProductDTO productDTO = convertToProductDTO(product);
@@ -120,6 +120,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<ReviewDTO> getReviewsByProductId(Long productId, Integer rating, Pageable pageable) {
         if (rating != null) {
             return reviewRepository.findByProductIdAndRating(productId, rating, pageable)
@@ -133,7 +134,8 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     @CacheEvict(value = "aiSummaries", key = "#productId")
     public ReviewDTO addReview(Long productId, ReviewDTO reviewDTO) {
-        Product product = getProductById(productId);
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", productId));
 
         Review review = new Review();
         review.setReviewerName(reviewDTO.getReviewerName());
@@ -151,7 +153,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ReviewDTO markReviewAsHelpful(Long reviewId, String userId) {
-        Review review = reviewRepository.findById(reviewId)
+        Review review = reviewRepository.findByIdForUpdate(reviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("Review", reviewId));
 
         if (review.getHelpfulCount() == null) {
@@ -184,13 +186,16 @@ public class ProductServiceImpl implements ProductService {
     }
     
     @Override
+    @Transactional(readOnly = true)
     public String chatAboutProduct(Long productId, String question) {
+        getProductById(productId);
         Pageable aiPageable = PageRequest.of(0, AI_REVIEW_MAX_COUNT, Sort.by(Sort.Direction.DESC, "createdAt"));
         List<Review> reviews = reviewRepository.findByProductId(productId, aiPageable).getContent();
         return aiSummaryService.chatWithReviews(productId, question, reviews);
     }
     
     @Override
+    @Transactional(readOnly = true)
     public Map<String, Object> getGlobalStats(String category, String search) {
         boolean hasCategory = category != null && !category.isEmpty() && !category.equalsIgnoreCase("All");
         boolean hasSearch = search != null && !search.trim().isEmpty();

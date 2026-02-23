@@ -5,6 +5,7 @@ import com.example.productreview.model.Review;
 import com.example.productreview.repository.ProductRepository;
 import com.example.productreview.repository.ReviewRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -15,6 +16,7 @@ import java.util.Random;
 import java.util.Set;
 
 @Component
+@Profile("!prod")
 public class DataInitializer implements CommandLineRunner {
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;

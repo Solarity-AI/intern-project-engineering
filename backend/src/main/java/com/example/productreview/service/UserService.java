@@ -10,6 +10,7 @@ import com.example.productreview.repository.ProductRepository;
 import com.example.productreview.repository.WishlistRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -36,13 +37,17 @@ public class UserService {
 
     // --- Wishlist ---
 
+    @Transactional(readOnly = true)
     public List<Long> getWishlist(String userId) {
         return wishlistRepository.findProductIdsByUserId(userId);
     }
 
-    // ✨ New method for paged wishlist products
+    @Transactional(readOnly = true)
     public Page<ProductDTO> getWishlistProducts(String userId, Pageable pageable) {
         List<Long> productIds = wishlistRepository.findProductIdsByUserId(userId);
+        if (productIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
         return productRepository.findByIdIn(productIds, pageable)
                 .map(p -> new ProductDTO(
                         p.getId(),
@@ -60,24 +65,36 @@ public class UserService {
 
     @Transactional
     public void toggleWishlist(String userId, Long productId) {
+        productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", productId));
+
         var existing = wishlistRepository.findByUserIdAndProductId(userId, productId);
         if (existing.isPresent()) {
             wishlistRepository.delete(existing.get());
         } else {
-            wishlistRepository.save(new WishlistItem(userId, productId));
+            try {
+                wishlistRepository.save(new WishlistItem(userId, productId));
+            } catch (DataIntegrityViolationException e) {
+                // Concurrent toggle: another thread already inserted — treat as toggle-off
+                wishlistRepository.findByUserIdAndProductId(userId, productId)
+                        .ifPresent(wishlistRepository::delete);
+            }
         }
     }
 
     // --- Notifications ---
 
+    @Transactional(readOnly = true)
     public List<AppNotification> getNotifications(String userId) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
     
+    @Transactional(readOnly = true)
     public long getUnreadCount(String userId) {
         return notificationRepository.countByUserIdAndIsReadFalse(userId);
     }
 
+    @Transactional
     public void markAsRead(Long notificationId, String userId) {
         AppNotification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found with id: " + notificationId));
@@ -93,6 +110,7 @@ public class UserService {
         notificationRepository.markAllAsReadByUserId(userId);
     }
 
+    @Transactional
     public void createNotification(String userId, String title, String message, Long productId) {
         notificationRepository.save(new AppNotification(userId, title, message, productId));
     }

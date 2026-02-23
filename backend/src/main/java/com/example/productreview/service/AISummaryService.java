@@ -8,6 +8,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -193,9 +194,9 @@ public class AISummaryService {
             return "";
         }
         
-        // Get most common words/phrases from comments
         List<String> comments = filtered.stream()
                 .map(Review::getComment)
+                .filter(Objects::nonNull)
                 .map(String::toLowerCase)
                 .collect(Collectors.toList());
         

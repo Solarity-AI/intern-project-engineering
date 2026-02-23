@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -71,6 +72,11 @@ public class UserServiceTest {
 
     @Test
     void toggleWishlist_WhenNotInWishlist_ShouldAdd() {
+        Product p = new Product();
+        p.setId(1L);
+        p.setName("Test");
+        p.setCategories(new HashSet<>());
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
         when(wishlistRepository.findByUserIdAndProductId(USER_ID, 1L)).thenReturn(Optional.empty());
 
         userService.toggleWishlist(USER_ID, 1L);
@@ -81,6 +87,11 @@ public class UserServiceTest {
 
     @Test
     void toggleWishlist_WhenInWishlist_ShouldRemove() {
+        Product p = new Product();
+        p.setId(1L);
+        p.setName("Test");
+        p.setCategories(new HashSet<>());
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
         WishlistItem existing = new WishlistItem(USER_ID, 1L);
         when(wishlistRepository.findByUserIdAndProductId(USER_ID, 1L)).thenReturn(Optional.of(existing));
 
@@ -88,6 +99,12 @@ public class UserServiceTest {
 
         verify(wishlistRepository).delete(existing);
         verify(wishlistRepository, never()).save(any());
+    }
+
+    @Test
+    void toggleWishlist_WhenProductNotFound_ShouldThrowResourceNotFoundException() {
+        when(productRepository.findById(999L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> userService.toggleWishlist(USER_ID, 999L));
     }
 
     @Test
@@ -116,12 +133,11 @@ public class UserServiceTest {
         when(wishlistRepository.findProductIdsByUserId(USER_ID)).thenReturn(Collections.emptyList());
 
         Pageable pageable = PageRequest.of(0, 10);
-        when(productRepository.findByIdIn(Collections.emptyList(), pageable))
-                .thenReturn(Page.empty());
 
         Page<ProductDTO> result = userService.getWishlistProducts(USER_ID, pageable);
 
         assertTrue(result.getContent().isEmpty());
+        verify(productRepository, never()).findByIdIn(anyList(), any(Pageable.class));
     }
 
     // --- Notification Tests ---

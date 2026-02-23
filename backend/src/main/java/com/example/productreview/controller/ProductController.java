@@ -31,6 +31,8 @@ public class ProductController {
     private static final int MAX_PAGE_SIZE = 100;
     private static final Set<String> ALLOWED_REVIEW_SORT_FIELDS = Set.of(
             "createdAt", "rating", "reviewerName", "helpfulCount");
+    private static final Set<String> ALLOWED_PRODUCT_SORT_FIELDS = Set.of(
+            "name", "price", "averageRating", "reviewCount");
 
     private final ProductService productService;
 
@@ -105,6 +107,7 @@ public class ProductController {
 
         String[] sortParams = sort.split(",");
         String sortField = sortParams[0];
+        validateSortField(sortField, ALLOWED_PRODUCT_SORT_FIELDS);
         Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")
                 ? Sort.Direction.DESC : Sort.Direction.ASC;
 

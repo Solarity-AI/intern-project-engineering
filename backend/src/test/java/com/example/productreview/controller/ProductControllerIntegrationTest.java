@@ -292,6 +292,25 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.error").value("Question is required"));
     }
 
+    // --- Product Sort Field Validation Tests ---
+
+    @Test
+    void getAllProducts_WithInvalidSortField_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/products").param("sort", "invalidField,asc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    // --- Chat 404 Test ---
+
+    @Test
+    void chatAboutProduct_WithNonExistentProduct_ShouldReturn404() throws Exception {
+        mockMvc.perform(post("/api/v1/products/99999/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"question\":\"How is the quality?\"}"))
+                .andExpect(status().isNotFound());
+    }
+
     // --- Sort Direction Tests ---
 
     @Test
