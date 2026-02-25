@@ -44,7 +44,7 @@ public class UserServiceTest {
     private ProductRepository productRepository;
 
     @InjectMocks
-    private UserService userService;
+    private UserServiceImpl userService;
 
     private static final String USER_ID = "test-user-123";
 

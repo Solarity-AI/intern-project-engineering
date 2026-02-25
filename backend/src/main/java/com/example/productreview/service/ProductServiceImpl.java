@@ -68,9 +68,11 @@ public class ProductServiceImpl implements ProductService {
             products = productRepository.findAll(pageable);
         }
         
-        products.getContent().forEach(p ->
-            log.debug("Product: {}, Categories: {}", p.getName(), p.getCategories())
-        );
+        if (log.isDebugEnabled()) {
+            products.getContent().forEach(p ->
+                log.debug("Product: {}, Categories: {}", p.getName(), p.getCategories())
+            );
+        }
         
         return products.map(this::convertToProductDTO);
     }
