@@ -1,5 +1,6 @@
 package com.example.productreview.controller;
 
+import com.example.productreview.dto.ChatRequest;
 import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.dto.ReviewDTO;
 import com.example.productreview.exception.ValidationException;
@@ -59,7 +60,7 @@ public class ProductController {
     }
 
     private void validateSortField(String sortField, Set<String> allowedFields) {
-        if (!allowedFields.contains(sortField)) {
+        if (!allowedFields.contains(sortField.trim())) {
             throw new ValidationException("Invalid sort field: " + sortField + ". Allowed: " + allowedFields);
         }
     }
@@ -242,14 +243,9 @@ public class ProductController {
     public ResponseEntity<Map<String, String>> chatAboutProduct(
             @Parameter(description = "Product ID", example = "1")
             @PathVariable Long id,
-            @RequestBody Map<String, String> request) {
+            @Valid @RequestBody ChatRequest request) {
 
-        String question = request.get("question");
-        if (question == null || question.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Question is required"));
-        }
-
-        String answer = productService.chatAboutProduct(id, question);
+        String answer = productService.chatAboutProduct(id, request.getQuestion());
         return ResponseEntity.ok(Map.of("answer", answer));
     }
 }

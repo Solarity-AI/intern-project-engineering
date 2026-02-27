@@ -1,5 +1,6 @@
 package com.example.productreview.service;
 
+import com.example.productreview.dto.NotificationDTO;
 import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.exception.ResourceNotFoundException;
 import com.example.productreview.exception.UnauthorizedException;
@@ -65,7 +66,7 @@ public class UserServiceImpl implements UserService {
         productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", productId));
 
-        var existing = wishlistRepository.findByUserIdAndProductId(userId, productId);
+        var existing = wishlistRepository.findByUserIdAndProductIdForUpdate(userId, productId);
         if (existing.isPresent()) {
             wishlistRepository.delete(existing.get());
         } else {
@@ -86,8 +87,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AppNotification> getNotifications(String userId) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    public List<NotificationDTO> getNotifications(String userId) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(this::toNotificationDTO)
+                .toList();
     }
 
     @Override
@@ -123,12 +126,12 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void deleteNotification(Long notificationId, String userId) {
-        log.info("Deleting notification with ID: {}", notificationId);
         AppNotification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found with id: " + notificationId));
         if (!notification.getUserId().equals(userId)) {
             throw new UnauthorizedException("Notification does not belong to user");
         }
+        log.info("Deleting notification with ID: {}", notificationId);
         notificationRepository.delete(notification);
         log.info("Deleted notification {}", notificationId);
     }
@@ -137,5 +140,16 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void deleteAllNotifications(String userId) {
         notificationRepository.deleteAllByUserId(userId);
+    }
+
+    private NotificationDTO toNotificationDTO(AppNotification n) {
+        return new NotificationDTO(
+                n.getId(),
+                n.getTitle(),
+                n.getMessage(),
+                n.isRead(),
+                n.getCreatedAt(),
+                n.getProductId()
+        );
     }
 }

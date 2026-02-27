@@ -1,7 +1,7 @@
 package com.example.productreview.service;
 
+import com.example.productreview.dto.NotificationDTO;
 import com.example.productreview.dto.ProductDTO;
-import com.example.productreview.model.AppNotification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -15,7 +15,7 @@ public interface UserService {
 
     void toggleWishlist(String userId, Long productId);
 
-    List<AppNotification> getNotifications(String userId);
+    List<NotificationDTO> getNotifications(String userId);
 
     long getUnreadCount(String userId);
 

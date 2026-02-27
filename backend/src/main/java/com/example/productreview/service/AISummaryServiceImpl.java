@@ -1,5 +1,6 @@
 package com.example.productreview.service;
 
+import com.example.productreview.exception.ValidationException;
 import com.example.productreview.model.Review;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +72,11 @@ public class AISummaryServiceImpl implements AISummaryService {
             return "I couldn't find any reviews for this product to analyze.";
         }
 
-        String lowerQuestion = question.toLowerCase();
+        if (question == null || question.trim().isEmpty()) {
+            throw new ValidationException("Question must not be null or blank");
+        }
+
+        String lowerQuestion = question.trim().toLowerCase();
 
         if (lowerQuestion.contains("how many")) {
             return String.format("There are %d reviews for this product.", reviews.size());

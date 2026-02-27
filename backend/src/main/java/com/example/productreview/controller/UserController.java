@@ -1,9 +1,9 @@
 package com.example.productreview.controller;
 
 import com.example.productreview.dto.CreateNotificationRequest;
+import com.example.productreview.dto.NotificationDTO;
 import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.exception.ValidationException;
-import com.example.productreview.model.AppNotification;
 import com.example.productreview.service.UserService;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,12 +20,15 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/user")
 public class UserController {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final Set<String> ALLOWED_WISHLIST_SORT_FIELDS = Set.of(
+            "id", "name", "price", "averageRating", "reviewCount");
 
     private final UserService userService;
 
@@ -42,6 +45,12 @@ public class UserController {
         }
         if (size > MAX_PAGE_SIZE) {
             throw new ValidationException("Page size must not exceed " + MAX_PAGE_SIZE);
+        }
+    }
+
+    private void validateSortField(String sortField, Set<String> allowedFields) {
+        if (!allowedFields.contains(sortField.trim())) {
+            throw new ValidationException("Invalid sort field: " + sortField + ". Allowed: " + allowedFields);
         }
     }
 
@@ -83,10 +92,12 @@ public class UserController {
         validatePagination(page, size);
 
         String[] sortParams = sort.split(",");
+        String sortField = sortParams[0].trim();
+        validateSortField(sortField, ALLOWED_WISHLIST_SORT_FIELDS);
         Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")
                 ? Sort.Direction.DESC : Sort.Direction.ASC;
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
 
         return ResponseEntity.ok(userService.getWishlistProducts(userId, pageable));
     }
@@ -119,7 +130,7 @@ public class UserController {
             @ApiResponse(responseCode = "200", description = "Notifications returned successfully")
     })
     @GetMapping("/notifications")
-    public ResponseEntity<List<AppNotification>> getNotifications(
+    public ResponseEntity<List<NotificationDTO>> getNotifications(
             @Parameter(description = "User ID", required = true)
             @RequestHeader("X-User-ID") String userId) {
         return ResponseEntity.ok(userService.getNotifications(userId));
