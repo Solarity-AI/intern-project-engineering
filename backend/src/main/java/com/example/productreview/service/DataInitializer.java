@@ -5,7 +5,9 @@ import com.example.productreview.model.Review;
 import com.example.productreview.repository.ProductRepository;
 import com.example.productreview.repository.ReviewRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,6 +17,7 @@ import java.util.Random;
 import java.util.Set;
 
 @Component
+@Profile("!prod")
 public class DataInitializer implements CommandLineRunner {
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;
@@ -25,6 +28,7 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     @Override
+    @Transactional
     public void run(String... args) {
         if (productRepository.count() == 0) {
             List<Product> products = new ArrayList<>();

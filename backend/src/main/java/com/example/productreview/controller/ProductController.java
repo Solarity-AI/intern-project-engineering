@@ -1,5 +1,6 @@
 package com.example.productreview.controller;
 
+import com.example.productreview.dto.ChatRequest;
 import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.dto.ReviewDTO;
 import com.example.productreview.exception.ValidationException;
@@ -31,6 +32,8 @@ public class ProductController {
     private static final int MAX_PAGE_SIZE = 100;
     private static final Set<String> ALLOWED_REVIEW_SORT_FIELDS = Set.of(
             "createdAt", "rating", "reviewerName", "helpfulCount");
+    private static final Set<String> ALLOWED_PRODUCT_SORT_FIELDS = Set.of(
+            "name", "price", "averageRating", "reviewCount");
 
     private final ProductService productService;
 
@@ -57,7 +60,7 @@ public class ProductController {
     }
 
     private void validateSortField(String sortField, Set<String> allowedFields) {
-        if (!allowedFields.contains(sortField)) {
+        if (!allowedFields.contains(sortField.trim())) {
             throw new ValidationException("Invalid sort field: " + sortField + ". Allowed: " + allowedFields);
         }
     }
@@ -105,6 +108,7 @@ public class ProductController {
 
         String[] sortParams = sort.split(",");
         String sortField = sortParams[0];
+        validateSortField(sortField, ALLOWED_PRODUCT_SORT_FIELDS);
         Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")
                 ? Sort.Direction.DESC : Sort.Direction.ASC;
 
@@ -239,14 +243,9 @@ public class ProductController {
     public ResponseEntity<Map<String, String>> chatAboutProduct(
             @Parameter(description = "Product ID", example = "1")
             @PathVariable Long id,
-            @RequestBody Map<String, String> request) {
+            @Valid @RequestBody ChatRequest request) {
 
-        String question = request.get("question");
-        if (question == null || question.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Question is required"));
-        }
-
-        String answer = productService.chatAboutProduct(id, question);
+        String answer = productService.chatAboutProduct(id, request.getQuestion());
         return ResponseEntity.ok(Map.of("answer", answer));
     }
 }

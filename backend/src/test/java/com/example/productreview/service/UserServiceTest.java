@@ -1,5 +1,6 @@
 package com.example.productreview.service;
 
+import com.example.productreview.dto.NotificationDTO;
 import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.exception.ResourceNotFoundException;
 import com.example.productreview.exception.UnauthorizedException;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -43,7 +45,7 @@ public class UserServiceTest {
     private ProductRepository productRepository;
 
     @InjectMocks
-    private UserService userService;
+    private UserServiceImpl userService;
 
     private static final String USER_ID = "test-user-123";
 
@@ -71,7 +73,12 @@ public class UserServiceTest {
 
     @Test
     void toggleWishlist_WhenNotInWishlist_ShouldAdd() {
-        when(wishlistRepository.findByUserIdAndProductId(USER_ID, 1L)).thenReturn(Optional.empty());
+        Product p = new Product();
+        p.setId(1L);
+        p.setName("Test");
+        p.setCategories(new HashSet<>());
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        when(wishlistRepository.findByUserIdAndProductIdForUpdate(USER_ID, 1L)).thenReturn(Optional.empty());
 
         userService.toggleWishlist(USER_ID, 1L);
 
@@ -81,13 +88,44 @@ public class UserServiceTest {
 
     @Test
     void toggleWishlist_WhenInWishlist_ShouldRemove() {
+        Product p = new Product();
+        p.setId(1L);
+        p.setName("Test");
+        p.setCategories(new HashSet<>());
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
         WishlistItem existing = new WishlistItem(USER_ID, 1L);
-        when(wishlistRepository.findByUserIdAndProductId(USER_ID, 1L)).thenReturn(Optional.of(existing));
+        when(wishlistRepository.findByUserIdAndProductIdForUpdate(USER_ID, 1L)).thenReturn(Optional.of(existing));
 
         userService.toggleWishlist(USER_ID, 1L);
 
         verify(wishlistRepository).delete(existing);
         verify(wishlistRepository, never()).save(any());
+    }
+
+    @Test
+    void toggleWishlist_WhenProductNotFound_ShouldThrowResourceNotFoundException() {
+        when(productRepository.findById(999L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> userService.toggleWishlist(USER_ID, 999L));
+    }
+
+    @Test
+    void toggleWishlist_WhenConcurrentInsert_ShouldDeleteDuplicate() {
+        Product p = new Product();
+        p.setId(1L);
+        p.setName("Test");
+        p.setCategories(new HashSet<>());
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        when(wishlistRepository.findByUserIdAndProductIdForUpdate(USER_ID, 1L)).thenReturn(Optional.empty());
+        when(wishlistRepository.save(any(WishlistItem.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate"));
+
+        WishlistItem duplicate = new WishlistItem(USER_ID, 1L);
+        when(wishlistRepository.findByUserIdAndProductId(USER_ID, 1L)).thenReturn(Optional.of(duplicate));
+
+        userService.toggleWishlist(USER_ID, 1L);
+
+        verify(wishlistRepository).save(any(WishlistItem.class));
+        verify(wishlistRepository).delete(duplicate);
     }
 
     @Test
@@ -116,12 +154,11 @@ public class UserServiceTest {
         when(wishlistRepository.findProductIdsByUserId(USER_ID)).thenReturn(Collections.emptyList());
 
         Pageable pageable = PageRequest.of(0, 10);
-        when(productRepository.findByIdIn(Collections.emptyList(), pageable))
-                .thenReturn(Page.empty());
 
         Page<ProductDTO> result = userService.getWishlistProducts(USER_ID, pageable);
 
         assertTrue(result.getContent().isEmpty());
+        verify(productRepository, never()).findByIdIn(anyList(), any(Pageable.class));
     }
 
     // --- Notification Tests ---
@@ -133,7 +170,7 @@ public class UserServiceTest {
         when(notificationRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
                 .thenReturn(Arrays.asList(n2, n1));
 
-        List<AppNotification> result = userService.getNotifications(USER_ID);
+        List<NotificationDTO> result = userService.getNotifications(USER_ID);
 
         assertEquals(2, result.size());
         assertEquals("Title2", result.get(0).getTitle());
@@ -240,7 +277,7 @@ public class UserServiceTest {
         when(notificationRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
                 .thenReturn(Collections.emptyList());
 
-        List<AppNotification> result = userService.getNotifications(USER_ID);
+        List<NotificationDTO> result = userService.getNotifications(USER_ID);
 
         assertTrue(result.isEmpty());
     }

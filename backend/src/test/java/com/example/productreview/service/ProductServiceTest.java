@@ -109,7 +109,7 @@ public class ProductServiceTest {
         review.setRating(5);
         review.setProduct(product);
 
-        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
         when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.singletonList(new Object[]{1L, 5.0}));
 
@@ -137,7 +137,7 @@ public class ProductServiceTest {
 
     @Test
     void addReview_WhenProductNotFound_ShouldThrowResourceNotFoundException() {
-        when(productRepository.findById(999L)).thenReturn(Optional.empty());
+        when(productRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
         ReviewDTO reviewDTO = new ReviewDTO();
         reviewDTO.setReviewerName("User");
         reviewDTO.setComment("Good product indeed");
@@ -154,7 +154,7 @@ public class ProductServiceTest {
         review.setHelpfulCount(0);
         review.setProduct(product);
 
-        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(review));
         when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.empty());
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
@@ -172,7 +172,7 @@ public class ProductServiceTest {
         review.setProduct(product);
         ReviewVote existingVote = new ReviewVote("user1", review);
 
-        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(review));
         when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.of(existingVote));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
@@ -184,7 +184,7 @@ public class ProductServiceTest {
 
     @Test
     void markReviewAsHelpful_WhenReviewNotFound_ShouldThrowException() {
-        when(reviewRepository.findById(999L)).thenReturn(Optional.empty());
+        when(reviewRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
         assertThrows(ResourceNotFoundException.class, () -> productService.markReviewAsHelpful(999L, "user1"));
     }
 
@@ -195,7 +195,7 @@ public class ProductServiceTest {
         review.setHelpfulCount(0);
         review.setProduct(product);
 
-        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(review));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
         productService.markReviewAsHelpful(1L, null);
@@ -316,7 +316,7 @@ public class ProductServiceTest {
         review.setRating(1);
         review.setProduct(product);
 
-        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
         when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.singletonList(new Object[]{1L, 1.0}));
 
@@ -340,7 +340,7 @@ public class ProductServiceTest {
         review.setRating(5);
         review.setProduct(product);
 
-        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
         when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.singletonList(new Object[]{1L, 5.0}));
 
@@ -391,6 +391,7 @@ public class ProductServiceTest {
 
     @Test
     void chatAboutProduct_ShouldDelegateToAIService() {
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.findByProductId(eq(1L), any(Pageable.class))).thenReturn(new PageImpl<>(new ArrayList<>()));
         when(aiSummaryService.chatWithReviews(eq(1L), eq("How is quality?"), any()))
                 .thenReturn("AI response");
@@ -399,6 +400,12 @@ public class ProductServiceTest {
 
         assertEquals("AI response", result);
         verify(aiSummaryService).chatWithReviews(eq(1L), eq("How is quality?"), any());
+    }
+
+    @Test
+    void chatAboutProduct_WhenProductNotFound_ShouldThrowResourceNotFoundException() {
+        when(productRepository.findById(999L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> productService.chatAboutProduct(999L, "How is quality?"));
     }
 
     @Test
@@ -462,7 +469,7 @@ public class ProductServiceTest {
         review.setProduct(product);
         ReviewVote existingVote = new ReviewVote("user1", review);
 
-        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(review));
         when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.of(existingVote));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
@@ -569,7 +576,7 @@ public class ProductServiceTest {
         review.setRating(5);
         review.setProduct(product);
 
-        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
         when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.emptyList());
 
@@ -596,7 +603,7 @@ public class ProductServiceTest {
         List<Object[]> nullRowList = new ArrayList<>();
         nullRowList.add(null);
 
-        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
         when(reviewRepository.getReviewStats(1L)).thenReturn(nullRowList);
 
@@ -614,7 +621,7 @@ public class ProductServiceTest {
         review.setHelpfulCount(null);
         review.setProduct(product);
 
-        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(review));
         when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.empty());
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 

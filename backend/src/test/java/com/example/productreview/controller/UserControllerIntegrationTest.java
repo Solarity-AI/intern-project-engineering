@@ -292,12 +292,12 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
     // --- Additional Tests for Criteria Compliance ---
 
     @Test
-    void toggleWishlist_WithNonExistentProduct_ShouldStillReturn200() throws Exception {
+    void toggleWishlist_WithNonExistentProduct_ShouldReturn404() throws Exception {
         String userId = "wishlist-nonexist-user";
 
         mockMvc.perform(post("/api/v1/user/wishlist/99999")
                 .header("X-User-ID", userId))
-                .andExpect(status().isOk());
+                .andExpect(status().isNotFound());
     }
 
     @Test
