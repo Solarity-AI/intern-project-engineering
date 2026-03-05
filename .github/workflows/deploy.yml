@@ -1,0 +1,41 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run Backend Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Run tests and verify coverage
+        run: ./mvnw verify
+        working-directory: backend
+
+  deploy-backend:
+    name: Deploy Backend to Render
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy
+        run: |
+          curl -sf "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            || (echo "Failed to trigger Render deploy" && exit 1)
+
+  # Frontend deployment is handled automatically by Vercel GitHub integration

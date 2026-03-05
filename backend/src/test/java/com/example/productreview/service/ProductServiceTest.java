@@ -88,7 +88,7 @@ public class ProductServiceTest {
     void getProductDTOById_ShouldReturnDTO() {
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.findRatingCountsByProductId(1L)).thenReturn(new ArrayList<>());
-        when(reviewRepository.findByProductId(1L)).thenReturn(new ArrayList<>());
+        when(reviewRepository.findByProductId(eq(1L), any(Pageable.class))).thenReturn(new PageImpl<>(new ArrayList<>()));
 
         ProductDTO result = productService.getProductDTOById(1L);
 
@@ -109,7 +109,7 @@ public class ProductServiceTest {
         review.setRating(5);
         review.setProduct(product);
 
-        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
         when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.singletonList(new Object[]{1L, 5.0}));
 
@@ -137,7 +137,7 @@ public class ProductServiceTest {
 
     @Test
     void addReview_WhenProductNotFound_ShouldThrowResourceNotFoundException() {
-        when(productRepository.findById(999L)).thenReturn(Optional.empty());
+        when(productRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
         ReviewDTO reviewDTO = new ReviewDTO();
         reviewDTO.setReviewerName("User");
         reviewDTO.setComment("Good product indeed");
@@ -154,7 +154,7 @@ public class ProductServiceTest {
         review.setHelpfulCount(0);
         review.setProduct(product);
 
-        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(review));
         when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.empty());
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
@@ -172,7 +172,7 @@ public class ProductServiceTest {
         review.setProduct(product);
         ReviewVote existingVote = new ReviewVote("user1", review);
 
-        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(review));
         when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.of(existingVote));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
@@ -184,7 +184,7 @@ public class ProductServiceTest {
 
     @Test
     void markReviewAsHelpful_WhenReviewNotFound_ShouldThrowException() {
-        when(reviewRepository.findById(999L)).thenReturn(Optional.empty());
+        when(reviewRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
         assertThrows(ResourceNotFoundException.class, () -> productService.markReviewAsHelpful(999L, "user1"));
     }
 
@@ -195,7 +195,7 @@ public class ProductServiceTest {
         review.setHelpfulCount(0);
         review.setProduct(product);
 
-        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(review));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
         productService.markReviewAsHelpful(1L, null);
@@ -208,13 +208,7 @@ public class ProductServiceTest {
 
     @Test
     void getUserVotedReviewIds_ShouldReturnVotedIds() {
-        Review review10 = new Review();
-        review10.setId(10L);
-        Review review20 = new Review();
-        review20.setId(20L);
-        ReviewVote vote1 = new ReviewVote("user1", review10);
-        ReviewVote vote2 = new ReviewVote("user1", review20);
-        when(reviewVoteRepository.findByUserId("user1")).thenReturn(Arrays.asList(vote1, vote2));
+        when(reviewVoteRepository.findReviewIdsByUserId("user1")).thenReturn(Arrays.asList(10L, 20L));
 
         List<Long> result = productService.getUserVotedReviewIds("user1");
 
@@ -225,7 +219,7 @@ public class ProductServiceTest {
 
     @Test
     void getUserVotedReviewIds_WhenNoVotes_ShouldReturnEmpty() {
-        when(reviewVoteRepository.findByUserId("user1")).thenReturn(new ArrayList<>());
+        when(reviewVoteRepository.findReviewIdsByUserId("user1")).thenReturn(new ArrayList<>());
 
         List<Long> result = productService.getUserVotedReviewIds("user1");
 
@@ -322,7 +316,7 @@ public class ProductServiceTest {
         review.setRating(1);
         review.setProduct(product);
 
-        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
         when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.singletonList(new Object[]{1L, 1.0}));
 
@@ -346,7 +340,7 @@ public class ProductServiceTest {
         review.setRating(5);
         review.setProduct(product);
 
-        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
         when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.singletonList(new Object[]{1L, 5.0}));
 
@@ -354,24 +348,6 @@ public class ProductServiceTest {
 
         assertNotNull(result);
         assertEquals(5.0, product.getAverageRating());
-    }
-
-    @Test
-    void getReviewsByProductId_ShouldReturnReviewDTOList() {
-        Review review = new Review();
-        review.setId(1L);
-        review.setReviewerName("User");
-        review.setComment("Nice");
-        review.setRating(4);
-        review.setHelpfulCount(0);
-        review.setProduct(product);
-
-        when(reviewRepository.findByProductId(1L)).thenReturn(Arrays.asList(review));
-
-        List<ReviewDTO> result = productService.getReviewsByProductId(1L);
-
-        assertEquals(1, result.size());
-        assertEquals("User", result.get(0).getReviewerName());
     }
 
     @Test
@@ -415,7 +391,8 @@ public class ProductServiceTest {
 
     @Test
     void chatAboutProduct_ShouldDelegateToAIService() {
-        when(reviewRepository.findByProductId(1L)).thenReturn(new ArrayList<>());
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(reviewRepository.findByProductId(eq(1L), any(Pageable.class))).thenReturn(new PageImpl<>(new ArrayList<>()));
         when(aiSummaryService.chatWithReviews(eq(1L), eq("How is quality?"), any()))
                 .thenReturn("AI response");
 
@@ -426,6 +403,12 @@ public class ProductServiceTest {
     }
 
     @Test
+    void chatAboutProduct_WhenProductNotFound_ShouldThrowResourceNotFoundException() {
+        when(productRepository.findById(999L)).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> productService.chatAboutProduct(999L, "How is quality?"));
+    }
+
+    @Test
     void getProductDTOById_ShouldIncludeRatingBreakdown() {
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));
         List<Object[]> ratingCounts = Arrays.asList(
@@ -433,7 +416,7 @@ public class ProductServiceTest {
                 new Object[]{4, 2L}
         );
         when(reviewRepository.findRatingCountsByProductId(1L)).thenReturn(ratingCounts);
-        when(reviewRepository.findByProductId(1L)).thenReturn(new ArrayList<>());
+        when(reviewRepository.findByProductId(eq(1L), any(Pageable.class))).thenReturn(new PageImpl<>(new ArrayList<>()));
 
         ProductDTO result = productService.getProductDTOById(1L);
 
@@ -486,13 +469,149 @@ public class ProductServiceTest {
         review.setProduct(product);
         ReviewVote existingVote = new ReviewVote("user1", review);
 
-        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(review));
         when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.of(existingVote));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 
         productService.markReviewAsHelpful(1L, "user1");
 
         assertEquals(0, review.getHelpfulCount());
+    }
+
+    // --- Empty Database / Zero-State Tests (#105) ---
+
+    @Test
+    void getGlobalStats_WhenDatabaseEmpty_ShouldReturnZeroState() {
+        when(productRepository.getGlobalStats()).thenReturn(Collections.emptyList());
+
+        Map<String, Object> stats = productService.getGlobalStats(null, null);
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    @Test
+    void getGlobalStats_WhenResultContainsNullAggregates_ShouldReturnZeroState() {
+        when(productRepository.getGlobalStats())
+                .thenReturn(Collections.singletonList(new Object[]{null, null, 0L}));
+
+        Map<String, Object> stats = productService.getGlobalStats(null, null);
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    @Test
+    void getGlobalStats_WithCategory_WhenEmpty_ShouldReturnZeroState() {
+        when(productRepository.getCategoryStats("NonExistent")).thenReturn(Collections.emptyList());
+
+        Map<String, Object> stats = productService.getGlobalStats("NonExistent", null);
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    @Test
+    void getGlobalStats_WithSearch_WhenEmpty_ShouldReturnZeroState() {
+        when(productRepository.getSearchStats("NoMatch")).thenReturn(Collections.emptyList());
+
+        Map<String, Object> stats = productService.getGlobalStats(null, "NoMatch");
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    @Test
+    void getGlobalStats_WithCategoryAndSearch_WhenEmpty_ShouldReturnZeroState() {
+        when(productRepository.getCategoryAndSearchStats("NonExistent", "NoMatch"))
+                .thenReturn(Collections.emptyList());
+
+        Map<String, Object> stats = productService.getGlobalStats("NonExistent", "NoMatch");
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    @Test
+    void getGlobalStats_WhenResultRowIsNull_ShouldReturnZeroState() {
+        List<Object[]> nullRowList = new ArrayList<>();
+        nullRowList.add(null);
+        when(productRepository.getGlobalStats()).thenReturn(nullRowList);
+
+        Map<String, Object> stats = productService.getGlobalStats(null, null);
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    @Test
+    void getGlobalStats_WhenRepositoryReturnsNull_ShouldReturnZeroState() {
+        when(productRepository.getGlobalStats()).thenReturn(null);
+
+        Map<String, Object> stats = productService.getGlobalStats(null, null);
+
+        assertEquals(0L, stats.get("totalProducts"));
+        assertEquals(0L, stats.get("totalReviews"));
+        assertEquals(0.0, stats.get("averageRating"));
+    }
+
+    // --- updateProductStats edge cases (#105) ---
+
+    @Test
+    void addReview_WhenReviewStatsEmpty_ShouldDefaultToZero() {
+        ReviewDTO reviewDTO = new ReviewDTO();
+        reviewDTO.setReviewerName("TestUser");
+        reviewDTO.setComment("Good product indeed");
+        reviewDTO.setRating(5);
+
+        Review review = new Review();
+        review.setId(1L);
+        review.setReviewerName("TestUser");
+        review.setRating(5);
+        review.setProduct(product);
+
+        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
+        when(reviewRepository.save(any(Review.class))).thenReturn(review);
+        when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.emptyList());
+
+        ReviewDTO result = productService.addReview(1L, reviewDTO);
+
+        assertNotNull(result);
+        assertEquals(0, product.getReviewCount());
+        assertEquals(0.0, product.getAverageRating());
+    }
+
+    @Test
+    void addReview_WhenReviewStatsRowIsNull_ShouldDefaultToZero() {
+        ReviewDTO reviewDTO = new ReviewDTO();
+        reviewDTO.setReviewerName("TestUser");
+        reviewDTO.setComment("Good product indeed");
+        reviewDTO.setRating(5);
+
+        Review review = new Review();
+        review.setId(1L);
+        review.setReviewerName("TestUser");
+        review.setRating(5);
+        review.setProduct(product);
+
+        List<Object[]> nullRowList = new ArrayList<>();
+        nullRowList.add(null);
+
+        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
+        when(reviewRepository.save(any(Review.class))).thenReturn(review);
+        when(reviewRepository.getReviewStats(1L)).thenReturn(nullRowList);
+
+        ReviewDTO result = productService.addReview(1L, reviewDTO);
+
+        assertNotNull(result);
+        assertEquals(0, product.getReviewCount());
+        assertEquals(0.0, product.getAverageRating());
     }
 
     @Test
@@ -502,7 +621,7 @@ public class ProductServiceTest {
         review.setHelpfulCount(null);
         review.setProduct(product);
 
-        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(review));
         when(reviewVoteRepository.findByUserIdAndReview_Id("user1", 1L)).thenReturn(Optional.empty());
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
 

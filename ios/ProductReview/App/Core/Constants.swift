@@ -10,16 +10,7 @@ import Foundation
 enum AppConstants {
     // MARK: - API Configuration
     enum API {
-        // Toggle for local development vs production
-        #if DEBUG
-        static let useLocalServer = false
-        #else
-        static let useLocalServer = false
-        #endif
-
-        static var baseURL: String {
-            useLocalServer ? "http://localhost:8080" : "https://solarity-review-api-95bd50ea0f47.herokuapp.com"
-        }
+        static let baseURL = "https://solarity-review-api.onrender.com"
         static let timeoutInterval: TimeInterval = 8.0
         static let aiTimeoutInterval: TimeInterval = 20.0 // Longer timeout for AI calls
         static let maxRetries: Int = 3

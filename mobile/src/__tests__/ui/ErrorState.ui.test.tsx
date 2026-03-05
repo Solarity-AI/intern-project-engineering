@@ -35,6 +35,9 @@ jest.mock('../../services/api', () => ({
   getUserVotedReviews: jest.fn().mockResolvedValue([]),
   postReview: jest.fn(),
   markReviewAsHelpful: jest.fn(),
+  getUserMessage: jest.fn((error: unknown) =>
+    error instanceof Error ? error.message : 'Unexpected error'
+  ),
 }));
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -122,6 +125,17 @@ jest.mock('../../context/ToastContext', () => {
     ToastProvider: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
     useToast: () => ({ showToast: mockShowToast }),
+  };
+});
+
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+    SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
+    SafeAreaView: ({ children, ...props }: any) => React.createElement(View, props, children),
+    SafeAreaConsumer: ({ children }: any) => children({ top: 0, right: 0, bottom: 0, left: 0 }),
   };
 });
 

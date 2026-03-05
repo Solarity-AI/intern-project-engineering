@@ -16,7 +16,6 @@ import {
 
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenWrapper } from '../components/ScreenWrapper';
@@ -32,7 +31,8 @@ import { useNetwork } from '../context/NetworkContext';
 import { getWishlistProducts, ApiProduct, getUserMessage } from '../services/api';
 
 import { RootStackParamList } from '../types';
-import { BorderRadius, FontSize, FontWeight, Spacing, Gradients, Glass, Shadow, Glow } from '../constants/theme';
+import { BorderRadius, FontSize, FontWeight, Spacing, Glass, Shadow, Glow, getGridMaxWidth } from '../constants/theme';
+import { getHeaderToggleSizing } from './headerToggleSizing';
 
 type WishlistNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Wishlist'>;
 
@@ -49,12 +49,15 @@ export const WishlistScreen = () => {
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
   const webBp = !isWeb ? 'mobile' : width < 720 ? 'narrow' : width < 1100 ? 'medium' : 'wide';
-
-  const headerIconSize = isWeb ? (webBp === 'wide' ? 26 : 24) : 20;
-  const headerIconSizeBig = isWeb ? (webBp === 'wide' ? 28 : 26) : 22;
+  const containerMaxWidth = isWeb ? getGridMaxWidth(width) : undefined;
 
   const [gridMode, setGridMode] = useState<1 | 2 | 3>(2);
   const numColumns = gridMode;
+  const headerToggleSizing = getHeaderToggleSizing({
+    isWeb,
+    breakpoint: webBp,
+    numColumns,
+  });
 
   const gridTouchedRef = useRef(false);
 
@@ -152,45 +155,53 @@ export const WishlistScreen = () => {
     });
   };
 
+  const handleBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('ProductList');
+  }, [navigation]);
+
   // Multi-select mode
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const isSelectionModeRef = useRef(false);
 
-  const [selectionTick, setSelectionTick] = useState(0);
-  const bumpSelectionTick = useCallback(() => setSelectionTick(t => t + 1), []);
-
-  const handleCancelSelection = () => {
+  const handleCancelSelection = useCallback(() => {
+    isSelectionModeRef.current = false;
     setIsSelectionMode(false);
     setSelectedItems(new Set());
-    bumpSelectionTick();
-  };
+  }, []);
 
-  const handleCardLongPress = (item: ApiProduct) => {
+  const handleCardLongPress = useCallback((item: ApiProduct) => {
     const id = String(item.id);
+    isSelectionModeRef.current = true;
     setIsSelectionMode(true);
     setSelectedItems(prev => {
       const next = new Set(prev);
       next.add(id);
-      bumpSelectionTick();
       return next;
     });
-  };
+  }, []);
 
-  const handleCardPress = (item: ApiProduct) => {
+  const handleCardPress = useCallback((item: ApiProduct) => {
     const id = String(item.id);
     if (isSelectionMode) {
       setSelectedItems(prev => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id);
         else next.add(id);
-        if (next.size === 0) setIsSelectionMode(false);
+        if (next.size === 0) {
+          isSelectionModeRef.current = false;
+          setIsSelectionMode(false);
+        }
         return next;
       });
-      bumpSelectionTick();
       return;
     }
     navigation.navigate('ProductDetails', { productId: id });
-  };
+  }, [isSelectionMode, navigation]);
 
   const handleRemoveSelected = useCallback(() => {
     const idsToRemove = Array.from(selectedItems);
@@ -207,12 +218,7 @@ export const WishlistScreen = () => {
   }, [selectedItems, removeMultipleFromWishlist]);
 
   const handleRemoveSingle = useCallback((id: string) => {
-    console.log('Removing item:', id);
-    setPagedWishlist(prev => {
-      const filtered = prev.filter(item => String(item.id) !== String(id));
-      console.log('Previous length:', prev.length, 'New length:', filtered.length);
-      return filtered;
-    });
+    setPagedWishlist(prev => prev.filter(item => String(item.id) !== String(id)));
     setTotalItems(prev => Math.max(0, prev - 1));
     removeFromWishlist(id);
   }, [removeFromWishlist]);
@@ -225,16 +231,11 @@ export const WishlistScreen = () => {
     return { itemCount: totalItems, totalPrice, avgRating };
   }, [pagedWishlist, totalItems]);
 
-  const renderWishlistItem = ({ item, index }: { item: ApiProduct; index: number }) => {
+  const renderWishlistItem = useCallback(({ item, index }: { item: ApiProduct; index: number }) => {
     const id = String(item.id);
     const selected = selectedItems.has(id);
     const isGrid = numColumns > 1;
     const gapSize = Spacing.sm;
-
-    const forceKey =
-      Platform.OS === 'android'
-        ? `${id}-${isSelectionMode ? 1 : 0}-${selected ? 1 : 0}-${selectionTick}`
-        : id;
 
     return (
       <View
@@ -255,18 +256,17 @@ export const WishlistScreen = () => {
         ]}
       >
         <SelectableWishlistCard
-          key={forceKey}
           item={item as any}
           numColumns={numColumns}
           isSelectionMode={isSelectionMode}
           isSelected={selected}
-          onPress={() => handleCardPress(item)}
-          onLongPress={() => handleCardLongPress(item)}
+          onPress={handleCardPress as any}
+          onLongPress={handleCardLongPress as any}
           onRemove={handleRemoveSingle}
         />
       </View>
     );
-  };
+  }, [numColumns, isSelectionMode, selectedItems, handleCardPress, handleCardLongPress, handleRemoveSingle]);
 
   const emptyState = (
     <View style={styles.emptyContainer}>
@@ -297,28 +297,40 @@ export const WishlistScreen = () => {
         }}
       >
         <View style={{ flex: 1 }}>
-          {isOffline && <OfflineBanner onRetry={() => fetchWishlist(0, false)} />}
+          <OfflineBanner onRetry={() => fetchWishlist(0, false)} />
 
           {/* Header */}
-          <View style={isWeb ? styles.webPageContainer : undefined}>
+          <View style={isWeb ? [styles.webPageContainer, { maxWidth: containerMaxWidth }] : undefined}>
             <View style={[styles.header, { backgroundColor: colors.background }, isWeb && styles.headerWeb]}>
               <TouchableOpacity
-                style={[styles.brand, isWeb && styles.brandWeb]}
-                onPress={() => navigation.navigate('ProductList')}
+                style={[
+                  styles.headerButton,
+                  {
+                    width: headerToggleSizing.buttonSize,
+                    height: headerToggleSizing.buttonSize,
+                    borderRadius: headerToggleSizing.buttonSize / 2,
+                  },
+                  colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
+                ]}
+                onPress={handleBack}
                 activeOpacity={0.85}
               >
-                <LinearGradient colors={Gradients.brandVivid as [string, string, ...string[]]} style={styles.brandIcon}>
-                  <Ionicons name="flash" size={18} color="#fff" />
-                </LinearGradient>
-                <Text style={[styles.brandText, { color: colors.foreground }]}>Solarity</Text>
-                <Text style={[styles.brandTextAccent, { color: colors.primary }]}>Review</Text>
+                <Ionicons
+                  name="chevron-back"
+                  size={headerToggleSizing.iconSize}
+                  color={colors.foreground}
+                />
               </TouchableOpacity>
 
-              <View style={styles.headerActions}>
+              <View style={[styles.headerActions, { gap: headerToggleSizing.actionGap }]}>
                 <TouchableOpacity
                   style={[
                     styles.headerButton,
-                    isWeb && styles.headerButtonWeb,
+                    {
+                      width: headerToggleSizing.buttonSize,
+                      height: headerToggleSizing.buttonSize,
+                      borderRadius: headerToggleSizing.buttonSize / 2,
+                    },
                     colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
                   ]}
                   onPress={toggleTheme}
@@ -326,7 +338,7 @@ export const WishlistScreen = () => {
                 >
                   <Ionicons
                     name={colorScheme === 'dark' ? 'sunny' : 'moon'}
-                    size={headerIconSize}
+                    size={headerToggleSizing.iconSize}
                     color={colors.foreground}
                   />
                 </TouchableOpacity>
@@ -334,7 +346,11 @@ export const WishlistScreen = () => {
                 <TouchableOpacity
                   style={[
                     styles.headerButton,
-                    isWeb && styles.headerButtonWeb,
+                    {
+                      width: headerToggleSizing.buttonSize,
+                      height: headerToggleSizing.buttonSize,
+                      borderRadius: headerToggleSizing.buttonSize / 2,
+                    },
                     colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
                   ]}
                   onPress={toggleGridMode}
@@ -342,7 +358,7 @@ export const WishlistScreen = () => {
                 >
                   <Ionicons
                     name={gridMode === 1 ? 'list' : gridMode === 2 ? 'grid-outline' : 'grid'}
-                    size={headerIconSize}
+                    size={headerToggleSizing.iconSize}
                     color={colors.foreground}
                   />
                 </TouchableOpacity>
@@ -350,7 +366,11 @@ export const WishlistScreen = () => {
                 <TouchableOpacity
                   style={[
                     styles.headerButton,
-                    isWeb && styles.headerButtonWeb,
+                    {
+                      width: headerToggleSizing.buttonSize,
+                      height: headerToggleSizing.buttonSize,
+                      borderRadius: headerToggleSizing.buttonSize / 2,
+                    },
                     colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
                   ]}
                   onPress={async () => {
@@ -360,7 +380,11 @@ export const WishlistScreen = () => {
                   }}
                   activeOpacity={0.85}
                 >
-                  <Ionicons name="trash-outline" size={headerIconSizeBig} color={colors.foreground} />
+                  <Ionicons
+                    name="trash-outline"
+                    size={headerToggleSizing.emphasisIconSize}
+                    color={colors.foreground}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
@@ -414,7 +438,7 @@ export const WishlistScreen = () => {
             <View style={[
               styles.skeletonGrid,
               numColumns > 1 && styles.skeletonGridMultiCol,
-              isWeb ? styles.webListContent : { paddingHorizontal: Spacing.lg },
+              isWeb ? [styles.webListContent, { maxWidth: containerMaxWidth }] : { paddingHorizontal: Spacing.lg },
             ]}>
               {Array.from({ length: numColumns === 1 ? 3 : 4 }).map((_, i) => (
                 <View
@@ -453,12 +477,12 @@ export const WishlistScreen = () => {
           ) : (
             <FlatList
               data={pagedWishlist}
-              extraData={selectionTick}
+              extraData={selectedItems}
               key={numColumns}
               numColumns={numColumns}
               keyExtractor={(item) => String(item.id)}
               renderItem={renderWishlistItem}
-              removeClippedSubviews={false}
+              removeClippedSubviews={Platform.OS !== 'web'}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
@@ -474,7 +498,7 @@ export const WishlistScreen = () => {
               }
               contentContainerStyle={[
                 styles.listContent,
-                isWeb && styles.webListContent,
+                isWeb && [styles.webListContent, { maxWidth: containerMaxWidth }],
                 !isWeb && { paddingHorizontal: Spacing.lg },
               ]}
               columnWrapperStyle={
@@ -487,6 +511,7 @@ export const WishlistScreen = () => {
                   hasMore={hasMore}
                   currentPage={currentPage}
                   totalPages={totalPages}
+                  endSubtext="Showing all wishlist items"
                 />
               }
             />
@@ -495,7 +520,7 @@ export const WishlistScreen = () => {
           {/* Floating bottom bar for selection mode */}
           {isSelectionMode && selectedItems.size > 0 && (
             <View style={[styles.floatingBar, colorScheme === 'dark' ? Glass.card : { backgroundColor: colors.card }]}>
-              <View style={isWeb ? styles.floatingBarInnerWeb : undefined}>
+              <View style={isWeb ? [styles.floatingBarInnerWeb, { maxWidth: containerMaxWidth }] : undefined}>
                 <TouchableOpacity
                   style={[styles.floatingButton, { backgroundColor: colors.destructive }]}
                   onPress={handleRemoveSelected}
@@ -519,7 +544,6 @@ export const WishlistScreen = () => {
 const styles = StyleSheet.create({
   webPageContainer: {
     width: '100%',
-    maxWidth: 1200,
     alignSelf: 'center',
     paddingHorizontal: Spacing.lg,
   },
@@ -536,30 +560,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
 
-  brand: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  brandWeb: { paddingVertical: 4 },
-  brandIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadow.soft,
-  },
-  brandText: { fontSize: FontSize.xl, fontWeight: FontWeight.bold },
-  brandTextAccent: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginLeft: -2 },
-
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  headerActions: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
   headerButton: {
     width: 40,
     height: 40,
     borderRadius: BorderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerButtonWeb: {
-    width: 46,
-    height: 46,
   },
 
   /* Page title */
@@ -619,7 +626,6 @@ const styles = StyleSheet.create({
   },
   webListContent: {
     width: '100%',
-    maxWidth: 1200,
     alignSelf: 'center',
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing['5xl'] + Spacing.xl,
@@ -712,7 +718,6 @@ const styles = StyleSheet.create({
   },
   floatingBarInnerWeb: {
     width: '100%',
-    maxWidth: 1200,
     alignSelf: 'center',
     paddingHorizontal: Spacing.lg,
   },

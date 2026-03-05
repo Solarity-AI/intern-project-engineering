@@ -13,7 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,12 +23,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
     
     private static final Logger log = LoggerFactory.getLogger(ProductServiceImpl.class);
+    private static final int AI_REVIEW_MAX_COUNT = 50;
     
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;
@@ -66,15 +68,17 @@ public class ProductServiceImpl implements ProductService {
             products = productRepository.findAll(pageable);
         }
         
-        // ✨ Log categories for debugging
-        products.getContent().forEach(p -> 
-            log.info("Product: {}, Categories: {}", p.getName(), p.getCategories())
-        );
+        if (log.isDebugEnabled()) {
+            products.getContent().forEach(p ->
+                log.debug("Product: {}, Categories: {}", p.getName(), p.getCategories())
+            );
+        }
         
         return products.map(this::convertToProductDTO);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ProductDTO getProductDTOById(Long id) {
         Product product = getProductById(id);
         ProductDTO productDTO = convertToProductDTO(product);
@@ -94,11 +98,12 @@ public class ProductServiceImpl implements ProductService {
         productDTO.setRatingBreakdown(ratingBreakdown);
         
         try {
-            List<Review> reviews = reviewRepository.findByProductId(id);
+            Pageable aiPageable = PageRequest.of(0, AI_REVIEW_MAX_COUNT, Sort.by(Sort.Direction.DESC, "createdAt"));
+            List<Review> reviews = reviewRepository.findByProductId(id, aiPageable).getContent();
             if (!reviews.isEmpty()) {
                 String aiSummary = aiSummaryService.generateReviewSummary(
-                        id, 
-                        product.getName(), 
+                        id,
+                        product.getName(),
                         reviews
                 );
                 productDTO.setAiSummary(aiSummary);
@@ -106,7 +111,7 @@ public class ProductServiceImpl implements ProductService {
         } catch (Exception e) {
             log.error("Error generating AI summary for product {}: {}", id, e.getMessage());
         }
-        
+
         return productDTO;
     }
 
@@ -117,13 +122,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public List<ReviewDTO> getReviewsByProductId(Long productId) {
-        return reviewRepository.findByProductId(productId).stream()
-                .map(this::convertToReviewDTO)
-                .collect(Collectors.toList());
-    }
-
-    @Override
+    @Transactional(readOnly = true)
     public Page<ReviewDTO> getReviewsByProductId(Long productId, Integer rating, Pageable pageable) {
         if (rating != null) {
             return reviewRepository.findByProductIdAndRating(productId, rating, pageable)
@@ -137,7 +136,8 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     @CacheEvict(value = "aiSummaries", key = "#productId")
     public ReviewDTO addReview(Long productId, ReviewDTO reviewDTO) {
-        Product product = getProductById(productId);
+        Product product = productRepository.findByIdForUpdate(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", productId));
 
         Review review = new Review();
         review.setReviewerName(reviewDTO.getReviewerName());
@@ -155,7 +155,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ReviewDTO markReviewAsHelpful(Long reviewId, String userId) {
-        Review review = reviewRepository.findById(reviewId)
+        Review review = reviewRepository.findByIdForUpdate(reviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("Review", reviewId));
 
         if (review.getHelpfulCount() == null) {
@@ -184,18 +184,20 @@ public class ProductServiceImpl implements ProductService {
     
     @Override
     public List<Long> getUserVotedReviewIds(String userId) {
-        return reviewVoteRepository.findByUserId(userId).stream()
-                .map(ReviewVote::getReviewId)
-                .collect(Collectors.toList());
+        return reviewVoteRepository.findReviewIdsByUserId(userId);
     }
     
     @Override
+    @Transactional(readOnly = true)
     public String chatAboutProduct(Long productId, String question) {
-        List<Review> reviews = reviewRepository.findByProductId(productId);
+        getProductById(productId);
+        Pageable aiPageable = PageRequest.of(0, AI_REVIEW_MAX_COUNT, Sort.by(Sort.Direction.DESC, "createdAt"));
+        List<Review> reviews = reviewRepository.findByProductId(productId, aiPageable).getContent();
         return aiSummaryService.chatWithReviews(productId, question, reviews);
     }
     
     @Override
+    @Transactional(readOnly = true)
     public Map<String, Object> getGlobalStats(String category, String search) {
         boolean hasCategory = category != null && !category.isEmpty() && !category.equalsIgnoreCase("All");
         boolean hasSearch = search != null && !search.trim().isEmpty();
@@ -211,10 +213,16 @@ public class ProductServiceImpl implements ProductService {
             results = productRepository.getGlobalStats();
         }
 
-        Object[] row = results.get(0);
-        long totalReviews = row[0] != null ? ((Number) row[0]).longValue() : 0L;
-        double avgRating = row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
-        long totalProducts = row[2] != null ? ((Number) row[2]).longValue() : 0L;
+        long totalReviews = 0L;
+        double avgRating = 0.0;
+        long totalProducts = 0L;
+
+        if (results != null && !results.isEmpty() && results.get(0) != null) {
+            Object[] row = results.get(0);
+            totalReviews = row.length > 0 && row[0] != null ? ((Number) row[0]).longValue() : 0L;
+            avgRating = row.length > 1 && row[1] != null ? ((Number) row[1]).doubleValue() : 0.0;
+            totalProducts = row.length > 2 && row[2] != null ? ((Number) row[2]).longValue() : 0L;
+        }
 
         avgRating = Math.round(avgRating * 10.0) / 10.0;
 
@@ -230,9 +238,16 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private void updateProductStats(Product product) {
-        Object[] stats = reviewRepository.getReviewStats(product.getId()).get(0);
-        int count = stats[0] != null ? ((Number) stats[0]).intValue() : 0;
-        double average = stats[1] != null ? ((Number) stats[1]).doubleValue() : 0.0;
+        List<Object[]> results = reviewRepository.getReviewStats(product.getId());
+
+        int count = 0;
+        double average = 0.0;
+
+        if (results != null && !results.isEmpty() && results.get(0) != null) {
+            Object[] stats = results.get(0);
+            count = stats.length > 0 && stats[0] != null ? ((Number) stats[0]).intValue() : 0;
+            average = stats.length > 1 && stats[1] != null ? ((Number) stats[1]).doubleValue() : 0.0;
+        }
 
         product.setReviewCount(count);
         product.setAverageRating(Math.round(average * 10.0) / 10.0);

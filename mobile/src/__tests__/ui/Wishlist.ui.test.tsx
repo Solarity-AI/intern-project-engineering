@@ -10,6 +10,9 @@
 jest.mock('../../services/api', () => ({
   getWishlistProducts: jest.fn(),
   toggleWishlistApi: jest.fn().mockResolvedValue(undefined),
+  getUserMessage: jest.fn((error: unknown) =>
+    error instanceof Error ? error.message : 'Unexpected error'
+  ),
 }));
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -51,6 +54,14 @@ jest.mock('../../context/ThemeContext', () => ({
   }),
 }));
 
+jest.mock('../../context/NetworkContext', () => ({
+  useNetwork: () => ({
+    isConnected: true,
+    isInternetReachable: true,
+    checkConnection: jest.fn().mockResolvedValue(true),
+  }),
+}));
+
 jest.mock('../../context/WishlistContext', () => {
   const { toggleWishlistApi } = require('../../services/api');
 
@@ -61,6 +72,17 @@ jest.mock('../../context/WishlistContext', () => {
       clearWishlist: jest.fn(),
       wishlistCount: 0,
     }),
+  };
+});
+
+jest.mock('react-native-safe-area-context', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+    SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
+    SafeAreaView: ({ children, ...props }: any) => React.createElement(View, props, children),
+    SafeAreaConsumer: ({ children }: any) => children({ top: 0, right: 0, bottom: 0, left: 0 }),
   };
 });
 

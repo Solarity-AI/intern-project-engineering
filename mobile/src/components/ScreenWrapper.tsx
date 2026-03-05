@@ -17,8 +17,14 @@ interface ScreenWrapperProps {
   statusBarStyle?: 'light-content' | 'dark-content';
   edges?: ('top' | 'bottom' | 'left' | 'right')[];
   style?: ViewStyle;
-  // ✨ NEW: Option to disable bottom inset for screens with their own bottom handling
+  // Option to disable bottom inset for screens with their own bottom handling
   disableBottomInset?: boolean;
+  /**
+   * When set, wraps children in a centered View with this maxWidth.
+   * Use this for screens that need consistent width-capping instead of
+   * managing it individually in each screen component.
+   */
+  contentMaxWidth?: number;
 }
 
 export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
@@ -28,6 +34,7 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   edges = ['top', 'left', 'right'],
   style,
   disableBottomInset = false,
+  contentMaxWidth,
 }) => {
   const insets = useSafeAreaInsets();
   const { colors, colorScheme } = useTheme();
@@ -57,6 +64,12 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
           : 0,
   };
 
+  const content = contentMaxWidth ? (
+    <View style={[styles.contentContainer, { maxWidth: contentMaxWidth }]}>
+      {children}
+    </View>
+  ) : children;
+
   return (
     <View style={[styles.container, { backgroundColor: bgColor }, paddingStyle, style]}>
       <StatusBar
@@ -64,7 +77,7 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
         backgroundColor="transparent"
         translucent={Platform.OS === 'android'}
       />
-      {children}
+      {content}
     </View>
   );
 };
@@ -72,5 +85,10 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  contentContainer: {
+    flex: 1,
+    width: '100%',
+    alignSelf: 'center',
   },
 });

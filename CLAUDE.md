@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Product Review Application** - A full-stack cross-platform ecosystem for product reviews with AI-powered insights. Users can browse products, manage wishlists, submit reviews, and interact with an AI assistant for review analysis.
+**Solarity Review Application** - A full-stack cross-platform ecosystem for product reviews with AI-powered insights. Users can browse products, manage wishlists, submit reviews, and interact with an AI assistant for review analysis.
 
 ## Tech Stack
 
@@ -25,8 +25,8 @@
 - **Storage:** AsyncStorage
 
 ### Deployment
-- **Backend:** Heroku (Java buildpack)
-- **Web:** Heroku (static SPA via `serve`)
+- **Backend:** Render (Java web service + managed PostgreSQL)
+- **Web:** Cloudflare Pages (edge-deployed SPA)
 - **Mobile:** EAS Build
 
 ## Directory Structure
@@ -65,8 +65,9 @@
 │
 ├── swift-issues/               # iOS UI redesign issue tracking
 ├── .vscode/                    # VS Code configuration
-├── .github/workflows/          # CI/CD (Heroku deployment)
-└── Procfile                    # (removed — see backend/Procfile & mobile/Procfile)
+├── .github/workflows/          # CI/CD (deploy.yml → Render + Cloudflare Pages)
+├── render.yaml                 # Render Blueprint (IaC)
+└── ...
 ```
 
 ## Development Commands
@@ -97,15 +98,22 @@ open ProductReview.xcodeproj   # Open in Xcode, Cmd+R to build & run
 
 ### Build & Deploy
 ```bash
-# Backend (Heroku auto-deploys via GitHub Actions on push to main)
+# Backend (local build)
 cd backend && ./mvnw clean package
 
-# Frontend Web (Heroku auto-deploys via GitHub Actions on push to main)
-cd mobile && npm run build
+# Frontend Web (local build — requires EXPO_PUBLIC_API_URL)
+cd mobile && EXPO_PUBLIC_API_URL=https://<render-backend-url> npm run build
 
 # Mobile (EAS)
 cd mobile && eas build --platform android
 ```
+
+### Deployment (CI/CD)
+Deployments are automated via `.github/workflows/deploy.yml` on push to `main`:
+- **Backend → Render:** Triggered via deploy hook (`RENDER_DEPLOY_HOOK_URL` secret)
+- **Frontend → Cloudflare Pages:** Built and deployed via `wrangler` (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` secrets)
+
+Infrastructure is defined in `render.yaml` (Render Blueprint).
 
 ## API Endpoints
 
@@ -144,6 +152,12 @@ All endpoints are versioned under `/api/v1/`. Swagger UI available at `/swagger-
 - `backend/src/main/resources/application.properties` - Configuration
 - `backend/src/main/resources/application-prod.properties` - Production overrides
 - `backend/src/main/resources/db/migration/` - Flyway SQL migrations
+
+### Deployment
+- `.github/workflows/deploy.yml` - CI/CD workflow (Render deploy hook + Cloudflare Pages wrangler)
+- `render.yaml` - Render Blueprint (backend Docker service + PostgreSQL)
+- `backend/Dockerfile` - Multi-stage Docker build for Spring Boot
+- `backend/entrypoint.sh` - Parses DATABASE_URL into JDBC format + credentials at container startup
 
 ### Frontend (React Native)
 - `mobile/src/services/api.ts` - API client (retry, cache, dedup, structured errors, mutation cache invalidation)
@@ -186,11 +200,11 @@ All endpoints are versioned under `/api/v1/`. Swagger UI available at `/swagger-
 - `cors.allowed-origins` - Comma-separated allowed CORS origins (default: localhost dev ports)
 - `rate-limit.requests-per-minute` - Rate limit per client (default: 60)
 - `spring.profiles.active=prod` - Activate production profile (PostgreSQL, Flyway, restricted actuator)
-- `JDBC_DATABASE_URL` - PostgreSQL JDBC URL (prod only, auto-provided by Heroku Postgres addon)
-- `CORS_ALLOWED_ORIGINS` - Comma-separated allowed CORS origins (prod)
+- `DATABASE_URL` - PostgreSQL URL (auto-provided by Render; converted to JDBC format at startup)
+- `CORS_ALLOWED_ORIGINS` - Comma-separated allowed CORS origins (prod, set to Cloudflare Pages URL)
 
 ### Frontend
-- `EXPO_PUBLIC_API_URL` - Backend API URL (set via Heroku config vars or GitHub Actions secret)
+- `EXPO_PUBLIC_API_URL` - Backend API URL (Render backend URL, injected at build time by CI)
 - API base URL exported from `mobile/src/services/api.ts` (`export const BASE_URL`)
 - Shared by `NetworkContext.tsx` for health checks
 
@@ -218,3 +232,7 @@ cd backend && ./mvnw test
 - H2 console is disabled in production profile (`application-prod.properties`)
 - Rate limiting: 60 requests/minute per client (keyed by X-User-ID or IP)
 - CORS: configured via properties, not controller annotations
+- Deployment: backend on Render (deploy hook), frontend on Cloudflare Pages (wrangler), automated via `.github/workflows/deploy.yml`
+- Render converts `DATABASE_URL` (postgres://) to JDBC format at startup via `backend/entrypoint.sh`
+- `render.yaml` defines backend service (Docker) + PostgreSQL database as infrastructure-as-code
+- Icon fonts loaded explicitly via `useFonts` in `App.tsx` for web production builds

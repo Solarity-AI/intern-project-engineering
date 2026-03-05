@@ -13,6 +13,7 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   Animated,
   useWindowDimensions,
   Platform,
@@ -42,8 +43,9 @@ import { useSearch } from '../context/SearchContext';
 import { useNetwork } from '../context/NetworkContext';
 
 import { RootStackParamList } from '../types';
-import { BorderRadius, FontSize, FontWeight, Spacing, Gradients, Glass, Glow, Shadow } from '../constants/theme';
+import { BorderRadius, FontSize, FontWeight, Spacing, Gradients, Glass, Glow, Shadow, getGridMaxWidth, getDetailMaxWidth, Breakpoints } from '../constants/theme';
 import { useDebounce } from '../hooks/useDebounce';
+import { getHeaderToggleSizing } from './headerToggleSizing';
 
 type ProductListNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ProductList'>;
 
@@ -63,19 +65,41 @@ export const ProductListScreen = () => {
   const route = useRoute<RouteProp<RootStackParamList, 'ProductList'>>();
   const { colors, colorScheme, toggleTheme } = useTheme();
   const { unreadCount } = useNotifications();
-  const { wishlistCount, addMultipleToWishlist, isInWishlist } = useWishlist();
+  const { wishlistCount, addMultipleToWishlist, isInWishlist, toggleWishlist } = useWishlist();
   const { addSearchTerm } = useSearch();
   const { isConnected, isInternetReachable, checkConnection } = useNetwork();
 
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
   const webBp = !isWeb ? 'mobile' : width < 720 ? 'narrow' : width < 1100 ? 'medium' : 'wide';
+  const isCompactWebHeader = isWeb && width < 430;
 
-  const containerMaxWidth =
-    !isWeb ? undefined : webBp === 'wide' ? 1200 : webBp === 'medium' ? 1040 : 900;
+  const containerMaxWidth = !isWeb ? undefined : getGridMaxWidth(width);
 
-  const headerIconSize = isWeb ? 20 : 18;
-  const headerIconSizeBig = isWeb ? 22 : 20;
+  // Narrower cap for content elements (stats bar, search bar) — grid width is too wide for these
+  const contentBarMaxWidth = isWeb ? getDetailMaxWidth(width) : undefined;
+
+  // Hero title font size — scales with viewport on web
+  const heroTitleFontSize = !isWeb ? FontSize['5xl']
+    : width >= Breakpoints.ultrawide ? 96
+    : width >= Breakpoints.largeDesktop ? 80
+    : width >= Breakpoints.desktop ? 64
+    : width >= Breakpoints.tablet ? 52
+    : FontSize['5xl'];
+  const heroSubtitleFontSize = !isWeb ? FontSize.base
+    : width >= Breakpoints.largeDesktop ? 20
+    : width >= Breakpoints.desktop ? 18
+    : FontSize.base;
+
+  // Floating bar inset: keep the bar aligned with the content container on wide web viewports
+  const floatingBarInset = isWeb && containerMaxWidth ? Math.max(0, (width - containerMaxWidth) / 2) : 0;
+
+  // Hero breakout: cancel the contentContainerStyle padding/maxWidth so the hero is truly full-bleed
+  const heroBreakoutStyle = useMemo(() => {
+    const effectiveContainerWidth = containerMaxWidth ? Math.min(width, containerMaxWidth) : width;
+    const heroInset = (width - effectiveContainerWidth) / 2 + Spacing.lg;
+    return { width, marginLeft: -heroInset, marginRight: -heroInset };
+  }, [width, containerMaxWidth]);
 
   // Offline
   const isOffline = !isConnected || isInternetReachable === false;
@@ -84,25 +108,28 @@ export const ProductListScreen = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const fetchIdRef = useRef(0);
 
-  // Grid mode: 1 / 2 / 3
-  const [gridMode, setGridMode] = useState<1 | 2 | 3>(2);
+  // Grid mode: 1 / 2 / 3 / 4 (4 auto-selected on ultrawide screens ≥1920px)
+  const [gridMode, setGridMode] = useState<1 | 2 | 3 | 4>(2);
   const numColumns = gridMode;
+
+  const headerToggleSizing = getHeaderToggleSizing({ isWeb, breakpoint: webBp, numColumns });
+  const headerIconSize = headerToggleSizing.iconSize;
+  const headerIconSizeBig = headerToggleSizing.emphasisIconSize;
+  const headerButtonSize = headerToggleSizing.buttonSize;
   const gridTouchedRef = useRef(false);
 
   useEffect(() => {
     if (!isWeb) return;
     if (gridTouchedRef.current) return;
 
-    const next: 1 | 2 | 3 = width < 720 ? 1 : width < 1100 ? 2 : 3;
+    const next: 1 | 2 | 3 | 4 = width < 720 ? 1 : width < 1100 ? 2 : width < 1920 ? 3 : 4;
     if (gridMode !== next) setGridMode(next);
   }, [isWeb, width, gridMode]);
 
   // Multi-select mode
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-
-  const [selectionTick, setSelectionTick] = useState(0);
-  const bumpSelectionTick = useCallback(() => setSelectionTick(t => t + 1), []);
+  const isSelectionModeRef = useRef(false);
 
   const [apiProducts, setApiProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -156,18 +183,18 @@ export const ProductListScreen = () => {
     fetchStats();
   }, [selectedCategory, submittedSearchQuery]);
 
-  const toggleGridMode = () => {
+  const toggleGridMode = useCallback(() => {
     gridTouchedRef.current = true;
     setGridMode(prev => (prev === 1 ? 2 : prev === 2 ? 3 : 1));
-  };
+  }, []);
 
-  const handleCancelSelection = () => {
+  const handleCancelSelection = useCallback(() => {
+    isSelectionModeRef.current = false;
     setIsSelectionMode(false);
     setSelectedItems(new Set());
-    bumpSelectionTick();
-  };
+  }, []);
 
-  const handleAddSelectedToWishlist = () => {
+  const handleAddSelectedToWishlist = useCallback(() => {
     const selectedProducts = filteredProducts.filter(p => {
       const id = String((p as any)?.id ?? '');
       return selectedItems.has(id) && !isInWishlist(id);
@@ -189,39 +216,44 @@ export const ProductListScreen = () => {
       })) as any);
       handleCancelSelection();
     });
-  };
+  }, [filteredProducts, selectedItems, isInWishlist, addMultipleToWishlist, handleCancelSelection]);
 
-  const handleCardLongPress = (product: ApiProduct) => {
+  const handleCardLongPress = useCallback((product: ApiProduct) => {
     const id = String((product as any)?.id ?? '');
     if (!id) return;
 
-    if (Platform.OS === 'android') {
+    if (Platform.OS === 'android' && !isSelectionModeRef.current) {
       Vibration.vibrate(50);
     }
 
+    isSelectionModeRef.current = true;
     setIsSelectionMode(true);
     setSelectedItems(prev => new Set(prev).add(id));
-    bumpSelectionTick();
-  };
+  }, []);
 
-  const handleCardPress = (product: ApiProduct) => {
+  const handleCardPress = useCallback((product: ApiProduct) => {
     const id = String((product as any)?.id ?? '');
     if (!id) return;
 
-    if (isSelectionMode) {
+    if (isSelectionModeRef.current) {
       setSelectedItems(prev => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id);
         else next.add(id);
-        if (next.size === 0) setIsSelectionMode(false);
         return next;
       });
-      bumpSelectionTick();
       return;
     }
 
     navigation.navigate('ProductDetails', { productId: (product as any)?.id });
-  };
+  }, [navigation]);
+
+  useEffect(() => {
+    if (isSelectionMode && selectedItems.size === 0) {
+      isSelectionModeRef.current = false;
+      setIsSelectionMode(false);
+    }
+  }, [selectedItems, isSelectionMode]);
 
   const fetchProducts = useCallback(
     async (page: number, append: boolean, searchOverride?: string, categoryOverride?: string, sortOverride?: string) => {
@@ -444,12 +476,30 @@ export const ProductListScreen = () => {
     return imageForCategory(featuredProduct.categories);
   }, [featuredProduct]);
 
+  const featuredProductId = String(featuredProduct?.id ?? '');
+  const featuredInWishlist = featuredProductId ? isInWishlist(featuredProductId) : false;
+  const featuredIsSelected = featuredProductId ? selectedItems.has(featuredProductId) : false;
+
+  const handleFeaturedWishlistToggle = useCallback((e: any) => {
+    e.stopPropagation();
+    if (!featuredProduct || !featuredProductId) return;
+
+    toggleWishlist({
+      id: featuredProductId,
+      name: featuredProduct.name ?? 'Product',
+      price: featuredProduct.price,
+      imageUrl: featuredImageUri,
+      categories: featuredProduct.categories,
+      averageRating: featuredProduct.averageRating ?? 0,
+    } as any);
+  }, [featuredProduct, featuredProductId, featuredImageUri, toggleWishlist]);
+
   const featuredImageOpacity = useRef(new Animated.Value(0)).current;
   const onFeaturedImageLoad = useCallback(() => {
     Animated.timing(featuredImageOpacity, {
       toValue: 1,
       duration: 400,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [featuredImageOpacity]);
 
@@ -462,7 +512,7 @@ export const ProductListScreen = () => {
   const listHeaderContent = useMemo(() => (
     <>
       {/* ===== FULL-BLEED IMMERSIVE HERO ===== */}
-      <View style={styles.heroWrapper}>
+      <View style={[styles.heroWrapper, heroBreakoutStyle, { backgroundColor: colors.background }]}>
         {/* Mesh gradient layers */}
         <LinearGradient
           colors={Gradients.meshA as [string, string, ...string[]]}
@@ -503,46 +553,74 @@ export const ProductListScreen = () => {
             <LinearGradient colors={Gradients.brandVivid as [string, string, ...string[]]} style={styles.logoIcon}>
               <Ionicons name="flash" size={18} color="#fff" />
             </LinearGradient>
-            <Text style={styles.logoText}>Solarity</Text>
-            <Text style={styles.logoTextAccent}>Review</Text>
+            {!isCompactWebHeader && (
+              <>
+                <Text style={[styles.logoText, { color: colors.foreground }]} numberOfLines={1}>Solarity</Text>
+                <Text style={styles.logoTextAccent} numberOfLines={1}>Review</Text>
+              </>
+            )}
           </TouchableOpacity>
 
-          <View style={styles.headerButtons}>
-            <TouchableOpacity
-              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb]}
-              onPress={toggleTheme}
-              activeOpacity={0.8}
-              accessibilityLabel={colorScheme === 'dark' ? 'Toggle light mode' : 'Toggle dark mode'}
-              accessibilityRole="button"
-            >
-              <Ionicons
-                name={colorScheme === 'dark' ? 'sunny' : 'moon'}
-                size={headerIconSize}
-                color={colorScheme === 'dark' ? '#FBBF24' : '#fff'}
-              />
-            </TouchableOpacity>
+            <View style={[styles.headerButtons, { gap: headerToggleSizing.actionGap }]}>
+              <TouchableOpacity
+                style={[
+                  styles.headerIconButton,
+                  {
+                    width: headerButtonSize,
+                    height: headerButtonSize,
+                    borderRadius: headerButtonSize / 2,
+                  },
+                  colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
+                ]}
+                onPress={toggleTheme}
+                activeOpacity={0.85}
+                accessibilityLabel={colorScheme === 'dark' ? 'Toggle light mode' : 'Toggle dark mode'}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={colorScheme === 'dark' ? 'sunny' : 'moon'}
+                  size={headerIconSize}
+                  color={colors.foreground}
+                />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb]}
-              onPress={toggleGridMode}
-              activeOpacity={0.8}
-              accessibilityLabel="Change grid layout"
-              accessibilityRole="button"
-            >
-              <Ionicons
-                name={gridMode === 1 ? 'list' : gridMode === 2 ? 'grid-outline' : 'grid'}
-                size={headerIconSize}
-                color="#fff"
-              />
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.headerIconButton,
+                  {
+                    width: headerButtonSize,
+                    height: headerButtonSize,
+                    borderRadius: headerButtonSize / 2,
+                  },
+                  colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
+                ]}
+                onPress={toggleGridMode}
+                activeOpacity={0.85}
+                accessibilityLabel="Change grid layout"
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={gridMode === 1 ? 'list' : gridMode === 2 ? 'grid-outline' : 'grid'}
+                  size={headerIconSize}
+                  color={colors.foreground}
+                />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb]}
-              onPress={() => navigation.navigate('Wishlist')}
-              activeOpacity={0.8}
-              accessibilityLabel={`View wishlist, ${wishlistCount} items`}
-              accessibilityRole="button"
-            >
+              <TouchableOpacity
+                style={[
+                  styles.headerIconButton,
+                  {
+                    width: headerButtonSize,
+                    height: headerButtonSize,
+                    borderRadius: headerButtonSize / 2,
+                  },
+                  colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
+                ]}
+                onPress={() => navigation.navigate('Wishlist')}
+                activeOpacity={0.85}
+                accessibilityLabel={`View wishlist, ${wishlistCount} items`}
+                accessibilityRole="button"
+              >
               <Ionicons name="heart" size={headerIconSizeBig} color="#F87171" />
               {wishlistCount > 0 && (
                 <View style={styles.badge}>
@@ -551,13 +629,21 @@ export const ProductListScreen = () => {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.headerIconButton, isWeb && styles.headerIconButtonWeb]}
-              onPress={() => navigation.navigate('Notifications')}
-              activeOpacity={0.8}
-              accessibilityLabel={`View notifications, ${unreadCount} unread`}
-              accessibilityRole="button"
-            >
+              <TouchableOpacity
+                style={[
+                  styles.headerIconButton,
+                  {
+                    width: headerButtonSize,
+                    height: headerButtonSize,
+                    borderRadius: headerButtonSize / 2,
+                  },
+                  colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
+                ]}
+                onPress={() => navigation.navigate('Notifications')}
+                activeOpacity={0.85}
+                accessibilityLabel={`View notifications, ${unreadCount} unread`}
+                accessibilityRole="button"
+              >
               <Ionicons name="notifications" size={headerIconSizeBig} color="#FBBF24" />
               {unreadCount > 0 && (
                 <View style={[styles.badge, { backgroundColor: colors.destructive }]}>
@@ -570,46 +656,57 @@ export const ProductListScreen = () => {
 
         {/* Hero text — LEFT-ALIGNED, massive tight headlines */}
         <View style={[styles.heroContent, isWeb && { maxWidth: containerMaxWidth, alignSelf: 'center', width: '100%' }]}>
-          <Text style={[styles.heroTitle, isWeb && styles.heroTitleWeb]}>
+          <Text style={[styles.heroTitle, { color: colors.foreground, fontSize: heroTitleFontSize, lineHeight: heroTitleFontSize * 1.05 }]}>
             Discover{'\n'}Products You'll{' '}
             <Text style={{ color: '#10B981' }}>Love</Text>
           </Text>
-          <Text style={styles.heroSubtitle}>
+          <Text style={[styles.heroSubtitle, { color: colors.mutedForeground, fontSize: heroSubtitleFontSize }]}>
             AI-powered insights from real reviews
           </Text>
         </View>
+
+        {/* Bottom fade — hero → page background, adapts to light/dark */}
+        <LinearGradient
+          colors={['transparent', colors.background] as [string, string]}
+          style={styles.heroBottomFade}
+        />
       </View>
 
       {/* ===== FLOATING STATS BAR — overlaps hero bottom ===== */}
-      <View style={[styles.floatingStatsContainer, isWeb && { maxWidth: containerMaxWidth, alignSelf: 'center', width: '100%' }]}>
+      <View style={[styles.floatingStatsContainer, isWeb && { maxWidth: contentBarMaxWidth, alignSelf: 'center', width: '100%' }]}>
         <View style={[
           styles.floatingStats,
           colorScheme === 'dark' ? Glass.elevated : { backgroundColor: colors.card, ...Shadow.medium },
         ]}>
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: colors.foreground }]}>{stats.avgRating.toFixed(1)}</Text>
+            <Text style={[styles.statNumber, { color: colors.foreground }]}>{(stats.avgRating ?? 0).toFixed(1)}</Text>
             <Text style={styles.statUpperLabel}>AVG RATING</Text>
           </View>
           <View style={[styles.statSeparator, { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: colors.foreground }]}>{String(stats.totalReviews)}</Text>
+            <Text style={[styles.statNumber, { color: colors.foreground }]}>{String(stats.totalReviews ?? 0)}</Text>
             <Text style={styles.statUpperLabel}>REVIEWS</Text>
           </View>
           <View style={[styles.statSeparator, { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: colors.foreground }]}>{String(stats.productCount)}</Text>
+            <Text style={[styles.statNumber, { color: colors.foreground }]}>{String(stats.productCount ?? 0)}</Text>
             <Text style={styles.statUpperLabel}>PRODUCTS</Text>
           </View>
         </View>
       </View>
 
       {/* ===== SEARCH — pill-shaped ===== */}
-      <View style={[styles.searchSection, isWeb && styles.searchSectionWeb, isWeb && { maxWidth: containerMaxWidth }]}>
+      <View style={[styles.searchSection, isWeb && styles.searchSectionWeb, isWeb && { maxWidth: contentBarMaxWidth }]}>
         <SearchBar value={searchQuery} onChangeText={setSearchQuery} onSearchSubmit={handleSearchSubmit} />
       </View>
 
       {/* ===== COMBINED FILTER TOOLBAR — no "Explore Products" or "Sort by:" labels ===== */}
-      <View style={[styles.filterSection, isWeb && styles.filterSectionWeb, isWeb && { maxWidth: containerMaxWidth }]}>
+      <View style={[
+        styles.filterSection,
+        Platform.OS === 'ios' && styles.filterSectionIOSFullBleed,
+        isWeb && styles.filterSectionWeb,
+        isWeb && { maxWidth: containerMaxWidth },
+      ]}>
         <CategoryFilter
           selectedCategory={selectedCategory}
           onCategoryChange={handleCategoryChange}
@@ -627,11 +724,15 @@ export const ProductListScreen = () => {
             activeOpacity={0.9}
             style={[
               styles.featuredCard,
+              !isWeb && { height: Math.round(width * 0.42) },
               colorScheme === 'dark'
                 ? Glass.elevated
-                : { backgroundColor: '#0F172A', ...Shadow.medium },
+                : { backgroundColor: colors.card, ...Shadow.medium },
+              featuredIsSelected && { borderWidth: 2, borderColor: colors.primary },
             ]}
             onPress={() => handleCardPress(featuredProduct)}
+            onLongPress={() => handleCardLongPress(featuredProduct)}
+            delayLongPress={500}
           >
             <Animated.Image
               source={{ uri: featuredImageUri }}
@@ -640,14 +741,52 @@ export const ProductListScreen = () => {
               onLoad={onFeaturedImageLoad}
             />
             <LinearGradient
-              colors={['transparent', 'rgba(11,17,32,0.85)'] as [string, string]}
+              colors={[
+                colorScheme === 'dark' ? 'rgba(11,17,32,0)' : 'rgba(255,255,255,0)',
+                colorScheme === 'dark' ? 'rgba(11,17,32,0.90)' : 'rgba(255,255,255,0.95)',
+              ] as [string, string]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.featuredImageOverlay}
             />
+            {!isSelectionMode && (
+              <Pressable
+                style={[
+                  styles.featuredWishlistButton,
+                  featuredInWishlist
+                    ? { backgroundColor: '#EF4444' }
+                    : colorScheme === 'dark'
+                      ? Glass.strong
+                      : { backgroundColor: 'rgba(255,255,255,0.9)' },
+                ]}
+                onPress={handleFeaturedWishlistToggle}
+                hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }}
+                accessibilityLabel={featuredInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={featuredInWishlist ? 'heart' : 'heart-outline'}
+                  size={18}
+                  color={featuredInWishlist ? '#fff' : colorScheme === 'dark' ? '#fff' : '#111'}
+                />
+              </Pressable>
+            )}
+            {isSelectionMode && (
+              <View
+                style={[
+                  styles.featuredSelectionIndicator,
+                  {
+                    backgroundColor: featuredIsSelected ? colors.primary : 'rgba(255,255,255,0.9)',
+                    borderColor: featuredIsSelected ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                {featuredIsSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+              </View>
+            )}
             <View style={styles.featuredContent}>
               <Text style={styles.featuredLabel}>FEATURED</Text>
-              <Text style={styles.featuredName} numberOfLines={2}>
+              <Text style={[styles.featuredName, { color: colors.cardForeground }]} numberOfLines={2}>
                 {featuredProduct.name ?? 'Product'}
               </Text>
               <View style={styles.featuredRatingRow}>
@@ -655,7 +794,7 @@ export const ProductListScreen = () => {
                 <Text style={styles.featuredRating}>
                   {(featuredProduct.averageRating ?? 0).toFixed(1)}
                 </Text>
-                <Text style={styles.featuredReviewCount}>
+                <Text style={[styles.featuredReviewCount, { color: colors.mutedForeground }]}>
                   ({featuredProduct.reviewCount ?? 0})
                 </Text>
               </View>
@@ -663,7 +802,7 @@ export const ProductListScreen = () => {
                 <Text style={styles.featuredPrice}>
                   ${featuredProduct.price?.toFixed(2) ?? 'N/A'}
                 </Text>
-                <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.5)" />
+                <Ionicons name="arrow-forward" size={18} color={colorScheme === 'dark' ? 'rgba(255,255,255,0.5)' : colors.mutedForeground} />
               </View>
             </View>
           </TouchableOpacity>
@@ -676,12 +815,14 @@ export const ProductListScreen = () => {
       </View>
     </>
   ), [
-    isWeb, containerMaxWidth, webBp, colors, colorScheme,
+    isWeb, containerMaxWidth, webBp, width, heroBreakoutStyle, colors, colorScheme,
     handleReset, toggleTheme, toggleGridMode, gridMode,
     headerIconSize, headerIconSizeBig, wishlistCount, unreadCount,
     stats, searchQuery, setSearchQuery, handleSearchSubmit,
     selectedCategory, handleCategoryChange, sortBy, handleSortChange,
     featuredProduct, featuredImageUri, featuredImageOpacity, onFeaturedImageLoad, handleCardPress,
+    featuredInWishlist, handleFeaturedWishlistToggle, isSelectionMode,
+    handleCardLongPress, featuredIsSelected,
   ]);
 
   useFocusEffect(
@@ -698,6 +839,42 @@ export const ProductListScreen = () => {
     return count;
   }, [selectedItems, isInWishlist]);
 
+  const renderItem = useCallback(({ item, index }: { item: ApiProduct; index: number }) => {
+    const isGrid = numColumns > 1;
+    const gapSize = Platform.OS === 'android' ? Spacing.md : Spacing.lg;
+    const id = String((item as any)?.id ?? '');
+    const selected = selectedItems.has(id);
+
+    return (
+      <View
+        style={[
+          isGrid && {
+            width: `${100 / numColumns}%`,
+            paddingRight: index % numColumns === numColumns - 1 ? 0 : gapSize / 2,
+            paddingLeft: index % numColumns === 0 ? 0 : gapSize / 2,
+            marginBottom: Spacing.lg,
+            flexGrow: 0,
+            flexShrink: 0,
+          },
+          !isGrid && {
+            width: '100%',
+            marginBottom: Spacing.lg,
+          },
+        ]}
+        collapsable={false}
+      >
+        <SelectableProductCard
+          product={item}
+          numColumns={numColumns}
+          isSelectionMode={isSelectionMode}
+          isSelected={selected}
+          onPress={handleCardPress}
+          onLongPress={handleCardLongPress}
+        />
+      </View>
+    );
+  }, [numColumns, isSelectionMode, selectedItems, handleCardPress, handleCardLongPress]);
+
   return (
     <ScreenWrapper>
       <TouchableWithoutFeedback
@@ -706,17 +883,17 @@ export const ProductListScreen = () => {
         }}
       >
         <View style={{ flex: 1 }}>
-          {isOffline && <OfflineBanner onRetry={handleRetry} />}
+          <OfflineBanner onRetry={handleRetry} />
 
           <FlatList
             data={loading || error ? [] : gridProducts}
-            extraData={selectionTick}
+            extraData={selectedItems}
             key={numColumns}
             numColumns={numColumns}
             columnWrapperStyle={
               numColumns > 1 ? styles.columnWrap : undefined
             }
-            removeClippedSubviews={false}
+            removeClippedSubviews={Platform.OS !== 'web'}
             keyExtractor={(item: any) => String(item?.id ?? '')}
             contentContainerStyle={[
               styles.listContent,
@@ -782,48 +959,7 @@ export const ProductListScreen = () => {
                 </View>
               )
             }
-            renderItem={({ item, index }) => {
-              const isGrid = numColumns > 1;
-              const gapSize = Platform.OS === 'android' ? Spacing.md : Spacing.lg;
-
-              const id = String((item as any)?.id ?? '');
-              const selected = selectedItems.has(id);
-
-              const forceKey =
-                Platform.OS === 'android'
-                  ? `${id}-${isSelectionMode ? 1 : 0}-${selected ? 1 : 0}-${selectionTick}`
-                  : id;
-
-              return (
-                <View
-                  style={[
-                    isGrid && {
-                      width: `${100 / numColumns}%`,
-                      paddingRight: index % numColumns === numColumns - 1 ? 0 : gapSize / 2,
-                      paddingLeft: index % numColumns === 0 ? 0 : gapSize / 2,
-                      marginBottom: Spacing.lg,
-                      flexGrow: 0,
-                      flexShrink: 0,
-                    },
-                    !isGrid && {
-                      width: '100%',
-                      marginBottom: Spacing.lg,
-                    },
-                  ]}
-                  collapsable={false}
-                >
-                  <SelectableProductCard
-                    key={forceKey}
-                    product={item}
-                    numColumns={numColumns}
-                    isSelectionMode={isSelectionMode}
-                    isSelected={selected}
-                    onPress={handleCardPress}
-                    onLongPress={handleCardLongPress}
-                  />
-                </View>
-              );
-            }}
+            renderItem={renderItem}
 
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -861,7 +997,7 @@ export const ProductListScreen = () => {
           />
 
           {isSelectionMode && selectedItems.size > 0 && (
-            <View style={[styles.floatingBar, colorScheme === 'dark' ? Glass.card : { backgroundColor: colors.card }]}>
+            <View style={[styles.floatingBar, floatingBarInset > 0 && { left: floatingBarInset, right: floatingBarInset }, colorScheme === 'dark' ? Glass.card : { backgroundColor: colors.card }]}>
               <TouchableOpacity
                 style={[
                   styles.floatingButton,
@@ -892,10 +1028,16 @@ const styles = StyleSheet.create({
   heroWrapper: {
     width: '100%',
     minHeight: 280,
-    backgroundColor: '#0B1120',
     position: 'relative',
     overflow: 'hidden',
     // NO borderRadius, NO margin — full-bleed
+  },
+  heroBottomFade: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 96,
   },
   heroOrbGreen: {
     position: 'absolute',
@@ -951,7 +1093,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  logoContainer: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  logoContainer: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexShrink: 1, minWidth: 0 },
   logoIcon: {
     width: 36,
     height: 36,
@@ -963,18 +1105,13 @@ const styles = StyleSheet.create({
   logoText: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: '#F1F5F9' },
   logoTextAccent: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginLeft: -2, color: '#10B981' },
 
-  headerButtons: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  headerButtons: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
   headerIconButton: {
     borderRadius: BorderRadius.full,
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  headerIconButtonWeb: {
-    width: 44,
-    height: 44,
   },
 
   badge: {
@@ -1004,10 +1141,6 @@ const styles = StyleSheet.create({
     lineHeight: FontSize['5xl'] * 1.1,
     letterSpacing: -1,
     textAlign: 'left',
-  },
-  heroTitleWeb: {
-    fontSize: FontSize['6xl'],
-    lineHeight: FontSize['6xl'] * 1.05,
   },
   heroSubtitle: {
     fontSize: FontSize.base,
@@ -1074,6 +1207,9 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
     gap: Spacing.sm,
   },
+  filterSectionIOSFullBleed: {
+    marginHorizontal: -Spacing.lg,
+  },
   filterSectionWeb: {
     width: '100%',
     alignSelf: 'center',
@@ -1099,8 +1235,31 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
-    left: '25%',
-    width: '35%',
+    left: '30%',
+    width: '15%',
+  },
+  featuredWishlistButton: {
+    position: 'absolute',
+    top: Spacing.md,
+    right: Spacing.md,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  featuredSelectionIndicator: {
+    position: 'absolute',
+    top: Spacing.md,
+    right: Spacing.md,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
   },
   featuredContent: {
     flex: 1,

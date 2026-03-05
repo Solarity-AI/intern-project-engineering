@@ -29,6 +29,7 @@ import {
   Glass,
   Glow,
   Gradients,
+  getDetailMaxWidth,
 } from '../constants/theme';
 
 type RouteType = RouteProp<RootStackParamList, 'NotificationDetail'>;
@@ -76,14 +77,9 @@ export const NotificationDetailScreen: React.FC = () => {
 
   const { width: windowWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
-  const MAX_CONTENT_WIDTH = 600;
+  const contentMaxWidth = isWeb ? getDetailMaxWidth(windowWidth) : undefined;
 
-  const responsiveContainerStyle = {
-    width: '100%' as const,
-    maxWidth: isWeb ? MAX_CONTENT_WIDTH : undefined,
-    alignSelf: 'center' as const,
-    flex: 1,
-  };
+  // contentMaxWidth is passed to ScreenWrapper — no local wrapper View needed
 
   const notificationId = route.params?.notificationId;
 
@@ -107,8 +103,7 @@ export const NotificationDetailScreen: React.FC = () => {
 
   if (!notification) {
     return (
-      <ScreenWrapper backgroundColor={colors.background}>
-        <View style={responsiveContainerStyle}>
+      <ScreenWrapper backgroundColor={colors.background} contentMaxWidth={contentMaxWidth}>
           <View style={styles.header}>
             <TouchableOpacity onPress={handleBack} style={styles.backButton}>
               <Ionicons name="arrow-back" size={22} color={colors.foreground} />
@@ -123,7 +118,6 @@ export const NotificationDetailScreen: React.FC = () => {
               This notification may have been deleted.
             </Text>
           </View>
-        </View>
       </ScreenWrapper>
     );
   }
@@ -145,8 +139,7 @@ export const NotificationDetailScreen: React.FC = () => {
   };
 
   return (
-    <ScreenWrapper backgroundColor={colors.background}>
-      <View style={responsiveContainerStyle}>
+    <ScreenWrapper backgroundColor={colors.background} contentMaxWidth={contentMaxWidth}>
         {/* Header bar */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
@@ -244,7 +237,6 @@ export const NotificationDetailScreen: React.FC = () => {
             </View>
           </View>
         </ScrollView>
-      </View>
     </ScreenWrapper>
   );
 };

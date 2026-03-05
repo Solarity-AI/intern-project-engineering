@@ -19,6 +19,7 @@ interface LoadMoreCardProps {
   hasMore?: boolean;
   currentPage: number;
   totalPages: number;
+  endSubtext?: string;
 }
 
 export const LoadMoreCard: React.FC<LoadMoreCardProps> = ({
@@ -27,6 +28,7 @@ export const LoadMoreCard: React.FC<LoadMoreCardProps> = ({
   hasMore = true,
   currentPage,
   totalPages,
+  endSubtext = 'Showing all products',
 }) => {
   const { colors, colorScheme } = useTheme();
 
@@ -48,7 +50,7 @@ export const LoadMoreCard: React.FC<LoadMoreCardProps> = ({
         </Text>
 
         <Text style={[styles.endSubtext, { color: colors.mutedForeground }]}>
-          Showing all products
+          {endSubtext}
         </Text>
       </View>
     );

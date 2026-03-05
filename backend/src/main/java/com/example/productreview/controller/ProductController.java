@@ -1,5 +1,6 @@
 package com.example.productreview.controller;
 
+import com.example.productreview.dto.ChatRequest;
 import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.dto.ReviewDTO;
 import com.example.productreview.exception.ValidationException;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/products")
@@ -28,6 +30,10 @@ public class ProductController {
 
     private static final Logger log = LoggerFactory.getLogger(ProductController.class);
     private static final int MAX_PAGE_SIZE = 100;
+    private static final Set<String> ALLOWED_REVIEW_SORT_FIELDS = Set.of(
+            "createdAt", "rating", "reviewerName", "helpfulCount");
+    private static final Set<String> ALLOWED_PRODUCT_SORT_FIELDS = Set.of(
+            "name", "price", "averageRating", "reviewCount");
 
     private final ProductService productService;
 
@@ -44,6 +50,18 @@ public class ProductController {
         }
         if (size > MAX_PAGE_SIZE) {
             throw new ValidationException("Page size must not exceed " + MAX_PAGE_SIZE);
+        }
+    }
+
+    private void validateRating(Integer rating) {
+        if (rating != null && (rating < 1 || rating > 5)) {
+            throw new ValidationException("Rating must be between 1 and 5");
+        }
+    }
+
+    private void validateSortField(String sortField, Set<String> allowedFields) {
+        if (!allowedFields.contains(sortField.trim())) {
+            throw new ValidationException("Invalid sort field: " + sortField + ". Allowed: " + allowedFields);
         }
     }
 
@@ -90,6 +108,7 @@ public class ProductController {
 
         String[] sortParams = sort.split(",");
         String sortField = sortParams[0];
+        validateSortField(sortField, ALLOWED_PRODUCT_SORT_FIELDS);
         Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")
                 ? Sort.Direction.DESC : Sort.Direction.ASC;
 
@@ -144,13 +163,15 @@ public class ProductController {
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
 
         validatePagination(page, size);
+        validateRating(rating);
 
         String[] sortParams = sort.split(",");
         String sortField = sortParams[0];
+        validateSortField(sortField, ALLOWED_REVIEW_SORT_FIELDS);
+
         Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc")
                 ? Sort.Direction.DESC : Sort.Direction.ASC;
 
-        // ✨ FIX: Case-insensitive sorting for reviewerName field as well
         Sort.Order order = new Sort.Order(direction, sortField);
         if (sortField.equalsIgnoreCase("reviewerName")) {
             order = order.ignoreCase();
@@ -158,11 +179,7 @@ public class ProductController {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(order));
 
-        if (rating != null) {
-            return ResponseEntity.ok(productService.getReviewsByProductId(id, rating, pageable));
-        }
-
-        return ResponseEntity.ok(productService.getReviewsByProductId(id, null, pageable));
+        return ResponseEntity.ok(productService.getReviewsByProductId(id, rating, pageable));
     }
 
     @Operation(
@@ -226,14 +243,9 @@ public class ProductController {
     public ResponseEntity<Map<String, String>> chatAboutProduct(
             @Parameter(description = "Product ID", example = "1")
             @PathVariable Long id,
-            @RequestBody Map<String, String> request) {
+            @Valid @RequestBody ChatRequest request) {
 
-        String question = request.get("question");
-        if (question == null || question.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Question is required"));
-        }
-
-        String answer = productService.chatAboutProduct(id, question);
+        String answer = productService.chatAboutProduct(id, request.getQuestion());
         return ResponseEntity.ok(Map.of("answer", answer));
     }
 }

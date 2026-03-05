@@ -8,6 +8,8 @@ import * as Linking from 'expo-linking';
 import { ClerkProvider } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { useFonts } from 'expo-font';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { ProductListScreen } from './src/screens/ProductListScreen';
 import { ProductDetailsScreen } from './src/screens/ProductDetailsScreen';
@@ -126,6 +128,18 @@ const tokenCache = Platform.OS !== 'web' ? {
 
 export default function App() {
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+
+  const [fontsLoaded] = useFonts({
+    Ionicons: require('./assets/fonts/Ionicons.ttf'),
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#10B981" />
+      </View>
+    );
+  }
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>

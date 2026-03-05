@@ -1,22 +1,25 @@
 package com.example.productreview.repository;
 
 import com.example.productreview.model.Review;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ReviewRepository extends JpaRepository<Review, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Review r WHERE r.id = :id")
+    Optional<Review> findByIdForUpdate(@Param("id") Long id);
     
-    @Query("SELECT r FROM Review r WHERE r.product.id = :productId")
-    List<Review> findByProductId(@Param("productId") Long productId);
-    
-    // ✨ Added paged findByProductId
     Page<Review> findByProductId(@Param("productId") Long productId, Pageable pageable);
     
     // Updated query to handle optional rating filtering

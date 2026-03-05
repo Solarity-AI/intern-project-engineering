@@ -25,6 +25,7 @@ import {
   BorderRadius,
   Shadow,
   Glass,
+  getDetailMaxWidth,
 } from '../constants/theme';
 
 type FilterType = 'all' | NotificationType;
@@ -76,13 +77,8 @@ export const NotificationsScreen: React.FC = () => {
 
   const { width: windowWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
-  const MAX_CONTENT_WIDTH = 600;
-
-  const responsiveContainerStyle = {
-    width: '100%' as const,
-    maxWidth: isWeb ? MAX_CONTENT_WIDTH : undefined,
-    alignSelf: 'center' as const,
-  };
+  // Passed to ScreenWrapper.contentMaxWidth — centering is handled there
+  const contentMaxWidth = isWeb ? getDetailMaxWidth(windowWidth) : undefined;
 
   const filteredNotifications = useMemo(() => {
     if (selectedFilter === 'all') return notifications;
@@ -138,17 +134,15 @@ export const NotificationsScreen: React.FC = () => {
         activeOpacity={0.7}
         style={[
           styles.notificationCard,
+          isWeb && styles.notificationCardWeb,
           colorScheme === 'dark'
             ? Glass.elevated
             : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 },
           // Unread: type-colored glow
-          !item.isRead && {
-            shadowColor: accentColor,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.3,
-            shadowRadius: 12,
-            elevation: 8,
-          },
+          !item.isRead && Platform.select({
+            web: { boxShadow: `0px 0px 12px ${accentColor}4D` } as any,
+            default: { shadowColor: accentColor, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 8 },
+          }),
         ]}
       >
         {/* 3px left accent line */}
@@ -213,8 +207,7 @@ export const NotificationsScreen: React.FC = () => {
   );
 
   return (
-    <ScreenWrapper backgroundColor={colors.background}>
-      <View style={responsiveContainerStyle}>
+    <ScreenWrapper backgroundColor={colors.background} contentMaxWidth={contentMaxWidth}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <View style={styles.headerLeft}>
@@ -244,11 +237,10 @@ export const NotificationsScreen: React.FC = () => {
           renderItem={renderNotification}
           ListHeaderComponent={renderHeader}
           ListEmptyComponent={renderEmpty}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, isWeb && styles.listContentWeb]}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
         />
-      </View>
     </ScreenWrapper>
   );
 };
@@ -284,13 +276,14 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     gap: Spacing.sm,
   },
   filterChip: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
   },
@@ -302,9 +295,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing['3xl'],
   },
+  listContentWeb: {
+    width: '100%',
+  },
   notificationCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
     padding: Spacing.lg,
     paddingLeft: Spacing.lg + 6, // space for accent line
     borderRadius: BorderRadius['2xl'],
@@ -312,6 +309,9 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     ...Shadow.soft,
+  },
+  notificationCardWeb: {
+    width: '100%',
   },
   accentLine: {
     position: 'absolute',

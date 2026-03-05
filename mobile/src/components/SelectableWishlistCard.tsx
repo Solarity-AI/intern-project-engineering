@@ -48,7 +48,7 @@ function SelectableWishlistCardComponent({
     Animated.timing(imageOpacity, {
       toValue: 1,
       duration: 350,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [imageOpacity]);
 
@@ -56,28 +56,13 @@ function SelectableWishlistCardComponent({
 
   useEffect(() => {
     if (isSelectionMode) {
-      const animation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(shakeAnim, {
-            toValue: -1.2,
-            duration: 85,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-          Animated.timing(shakeAnim, {
-            toValue: 1.2,
-            duration: 85,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-          Animated.timing(shakeAnim, {
-            toValue: 0,
-            duration: 85,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-        ])
-      );
+      const animation = Animated.sequence([
+        Animated.timing(shakeAnim, { toValue: -1.2, duration: 70, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(shakeAnim, { toValue: 1.2, duration: 70, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(shakeAnim, { toValue: -0.6, duration: 70, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(shakeAnim, { toValue: 0.6, duration: 70, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(shakeAnim, { toValue: 0, duration: 70, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }),
+      ]);
       animation.start();
       return () => animation.stop();
     } else {
@@ -91,7 +76,7 @@ function SelectableWishlistCardComponent({
   });
 
   const isCompact = numColumns !== undefined && numColumns >= 3;
-  const aspectRatio = numColumns === 1 ? 16 / 9 : isCompact ? 1 : 3 / 4;
+  const aspectRatio = numColumns === 1 ? 16 / 9 : 1;
 
   return (
     <View style={{ zIndex: isSelectionMode ? (isSelected ? 2 : 1) : 1 }}>
@@ -113,13 +98,13 @@ function SelectableWishlistCardComponent({
           activeOpacity={0.9}
           style={[
             styles.card,
-            { aspectRatio },
+            { aspectRatio, backgroundColor: colors.card },
             isSelectionMode && styles.cardSelectionMode,
             isSelected && [styles.cardSelected, { borderColor: colors.primary }, Glow.primary],
           ]}
           onPress={() => onPress(item)}
           onLongPress={() => onLongPress(item)}
-          delayLongPress={2250}
+          delayLongPress={500}
           accessibilityLabel={`${item.name}, $${item.price?.toFixed(2) ?? '0.00'}`}
           accessibilityRole="button"
           accessibilityHint="Double tap to view product details"
@@ -145,36 +130,27 @@ function SelectableWishlistCardComponent({
 
           {/* Bottom gradient overlay */}
           <LinearGradient
-            colors={['transparent', 'rgba(11,17,32,0.90)'] as [string, string]}
+            colors={['transparent', colorScheme === 'dark' ? 'rgba(11,17,32,0.90)' : 'rgba(0,0,0,0.55)'] as [string, string]}
             style={styles.bottomGradient}
           />
 
-          {/* Emerald heart icon — top left */}
-          {!isSelectionMode && (
-            <View style={[styles.heartBadge, isCompact && styles.heartBadgeCompact]}>
-              <Ionicons name="heart" size={isCompact ? 12 : 14} color="#10B981" />
-            </View>
-          )}
-
-          {/* Quick delete button — top right */}
-          {/* Using Pressable instead of TouchableOpacity to avoid nested button issue on web */}
+          {/* Heart button — top right, tappable remove (mirrors product list layout) */}
           {!isSelectionMode && (
             <Pressable
               style={[
-                styles.deleteButton,
+                styles.heartButton,
                 colorScheme === 'dark' ? Glass.strong : { backgroundColor: 'rgba(255,255,255,0.9)' },
-                isCompact && styles.deleteButtonCompact,
+                isCompact && styles.heartButtonCompact,
               ]}
-              onPress={() => onRemove(item.id)}
+              onPress={(e) => {
+                e.stopPropagation();
+                onRemove(item.id);
+              }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               accessibilityLabel="Remove from wishlist"
               accessibilityRole="button"
             >
-              <Ionicons
-                name="close"
-                size={isCompact ? 14 : 18}
-                color={colorScheme === 'dark' ? '#fff' : '#000'}
-              />
+              <Ionicons name="heart" size={isCompact ? 16 : 20} color="#F87171" />
             </Pressable>
           )}
 
@@ -236,14 +212,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Shadow.medium,
     position: 'relative',
-    backgroundColor: '#0B1120',
   },
   cardSelectionMode: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 12,
+    ...Platform.select({
+      web: { boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.4)' } as any,
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 12 },
+    }),
   },
   cardSelected: {
     borderWidth: 2,
@@ -268,43 +242,23 @@ const styles = StyleSheet.create({
     height: '65%',
   },
 
-  heartBadge: {
+  heartButton: {
     position: 'absolute',
-    top: Spacing.sm,
-    left: Spacing.sm,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(15,23,42,0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  heartBadgeCompact: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    top: Spacing.xs,
-    left: Spacing.xs,
-  },
-
-  deleteButton: {
-    position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    top: Spacing.md,
+    right: Spacing.md,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
   },
-  deleteButtonCompact: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    top: Spacing.xs,
-    right: Spacing.xs,
+  heartButtonCompact: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    top: Spacing.sm,
+    right: Spacing.sm,
   },
 
   selectionIndicator: {

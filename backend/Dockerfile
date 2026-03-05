@@ -8,6 +8,8 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
 EXPOSE 10000
 ENV PORT=10000
-CMD ["sh", "-c", "java -Dserver.port=${PORT} -jar app.jar"]
+ENTRYPOINT ["./entrypoint.sh"]

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   Image,
-  TouchableOpacity,
   Pressable,
   StyleSheet,
   Animated,
@@ -19,6 +18,8 @@ import { Spacing, BorderRadius, Shadow, FontWeight, Glass, Glow, Gradients, Font
 import { ApiProduct } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { useWishlist } from '../context/WishlistContext';
+
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 interface SelectableProductCardProps {
   product: ApiProduct;
@@ -39,7 +40,7 @@ function imageForCategory(categories?: string[]) {
   return 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=800&q=80';
 }
 
-export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
+const SelectableProductCardComponent: React.FC<SelectableProductCardProps> = ({
   product,
   numColumns = 2,
   isSelectionMode,
@@ -64,20 +65,20 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
 
   const heartScale = useRef(new Animated.Value(1)).current;
 
-  const handleWishlistToggle = (e: any) => {
+  const handleWishlistToggle = useCallback((e: any) => {
     e.stopPropagation();
 
     // Bounce animation
     Animated.sequence([
       Animated.spring(heartScale, {
         toValue: 1.35,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
         speed: 50,
         bounciness: 12,
       }),
       Animated.spring(heartScale, {
         toValue: 1,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
         speed: 50,
         bounciness: 8,
       }),
@@ -91,14 +92,14 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
       categories: product.categories,
       averageRating: avgRating,
     } as any);
-  };
+  }, [heartScale, toggleWishlist, productId, product.name, product.price, product.categories, avgRating, imageUri]);
 
   const imageOpacity = useRef(new Animated.Value(0)).current;
   const onImageLoad = useCallback(() => {
     Animated.timing(imageOpacity, {
       toValue: 1,
       duration: 350,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
     }).start();
   }, [imageOpacity]);
 
@@ -106,28 +107,13 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
 
   useEffect(() => {
     if (isSelectionMode) {
-      const animation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(shakeAnim, {
-            toValue: -2,
-            duration: 50,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-          Animated.timing(shakeAnim, {
-            toValue: 2,
-            duration: 50,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-          Animated.timing(shakeAnim, {
-            toValue: 0,
-            duration: 50,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-        ])
-      );
+      const animation = Animated.sequence([
+        Animated.timing(shakeAnim, { toValue: -2, duration: 60, easing: Easing.linear, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(shakeAnim, { toValue: 2, duration: 60, easing: Easing.linear, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(shakeAnim, { toValue: -1, duration: 60, easing: Easing.linear, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(shakeAnim, { toValue: 1, duration: 60, easing: Easing.linear, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(shakeAnim, { toValue: 0, duration: 60, easing: Easing.linear, useNativeDriver: USE_NATIVE_DRIVER }),
+      ]);
       animation.start();
       return () => animation.stop();
     } else {
@@ -153,25 +139,24 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
 
   return (
     <Animated.View
-      style={
+      style={[
+        styles.wrapper,
         isSelectionMode
           ? { transform: [{ rotate: rotateInterpolate }] }
-          : undefined
-      }
+          : undefined,
+      ]}
     >
-      <TouchableOpacity
-        activeOpacity={0.9}
+      <Pressable
         style={[
           styles.container,
-          { aspectRatio },
+          { aspectRatio, backgroundColor: colors.card },
           isSelectionMode && styles.cardSelectionMode,
           isSelected && [styles.cardSelected, { borderColor: colors.primary }, Glow.primary],
-          // Web hover transition
           Platform.OS === 'web' && ({ transition: 'transform 0.3s ease', cursor: 'pointer' } as any),
         ]}
         onPress={() => onPress(product)}
         onLongPress={() => onLongPress(product)}
-        delayLongPress={2250}
+        delayLongPress={500}
         accessibilityLabel={`${product.name ?? 'Product'}, rated ${avgRating.toFixed(1)} stars, $${product.price.toFixed(2)}`}
         accessibilityRole="button"
         accessibilityHint="Double tap to view product details"
@@ -186,47 +171,9 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
 
         {/* Bottom gradient overlay — 65% height */}
         <LinearGradient
-          colors={['transparent', 'rgba(11,17,32,0.90)'] as [string, string]}
+          colors={['transparent', colorScheme === 'dark' ? 'rgba(11,17,32,0.90)' : 'rgba(0,0,0,0.55)'] as [string, string]}
           style={styles.bottomGradient}
         />
-
-        {/* Wishlist button — top right, glass circle */}
-        {/* Using Pressable instead of TouchableOpacity to avoid nested button issue on web */}
-        {!isSelectionMode && showWishlistButton && (
-          <Pressable
-            style={[
-              styles.wishlistButton,
-              colorScheme === 'dark' ? Glass.strong : { backgroundColor: 'rgba(255,255,255,0.9)' },
-              numColumns >= 3 && styles.wishlistButtonCompact,
-            ]}
-            onPress={handleWishlistToggle}
-            accessibilityLabel={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
-            accessibilityRole="button"
-          >
-            <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-              <Ionicons
-                name={inWishlist ? 'heart' : 'heart-outline'}
-                size={numColumns >= 3 ? 14 : 18}
-                color={inWishlist ? '#F87171' : colorScheme === 'dark' ? '#fff' : '#111'}
-              />
-            </Animated.View>
-          </Pressable>
-        )}
-
-        {/* Selection indicator */}
-        {isSelectionMode && (
-          <View
-            style={[
-              styles.selectionIndicator,
-              {
-                backgroundColor: isSelected ? colors.primary : 'rgba(255,255,255,0.9)',
-                borderColor: isSelected ? colors.primary : colors.border,
-              },
-            ]}
-          >
-            {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
-          </View>
-        )}
 
         {/* Overlaid content at bottom */}
         <View style={[styles.overlayContent, numColumns >= 3 && styles.overlayContentCompact]}>
@@ -263,27 +210,68 @@ export const SelectableProductCard: React.FC<SelectableProductCardProps> = ({
             )}
           </View>
         </View>
-      </TouchableOpacity>
+      </Pressable>
+
+      {/* Wishlist button — sibling to avoid nested <button> on web */}
+      {!isSelectionMode && showWishlistButton && (
+        <Pressable
+          style={[
+            styles.wishlistButton,
+            colorScheme === 'dark' ? Glass.strong : { backgroundColor: 'rgba(255,255,255,0.9)' },
+            numColumns >= 3 && styles.wishlistButtonCompact,
+          ]}
+          onPress={handleWishlistToggle}
+          hitSlop={numColumns >= 3 ? { top: 7, bottom: 7, left: 7, right: 7 } : { top: 4, bottom: 4, left: 4, right: 4 }}
+          accessibilityLabel={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+          accessibilityRole="button"
+        >
+          <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+            <Ionicons
+              name={inWishlist ? 'heart' : 'heart-outline'}
+              size={numColumns >= 3 ? 16 : 20}
+              color={inWishlist ? '#F87171' : colorScheme === 'dark' ? '#fff' : '#111'}
+            />
+          </Animated.View>
+        </Pressable>
+      )}
+
+      {/* Selection indicator — sibling to avoid nested <button> on web */}
+      {isSelectionMode && (
+        <View
+          style={[
+            styles.selectionIndicator,
+            {
+              backgroundColor: isSelected ? colors.primary : 'rgba(255,255,255,0.9)',
+              borderColor: isSelected ? colors.primary : colors.border,
+            },
+          ]}
+        >
+          {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+        </View>
+      )}
     </Animated.View>
   );
 };
 
+export const SelectableProductCard = React.memo(SelectableProductCardComponent);
+
 const styles = StyleSheet.create({
+  wrapper: {
+    position: 'relative',
+  },
   container: {
     width: '100%',
     borderRadius: BorderRadius['2xl'],
     overflow: 'hidden',
     ...Shadow.medium,
     position: 'relative',
-    backgroundColor: '#0B1120',
   },
   cardSelectionMode: {
     transform: [{ scale: 1.05 }],
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    ...Platform.select({
+      web: { boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)' } as any,
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
+    }),
   },
   cardSelected: {
     borderWidth: 2,
@@ -307,17 +295,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: Spacing.md,
     right: Spacing.md,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
   },
   wishlistButtonCompact: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     top: Spacing.sm,
     right: Spacing.sm,
   },

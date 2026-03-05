@@ -19,7 +19,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { StarRating } from './StarRating';
 import { Button } from './Button';
-import { Colors, Spacing, FontSize, BorderRadius, FontWeight, Shadow, Glass } from '../constants/theme';
+import { Colors, Spacing, FontSize, BorderRadius, FontWeight, Shadow, Glass, Breakpoints } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 // ✅ IMPORTANT: ToastProvider MUST be inside <Modal> to render in the same native layer.
@@ -49,10 +49,15 @@ const AddReviewModalContent: React.FC<Omit<AddReviewModalProps, 'visible'> & { o
   const { showToast } = useToast();
   const { width } = useWindowDimensions();
   
-  // ✨ Responsive breakpoints
+  // Responsive breakpoints — use centralized Breakpoints constants from theme
   const isWeb = Platform.OS === 'web';
   const isNarrow = width < 600;
-  const maxFormWidth = isWeb ? 520 : undefined;
+  const maxFormWidth = isWeb
+    ? width >= Breakpoints.largeDesktop ? 960
+    : width >= Breakpoints.desktop ? 800
+    : width >= Breakpoints.tablet ? 640
+    : 520
+    : undefined;
 
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -325,7 +330,7 @@ export const AddReviewModal: React.FC<AddReviewModalProps> = ({
   productName,
   onSubmit,
 }) => {
-  const { colors } = useTheme();
+  const { colors, colorScheme } = useTheme();
   const isWeb = Platform.OS === 'web';
 
   // ✅ Provider INSIDE Modal = toast shows on the review screen (not behind it)
@@ -340,7 +345,7 @@ export const AddReviewModal: React.FC<AddReviewModalProps> = ({
       <ToastProvider>
         <View style={[
           styles.modalContainer,
-          isWeb && { backgroundColor: 'rgba(11, 17, 32, 0.85)' },
+          isWeb && { backgroundColor: colorScheme === 'dark' ? 'rgba(11, 17, 32, 0.85)' : 'rgba(0, 0, 0, 0.5)' },
           !isWeb && { backgroundColor: colors.background },
         ]}>
           <AddReviewModalContent 
@@ -370,11 +375,10 @@ const styles = StyleSheet.create({
   webCard: {
     borderRadius: BorderRadius['2xl'],
     maxHeight: '90%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.35,
-    shadowRadius: 32,
-    elevation: 20,
+    ...Platform.select({
+      web: { boxShadow: '0px 16px 32px rgba(0, 0, 0, 0.35)' } as any,
+      default: { shadowColor: '#000', shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.35, shadowRadius: 32, elevation: 20 },
+    }),
   },
   webScrollContent: {
     padding: Spacing['2xl'],

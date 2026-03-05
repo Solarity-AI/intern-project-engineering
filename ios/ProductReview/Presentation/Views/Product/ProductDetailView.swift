@@ -115,7 +115,7 @@ struct ProductDetailView: View {
                     Image(systemName: viewModel.isInWishlist ? "heart.fill" : "heart")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(viewModel.isInWishlist ? AppColors.primary : Color.primary)
-                        .frame(width: 40, height: 40)
+                        .frame(width: 44, height: 44)
                         .glassCard(AppGlass.card, cornerRadius: AppRadius.full)
                         .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 2)
                 }

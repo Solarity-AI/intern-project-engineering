@@ -20,6 +20,9 @@ jest.mock('../../services/api', () => ({
     totalReviews: 0,
     averageRating: 0,
   }),
+  getUserMessage: jest.fn((error: unknown) =>
+    error instanceof Error ? error.message : 'Unexpected error'
+  ),
 }));
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -212,7 +215,7 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('loading state', () => {
-  it('shows ActivityIndicator (loading text) before data resolves', async () => {
+  it('shows loading state before data resolves', async () => {
     let resolveProducts!: (v: Page<ApiProduct>) => void;
     mockGetProducts.mockReturnValueOnce(
       new Promise<Page<ApiProduct>>(r => { resolveProducts = r; }),
@@ -223,8 +226,8 @@ describe('loading state', () => {
     // Wait for the fetch to be triggered (sortLoaded → useEffect → fetchProducts)
     await waitFor(() => expect(mockGetProducts).toHaveBeenCalledTimes(1));
 
-    // While getProducts is pending, loading === true → ListEmptyComponent shows ActivityIndicator
-    expect(screen.getByText('Loading products...')).toBeTruthy();
+    // While getProducts is pending, list should not drop into empty-state CTA.
+    expect(screen.queryByText('No products found')).toBeNull();
 
     // Resolve to avoid pending-promise warnings after test ends
     await act(async () => {
@@ -270,7 +273,9 @@ describe('loaded state', () => {
 
 describe('LoadMoreCard when last: false', () => {
   it('is rendered when the first page is not the last', async () => {
-    mockGetProducts.mockResolvedValueOnce(makePage([makeProduct(1)], false));
+    mockGetProducts.mockResolvedValueOnce(
+      makePage([makeProduct(1), makeProduct(2)], false),
+    );
 
     render(<ProductListScreen />);
 
@@ -281,8 +286,8 @@ describe('LoadMoreCard when last: false', () => {
 
   it('pressing LoadMoreCard calls getProducts with page: 1', async () => {
     mockGetProducts
-      .mockResolvedValueOnce(makePage([makeProduct(1)], false))
-      .mockResolvedValueOnce(makePage([makeProduct(2)], true));
+      .mockResolvedValueOnce(makePage([makeProduct(1), makeProduct(2)], false))
+      .mockResolvedValueOnce(makePage([makeProduct(3)], true));
 
     render(<ProductListScreen />);
 
@@ -305,7 +310,9 @@ describe('LoadMoreCard when last: false', () => {
 
 describe('LoadMoreCard when last: true', () => {
   it('does not render the Load More button on the final page', async () => {
-    mockGetProducts.mockResolvedValueOnce(makePage([makeProduct(1)], true));
+    mockGetProducts.mockResolvedValueOnce(
+      makePage([makeProduct(1), makeProduct(2)], true),
+    );
 
     render(<ProductListScreen />);
 
@@ -315,7 +322,9 @@ describe('LoadMoreCard when last: true', () => {
   });
 
   it('renders the end-of-list message instead', async () => {
-    mockGetProducts.mockResolvedValueOnce(makePage([makeProduct(1)], true));
+    mockGetProducts.mockResolvedValueOnce(
+      makePage([makeProduct(1), makeProduct(2)], true),
+    );
 
     render(<ProductListScreen />);
 

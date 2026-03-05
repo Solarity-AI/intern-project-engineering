@@ -114,37 +114,46 @@ export const Glass = {
       default: {},
     }),
   },
+  // Light mode variants for dark Glass tokens
+  strongLight: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  subtleLight: {
+    backgroundColor: 'rgba(241,245,249,0.85)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  heroLight: {
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  elevatedLight: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
 };
 
 export const Glow = {
-  primary: {
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  primarySoft: {
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  accent: {
-    shadowColor: '#FBBF24',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  ai: {
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 12,
-  },
+  primary: Platform.select({
+    web: { boxShadow: '0px 0px 20px rgba(16, 185, 129, 0.45)' },
+    default: { shadowColor: '#10B981', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.45, shadowRadius: 20, elevation: 12 },
+  }) as any,
+  primarySoft: Platform.select({
+    web: { boxShadow: '0px 4px 16px rgba(16, 185, 129, 0.25)' },
+    default: { shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 8 },
+  }) as any,
+  accent: Platform.select({
+    web: { boxShadow: '0px 0px 20px rgba(251, 191, 36, 0.4)' },
+    default: { shadowColor: '#FBBF24', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 },
+  }) as any,
+  ai: Platform.select({
+    web: { boxShadow: '0px 0px 20px rgba(139, 92, 246, 0.4)' },
+    default: { shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 },
+  }) as any,
 };
 
 export const Spacing = {
@@ -190,26 +199,64 @@ export const BorderRadius = {
   full: 9999,
 };
 
+// ─── Responsive Breakpoints ──────────────────────────────────────────────────
+// Single source of truth for all web viewport breakpoints.
+// Use these instead of hardcoding pixel values in individual screens.
+
+export type WebBreakpoint = 'mobile' | 'tablet' | 'desktop' | 'largeDesktop' | 'ultrawide';
+
+export const Breakpoints = {
+  tablet: 768,       // ≥ 768px
+  desktop: 1024,     // ≥ 1024px
+  largeDesktop: 1440,// ≥ 1440px
+  ultrawide: 1920,   // ≥ 1920px
+} as const;
+
+/** Returns a named breakpoint based on viewport width. */
+export function getWebBreakpoint(width: number): WebBreakpoint {
+  if (width >= Breakpoints.ultrawide) return 'ultrawide';
+  if (width >= Breakpoints.largeDesktop) return 'largeDesktop';
+  if (width >= Breakpoints.desktop) return 'desktop';
+  if (width >= Breakpoints.tablet) return 'tablet';
+  return 'mobile';
+}
+
+/**
+ * Returns the max content width for single-column layouts
+ * (ProductDetails, AIAssistant, Notifications).
+ * Returns undefined on mobile (= full viewport width).
+ */
+export function getDetailMaxWidth(width: number): number | undefined {
+  if (width >= Breakpoints.ultrawide) return 1280;
+  if (width >= Breakpoints.largeDesktop) return 1100;
+  if (width >= Breakpoints.desktop) return 900;
+  if (width >= Breakpoints.tablet) return 760;
+  return undefined;
+}
+
+/**
+ * Returns the max content width for grid layouts (ProductList).
+ * Scales up to 2100px on ultrawide to fill ≥80 % of the viewport.
+ */
+export function getGridMaxWidth(width: number): number {
+  if (width >= Breakpoints.ultrawide) return 2100;
+  if (width >= Breakpoints.largeDesktop) return 1600;
+  if (width >= Breakpoints.desktop) return 1200;
+  if (width >= 720) return 1040;
+  return 900;
+}
+
 export const Shadow = {
-  soft: {
-    shadowColor: '#0B1120',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  medium: {
-    shadowColor: '#0B1120',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 8,
-  },
-  hover: {
-    shadowColor: '#0B1120',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.3,
-    shadowRadius: 32,
-    elevation: 12,
-  },
+  soft: Platform.select({
+    web: { boxShadow: '0px 4px 12px rgba(11, 17, 32, 0.15)' },
+    default: { shadowColor: '#0B1120', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 4 },
+  }) as any,
+  medium: Platform.select({
+    web: { boxShadow: '0px 8px 24px rgba(11, 17, 32, 0.25)' },
+    default: { shadowColor: '#0B1120', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 24, elevation: 8 },
+  }) as any,
+  hover: Platform.select({
+    web: { boxShadow: '0px 12px 32px rgba(11, 17, 32, 0.3)' },
+    default: { shadowColor: '#0B1120', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.3, shadowRadius: 32, elevation: 12 },
+  }) as any,
 };

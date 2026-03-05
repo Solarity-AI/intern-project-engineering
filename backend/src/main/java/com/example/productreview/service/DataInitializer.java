@@ -5,7 +5,9 @@ import com.example.productreview.model.Review;
 import com.example.productreview.repository.ProductRepository;
 import com.example.productreview.repository.ReviewRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,6 +17,7 @@ import java.util.Random;
 import java.util.Set;
 
 @Component
+@Profile("!prod")
 public class DataInitializer implements CommandLineRunner {
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;
@@ -25,6 +28,7 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     @Override
+    @Transactional
     public void run(String... args) {
         if (productRepository.count() == 0) {
             List<Product> products = new ArrayList<>();
@@ -93,6 +97,7 @@ public class DataInitializer implements CommandLineRunner {
                     int rating = random.nextInt(5) + 1; // 1-5
                     addReview(p, name, comment, rating);
                 }
+                updateProductStats(p);
             }
 
             // Add bulk reviews for iPhone 15 Pro (first product) for pagination testing
@@ -103,6 +108,7 @@ public class DataInitializer implements CommandLineRunner {
                 int rating = random.nextInt(5) + 1;
                 addReview(iphone, name, comment + " (Test Review " + (i + 1) + ")", rating);
             }
+            updateProductStats(iphone);
         }
     }
 
@@ -124,16 +130,22 @@ public class DataInitializer implements CommandLineRunner {
         review.setRating(rating);
         review.setHelpfulCount(0);
         reviewRepository.save(review);
-
-        // Update product stats
-        updateProductStats(product);
     }
 
     private void updateProductStats(Product product) {
-        var reviews = reviewRepository.findByProductId(product.getId());
-        double avg = reviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
-        product.setAverageRating(Math.round(avg * 10.0) / 10.0);
-        product.setReviewCount(reviews.size());
+        List<Object[]> results = reviewRepository.getReviewStats(product.getId());
+
+        int count = 0;
+        double average = 0.0;
+
+        if (results != null && !results.isEmpty() && results.get(0) != null) {
+            Object[] stats = results.get(0);
+            count = stats.length > 0 && stats[0] != null ? ((Number) stats[0]).intValue() : 0;
+            average = stats.length > 1 && stats[1] != null ? ((Number) stats[1]).doubleValue() : 0.0;
+        }
+
+        product.setReviewCount(count);
+        product.setAverageRating(Math.round(average * 10.0) / 10.0);
         productRepository.save(product);
     }
 }
