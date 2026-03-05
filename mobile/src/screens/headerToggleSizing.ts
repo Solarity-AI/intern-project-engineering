@@ -27,7 +27,7 @@ export function getHeaderToggleSizing({
       ? { buttonSize: 44, iconSize: 20, actionGap: 10 }
       : breakpoint === 'medium'
         ? { buttonSize: 42, iconSize: 19, actionGap: 8 }
-        : { buttonSize: 40, iconSize: 18, actionGap: 6 }
+        : { buttonSize: 36, iconSize: 17, actionGap: 6 }
     : { buttonSize: 38, iconSize: 18, actionGap: 8 };
 
   const buttonSize = clamp(baseByBreakpoint.buttonSize, 36, 44);
