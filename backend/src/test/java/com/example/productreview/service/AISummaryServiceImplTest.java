@@ -10,13 +10,13 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class AISummaryServiceTest {
+public class AISummaryServiceImplTest {
 
-    private AISummaryService service;
+    private AISummaryServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new AISummaryService("test-key", "gpt-4o-mini", 500);
+        service = new AISummaryServiceImpl("test-key", "gpt-4o-mini", 500);
     }
 
     // --- Test Mode Detection ---
@@ -31,7 +31,7 @@ public class AISummaryServiceTest {
 
     @Test
     void constructor_WithEmptyKey_ShouldEnableTestMode() {
-        AISummaryService emptyKeyService = new AISummaryService("", "gpt-4o-mini", 500);
+        AISummaryServiceImpl emptyKeyService = new AISummaryServiceImpl("", "gpt-4o-mini", 500);
         Review review = createReview(4, "Good product with nice design");
         String summary = emptyKeyService.generateReviewSummary(1L, "Product", Arrays.asList(review));
         assertNotNull(summary);
@@ -39,7 +39,7 @@ public class AISummaryServiceTest {
 
     @Test
     void constructor_WithPlaceholderKey_ShouldEnableTestMode() {
-        AISummaryService placeholderService = new AISummaryService("your-api-key-here", "gpt-4o-mini", 500);
+        AISummaryServiceImpl placeholderService = new AISummaryServiceImpl("your-api-key-here", "gpt-4o-mini", 500);
         Review review = createReview(4, "Decent product");
         String summary = placeholderService.generateReviewSummary(1L, "Product", Arrays.asList(review));
         assertNotNull(summary);
@@ -186,7 +186,7 @@ public class AISummaryServiceTest {
 
     @Test
     void constructor_WithNonSkPrefix_ShouldEnableTestMode() {
-        AISummaryService nonSkService = new AISummaryService("not-starting-with-sk", "gpt-4o-mini", 500);
+        AISummaryServiceImpl nonSkService = new AISummaryServiceImpl("not-starting-with-sk", "gpt-4o-mini", 500);
         Review review = createReview(4, "Good product");
         String summary = nonSkService.generateReviewSummary(1L, "Product", Arrays.asList(review));
         assertNotNull(summary);
@@ -194,7 +194,7 @@ public class AISummaryServiceTest {
 
     @Test
     void constructor_WithNullKey_ShouldEnableTestMode() {
-        AISummaryService nullKeyService = new AISummaryService(null, "gpt-4o-mini", 500);
+        AISummaryServiceImpl nullKeyService = new AISummaryServiceImpl(null, "gpt-4o-mini", 500);
         Review review = createReview(4, "Good product");
         String summary = nullKeyService.generateReviewSummary(1L, "Product", Arrays.asList(review));
         assertNotNull(summary);
