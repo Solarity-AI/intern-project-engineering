@@ -17,7 +17,7 @@
     "test:ui": "jest --config jest.ui.config.js"
   },
   "dependencies": {
-    "@clerk/clerk-expo": "^2.19.30",
+    "@clerk/expo": "^3.0.1",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/native": "^7.1.26",

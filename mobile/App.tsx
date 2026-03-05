@@ -1,13 +1,12 @@
 // React Native App Entry Point with SafeAreaProvider, Notifications, Toast, Wishlist, Theme, Network, and Linking
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
-import { ClerkProvider } from '@clerk/clerk-expo';
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import { ClerkProvider } from '@clerk/expo';
+import { tokenCache } from '@clerk/expo/secure-store';
 import { useFonts } from 'expo-font';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -117,17 +116,15 @@ function AppNavigator() {
   );
 }
 
-const tokenCache = Platform.OS !== 'web' ? {
-  async getToken(key: string) {
-    return SecureStore.getItemAsync(key);
-  },
-  async saveToken(key: string, value: string) {
-    return SecureStore.setItemAsync(key, value);
-  },
-} : undefined;
-
 export default function App() {
-  const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+  const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+  if (!publishableKey) {
+    throw new Error(
+      'Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. ' +
+      'Set it in your .env.local file before starting the app.'
+    );
+  }
 
   const [fontsLoaded] = useFonts({
     Ionicons: require('./assets/fonts/Ionicons.ttf'),
@@ -142,24 +139,23 @@ export default function App() {
   }
 
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-    <SafeAreaProvider>
-      <ThemeProvider>
-        {/* ✨ NetworkProvider added - must be inside ThemeProvider for colors */}
-        <NetworkProvider>
-          <NotificationProvider>
-            <WishlistProvider>
-              <SearchProvider> 
-                <ToastProvider>
-                  <AppNavigator />
-
-                </ToastProvider>
-              </SearchProvider>
-            </WishlistProvider>
-          </NotificationProvider>
-        </NetworkProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <ClerkProvider publishableKey={publishableKey} tokenCache={Platform.OS !== 'web' ? tokenCache : undefined}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          {/* ✨ NetworkProvider added - must be inside ThemeProvider for colors */}
+          <NetworkProvider>
+            <NotificationProvider>
+              <WishlistProvider>
+                <SearchProvider>
+                  <ToastProvider>
+                    <AppNavigator />
+                  </ToastProvider>
+                </SearchProvider>
+              </WishlistProvider>
+            </NotificationProvider>
+          </NetworkProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
     </ClerkProvider>
   );
 }
