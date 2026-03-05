@@ -53,6 +53,7 @@
   },
   "private": true,
   "overrides": {
-    "expo-crypto": "~15.0.8"
+    "expo-crypto": "~15.0.8",
+    "scheduler": "0.27.0"
   }
 }
