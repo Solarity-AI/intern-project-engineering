@@ -5,6 +5,9 @@ import { NavigationContainer, DefaultTheme, DarkTheme, LinkingOptions } from '@r
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
+import { ClerkProvider } from '@clerk/clerk-expo';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 import { ProductListScreen } from './src/screens/ProductListScreen';
 import { ProductDetailsScreen } from './src/screens/ProductDetailsScreen';
@@ -112,8 +115,20 @@ function AppNavigator() {
   );
 }
 
+const tokenCache = Platform.OS !== 'web' ? {
+  async getToken(key: string) {
+    return SecureStore.getItemAsync(key);
+  },
+  async saveToken(key: string, value: string) {
+    return SecureStore.setItemAsync(key, value);
+  },
+} : undefined;
+
 export default function App() {
+  const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+
   return (
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
     <SafeAreaProvider>
       <ThemeProvider>
         {/* ✨ NetworkProvider added - must be inside ThemeProvider for colors */}
@@ -131,6 +146,7 @@ export default function App() {
         </NetworkProvider>
       </ThemeProvider>
     </SafeAreaProvider>
+    </ClerkProvider>
   );
 }
 
