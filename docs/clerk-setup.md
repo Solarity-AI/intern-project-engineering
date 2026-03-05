@@ -24,7 +24,7 @@ In the Clerk dashboard, navigate to **API Keys** under your application settings
 
 Copy `.env.example` to `.env.local` in the `mobile/` directory and set your publishable key:
 
-```
+```dotenv
 EXPO_PUBLIC_API_URL=https://your-backend-url
 EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your-publishable-key-here
 ```
@@ -42,7 +42,7 @@ Set the following environment variables on your backend server (Heroku config va
 | Variable | Description |
 |---|---|
 | `CLERK_SECRET_KEY` | Clerk secret key (required) |
-| `CLERK_PUBLISHABLE_KEY` | Clerk publishable key (optional, for reference) |
+| `CLERK_PUBLISHABLE_KEY` | Clerk publishable key (required) |
 
 ### Development (local)
 
@@ -74,7 +74,7 @@ The `application-prod.properties` file reads these values via `${CLERK_SECRET_KE
 |---|---|---|
 | `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | `mobile/.env.local` | Yes |
 | `CLERK_SECRET_KEY` | Backend env / Heroku config | Yes (prod) |
-| `CLERK_PUBLISHABLE_KEY` | Backend env / Heroku config | Optional |
+| `CLERK_PUBLISHABLE_KEY` | Backend env / Heroku config | Yes (prod) |
 
 ## Notes
 
