@@ -6,7 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
 import { ClerkProvider } from '@clerk/expo';
-import { tokenCache } from '@clerk/expo/secure-store';
+import { tokenCache } from '@clerk/expo/token-cache';
 import { useFonts } from 'expo-font';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
