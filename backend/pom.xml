@@ -55,15 +55,21 @@
 			<version>${lombok.version}</version>
 			<scope>provided</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		
-		<!-- ✨ OpenAI Spring Boot Starter for ChatGPT Integration -->
-		<dependency>
-			<groupId>io.github.sashirestela</groupId>
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-starter-test</artifactId>
+				<scope>test</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>com.nimbusds</groupId>
+				<artifactId>nimbus-jose-jwt</artifactId>
+				<version>9.37.3</version>
+			</dependency>
+			
+			<!-- ✨ OpenAI Spring Boot Starter for ChatGPT Integration -->
+			<dependency>
+				<groupId>io.github.sashirestela</groupId>
 			<artifactId>simple-openai</artifactId>
 			<version>3.8.1</version>
 		</dependency>
@@ -160,6 +166,13 @@
 							<version>${lombok.version}</version>
 						</path>
 					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>@{argLine} -XX:+EnableDynamicAgentLoading -Djdk.attach.allowAttachSelf=true</argLine>
 				</configuration>
 			</plugin>
 		</plugins>

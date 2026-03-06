@@ -1,5 +1,6 @@
 package com.example.productreview.controller;
 
+import com.example.productreview.config.AuthenticatedUserId;
 import com.example.productreview.dto.ChatRequest;
 import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.dto.ReviewDTO;
@@ -211,8 +212,8 @@ public class ProductController {
     public ResponseEntity<ReviewDTO> markReviewAsHelpful(
             @Parameter(description = "Review ID", example = "1")
             @PathVariable Long reviewId,
-            @Parameter(description = "User ID for vote tracking", required = true)
-            @RequestHeader(value = "X-User-ID", required = true) String userId) {
+            @Parameter(description = "Internal user ID resolved from the validated Clerk token", required = true)
+            @AuthenticatedUserId String userId) {
         return ResponseEntity.ok(productService.markReviewAsHelpful(reviewId, userId));
     }
 
@@ -225,8 +226,8 @@ public class ProductController {
     })
     @GetMapping("/reviews/voted")
     public ResponseEntity<List<Long>> getUserVotedReviews(
-            @Parameter(description = "User ID", required = true)
-            @RequestHeader("X-User-ID") String userId) {
+            @Parameter(description = "Internal user ID resolved from the validated Clerk token", required = true)
+            @AuthenticatedUserId String userId) {
         return ResponseEntity.ok(productService.getUserVotedReviewIds(userId));
     }
 

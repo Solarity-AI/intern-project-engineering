@@ -3,8 +3,8 @@ package com.example.productreview.config;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.parameters.Parameter;
-import org.springdoc.core.customizers.OperationCustomizer;
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -22,27 +22,11 @@ public class OpenApiConfig {
                                 + "and interact with an AI assistant for review analysis.")
                         .contact(new Contact()
                                 .name("Solarity Engineering Team")
-                                .email("engineering@solarity.com")));
-    }
-
-    @Bean
-    public OperationCustomizer globalHeaderCustomizer() {
-        Parameter userIdHeader = new Parameter()
-                .in("header")
-                .name("X-User-ID")
-                .description("Device-generated UUID identifying the user. "
-                        + "Required for all user-scoped endpoints (wishlist, notifications, review voting).")
-                .required(false)
-                .schema(new io.swagger.v3.oas.models.media.StringSchema());
-
-        return (operation, handlerMethod) -> {
-            boolean alreadyHas = operation.getParameters() != null
-                    && operation.getParameters().stream()
-                            .anyMatch(p -> "X-User-ID".equals(p.getName()));
-            if (!alreadyHas) {
-                operation.addParametersItem(userIdHeader);
-            }
-            return operation;
-        };
+                                .email("engineering@solarity.com")))
+                .components(new Components()
+                        .addSecuritySchemes("bearerAuth", new SecurityScheme()
+                                .type(SecurityScheme.Type.HTTP)
+                                .scheme("bearer")
+                                .bearerFormat("JWT")));
     }
 }

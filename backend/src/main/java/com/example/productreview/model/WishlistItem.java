@@ -16,7 +16,7 @@ public class WishlistItem {
     private Long id;
     
     @Column(nullable = false)
-    private String userId; // UUID from frontend
+    private String userId; // Internal user ID resolved from Clerk mapping
     
     @Column(nullable = false)
     private Long productId;

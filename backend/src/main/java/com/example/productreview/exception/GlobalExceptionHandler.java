@@ -1,5 +1,6 @@
 package com.example.productreview.exception;
 
+import com.example.productreview.config.AuthenticatedUserContextMissingException;
 import com.example.productreview.dto.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,13 @@ public class GlobalExceptionHandler {
         log.warn("Forbidden: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(AuthenticatedUserContextMissingException.class)
+    public ResponseEntity<ErrorResponse> handleMissingAuthenticatedUserContext(AuthenticatedUserContextMissingException ex) {
+        log.warn("Missing authenticated user context: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
