@@ -91,22 +91,12 @@ actor APIClient {
 
     private let baseURL: String
     private let session: URLSession
-    private var userId: String
 
     private init() {
         self.baseURL = AppConstants.API.baseURL
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = AppConstants.API.timeoutInterval
         self.session = URLSession(configuration: config)
-
-        // Load or generate user ID
-        if let savedUserId = UserDefaults.standard.string(forKey: AppConstants.StorageKeys.userId) {
-            self.userId = savedUserId
-        } else {
-            let newUserId = UUID().uuidString
-            UserDefaults.standard.set(newUserId, forKey: AppConstants.StorageKeys.userId)
-            self.userId = newUserId
-        }
     }
 
     // MARK: - Generic Request Method
@@ -131,7 +121,6 @@ actor APIClient {
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(userId, forHTTPHeaderField: "X-User-ID")
 
         // Add body if present
         if let body = body {

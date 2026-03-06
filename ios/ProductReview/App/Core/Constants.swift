@@ -18,7 +18,6 @@ enum AppConstants {
 
     // MARK: - Storage Keys
     enum StorageKeys {
-        static let userId = "device_user_id"
         static let theme = "theme"
         static let wishlist = "wishlist"
         static let searchHistory = "search_history"
