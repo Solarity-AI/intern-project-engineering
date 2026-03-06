@@ -1,4 +1,4 @@
-import { ApiError, getUserMessage, clearApiCache } from '../api';
+import { ApiError, getUserMessage, clearApiCache, setAuthTokenProvider } from '../api';
 
 // --- Mock fetch globally ---
 const mockFetch = jest.fn();
@@ -31,6 +31,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.useRealTimers();
   clearApiCache();
+  setAuthTokenProvider(null);
 });
 
 // ============================
@@ -186,6 +187,86 @@ describe('request() via getProduct()', () => {
     const result = await getProduct(1);
     expect(result.id).toBe(1);
     expect(result.name).toBe('Test Product');
+  });
+});
+
+describe('auth token attachment', () => {
+  const { getProduct, postReview } = require('../api');
+
+  it('adds Clerk session tokens to GET requests automatically', async () => {
+    setAuthTokenProvider(async () => 'session-token-123');
+
+    mockFetch.mockResolvedValueOnce(
+      mockResponse(200, { id: 1, name: 'Test Product', description: 'A test', categories: [], price: 10 })
+    );
+
+    await getProduct(1);
+
+    const options = mockFetch.mock.calls[0][1];
+    const headers = options.headers as Headers;
+
+    expect(headers.get('Authorization')).toBe('Bearer session-token-123');
+    expect(headers.has('X-User-ID')).toBe(false);
+  });
+
+  it('preserves request-specific headers when attaching Clerk session tokens', async () => {
+    setAuthTokenProvider(async () => 'session-token-456');
+
+    mockFetch.mockResolvedValueOnce(
+      mockResponse(200, { id: 99, rating: 5, comment: 'Great product' })
+    );
+
+    await postReview(99, { rating: 5, comment: 'Great product' });
+
+    const options = mockFetch.mock.calls[0][1];
+    const headers = options.headers as Headers;
+
+    expect(headers.get('Authorization')).toBe('Bearer session-token-456');
+    expect(headers.get('Content-Type')).toBe('application/json');
+  });
+
+  it('retries Clerk session token resolution before sending authenticated requests', async () => {
+    jest.useFakeTimers();
+
+    const issuedTokens = [null, null, 'session-token-after-retry'] as const;
+    let callCount = 0;
+
+    setAuthTokenProvider(async () => {
+      const nextToken = issuedTokens[Math.min(callCount, issuedTokens.length - 1)];
+      callCount += 1;
+      return nextToken;
+    });
+
+    mockFetch.mockResolvedValueOnce(
+      mockResponse(200, { id: 3, name: 'Retried Product', description: 'A test', categories: [], price: 30 })
+    );
+
+    const requestPromise = getProduct(3);
+
+    await jest.runAllTimersAsync();
+    await requestPromise;
+
+    const options = mockFetch.mock.calls[0][1];
+    const headers = options.headers as Headers;
+
+    expect(callCount).toBe(3);
+    expect(headers.get('Authorization')).toBe('Bearer session-token-after-retry');
+  });
+
+  it('sends requests without Authorization when no Clerk token is available', async () => {
+    setAuthTokenProvider(async () => null);
+
+    mockFetch.mockResolvedValueOnce(
+      mockResponse(200, { id: 2, name: 'Another Product', description: 'A test', categories: [], price: 20 })
+    );
+
+    await getProduct(2);
+
+    const options = mockFetch.mock.calls[0][1];
+    const headers = options.headers as Headers;
+
+    expect(headers.has('Authorization')).toBe(false);
+    expect(headers.has('X-User-ID')).toBe(false);
   });
 });
 
