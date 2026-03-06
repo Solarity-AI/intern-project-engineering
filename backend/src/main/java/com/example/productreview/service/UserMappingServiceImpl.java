@@ -16,7 +16,6 @@ public class UserMappingServiceImpl implements UserMappingService {
     private final UserMappingRepository userMappingRepository;
 
     @Override
-    @Transactional
     public UserMapping getOrCreateByClerkUserId(String clerkUserId) {
         String normalizedClerkUserId = normalizeClerkUserId(clerkUserId);
 

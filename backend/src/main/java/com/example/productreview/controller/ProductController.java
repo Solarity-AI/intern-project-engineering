@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -208,11 +209,12 @@ public class ProductController {
             @ApiResponse(responseCode = "200", description = "Vote toggled successfully"),
             @ApiResponse(responseCode = "404", description = "Review not found")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/reviews/{reviewId}/helpful")
     public ResponseEntity<ReviewDTO> markReviewAsHelpful(
             @Parameter(description = "Review ID", example = "1")
             @PathVariable Long reviewId,
-            @Parameter(description = "Internal user ID resolved from the validated Clerk token", required = true)
+            @Parameter(hidden = true)
             @AuthenticatedUserId String userId) {
         return ResponseEntity.ok(productService.markReviewAsHelpful(reviewId, userId));
     }
@@ -224,9 +226,10 @@ public class ProductController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "List of voted review IDs returned")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/reviews/voted")
     public ResponseEntity<List<Long>> getUserVotedReviews(
-            @Parameter(description = "Internal user ID resolved from the validated Clerk token", required = true)
+            @Parameter(hidden = true)
             @AuthenticatedUserId String userId) {
         return ResponseEntity.ok(productService.getUserVotedReviewIds(userId));
     }
