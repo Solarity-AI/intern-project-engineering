@@ -1,9 +1,17 @@
 // Wishlist Context for managing favorite products
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
+import { useAuth } from '@clerk/expo';
+import { AuthTokenReadyContext } from './AuthTokenReadyContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getWishlist as getWishlistApi, toggleWishlistApi } from '../services/api';
+import { AppState, AppStateStatus, Platform } from 'react-native';
+import { getWishlist as getWishlistApi, toggleWishlistApi, clearWishlistCache } from '../services/api';
 
-const WISHLIST_STORAGE_KEY = 'wishlist_products';
+const WISHLIST_STORAGE_KEY_PREFIX = 'wishlist_products';
+const WISHLIST_SYNC_INTERVAL_MS = 5000;
+
+function getWishlistStorageKey(clerkUserId: string | null | undefined) {
+  return clerkUserId ? `${WISHLIST_STORAGE_KEY_PREFIX}:${clerkUserId}` : null;
+}
 
 export interface WishlistItem {
   id: string;
@@ -31,6 +39,8 @@ interface WishlistContextType {
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 
 export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { isLoaded: isAuthLoaded, isSignedIn, userId: clerkUserId } = useAuth();
+  const isTokenProviderReady = useContext(AuthTokenReadyContext);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   // Ref kept in sync with state so callbacks can read current wishlist
   // without being stale closures, and without needing deps in useCallback.
@@ -43,6 +53,14 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
   const compensatingRemoves = useRef<Set<string>>(new Set());
   // Prevents the debounced save from writing before the initial load completes.
   const isInitialized = useRef(false);
+  const lastSignedInStorageKey = useRef<string | null>(getWishlistStorageKey(clerkUserId));
+  const wishlistStorageKey = getWishlistStorageKey(clerkUserId);
+
+  useEffect(() => {
+    if (wishlistStorageKey) {
+      lastSignedInStorageKey.current = wishlistStorageKey;
+    }
+  }, [wishlistStorageKey]);
 
   useEffect(() => {
     wishlistRef.current = wishlist;
@@ -57,43 +75,57 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
     return () => clearTimeout(timer);
   }, [wishlist]);
 
-  // Load wishlist from AsyncStorage AND Backend on mount
-  useEffect(() => {
-    loadWishlist();
-  }, []);
+  const loadWishlist = useCallback(async (options?: { hydrateFromLocalCache?: boolean }) => {
+    const hydrateFromLocalCache = options?.hydrateFromLocalCache ?? true;
 
-  const loadWishlist = async () => {
     try {
-      // 1. Load local cache (for immediate UI)
-      const stored = await AsyncStorage.getItem(WISHLIST_STORAGE_KEY);
-      let localItems: WishlistItem[] = [];
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        localItems = parsed.map((item: any) => ({
-          ...item,
-          addedAt: new Date(item.addedAt),
-        }));
-        setWishlist(localItems);
+      // Force-clear the in-memory API cache so the backend fetch below is never
+      // served from a stale entry left over from a previous session or a
+      // concurrent client that toggled items independently.
+      clearWishlistCache();
+
+      let localItems: WishlistItem[] = wishlistRef.current;
+
+      // 1. Load local cache (for immediate UI) only during initial hydration.
+      if (hydrateFromLocalCache && wishlistStorageKey) {
+        const stored = await AsyncStorage.getItem(wishlistStorageKey);
+        localItems = [];
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          localItems = parsed.map((item: any) => ({
+            ...item,
+            addedAt: new Date(item.addedAt),
+          }));
+          setWishlist(localItems);
+        }
       }
 
       // 2. Sync with Backend (Source of Truth)
       const backendIds = await getWishlistApi();
-
-      // Filter local items to match backend IDs (remove deleted ones)
-      // Note: If backend has IDs that local doesn't, we can't show them fully yet
-      // because we lack product details. Ideally, we'd fetch details for missing IDs.
-      // For now, we assume local cache is mostly up to date or we keep local items if backend fails.
+      const localItemMap = new Map(localItems.map(item => [String(item.id), item]));
 
       if (backendIds && backendIds.length > 0) {
-        const backendIdSet = new Set(backendIds.map(String));
-        const syncedItems = localItems.filter(item => backendIdSet.has(item.id));
+        const syncedItems = backendIds.map((backendId) => {
+          const id = String(backendId);
+          const existingItem = localItemMap.get(id);
 
-        // If backend has more items than local, we might be missing data.
-        // In a real app, we would fetch product details for (backendIds - localIds).
+          if (existingItem) {
+            return existingItem;
+          }
+
+          // Cross-client wishlist membership must still resolve even if this
+          // device has never cached the product payload locally.
+          return {
+            id,
+            name: 'Saved product',
+            addedAt: new Date(),
+          } as WishlistItem;
+        });
 
         setWishlist(currentWishlist => {
           // Preserve any items added/toggled while getWishlistApi() was in-flight.
-          const pendingItems = currentWishlist.filter(
+          const list = currentWishlist || [];
+          const pendingItems = list.filter(
             item => pendingOps.current.has(String(item.id))
           );
           const pendingIds = new Set(pendingItems.map(item => String(item.id)));
@@ -118,11 +150,91 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
       // the effect will flush 200 ms after the last state change above.
       isInitialized.current = true;
     }
-  };
+  }, [wishlistStorageKey]);
+
+  useEffect(() => {
+    if (!isAuthLoaded) {
+      return;
+    }
+
+    if (!isSignedIn) {
+      pendingOps.current.clear();
+      compensatingRemoves.current.clear();
+      wishlistRef.current = [];
+      setWishlist([]);
+      const storageKeysToRemove = [
+        lastSignedInStorageKey.current,
+        WISHLIST_STORAGE_KEY_PREFIX,
+      ].filter((value): value is string => Boolean(value));
+      Promise.all(storageKeysToRemove.map(key => AsyncStorage.removeItem(key))).catch(error => {
+        console.error('Error clearing wishlist after sign out:', error);
+      });
+      isInitialized.current = true;
+      return;
+    }
+
+    if (!isTokenProviderReady) {
+      return;
+    }
+
+    isInitialized.current = false;
+    loadWishlist({ hydrateFromLocalCache: true });
+  }, [isAuthLoaded, isSignedIn, isTokenProviderReady, loadWishlist]);
+
+  useEffect(() => {
+    if (!isAuthLoaded || !isSignedIn || !isTokenProviderReady) {
+      return;
+    }
+
+    const syncFromBackend = () => {
+      if (pendingOps.current.size > 0) {
+        return;
+      }
+
+      loadWishlist({ hydrateFromLocalCache: false }).catch(error => {
+        console.error('Error refreshing wishlist from backend:', error);
+      });
+    };
+
+    const intervalId = setInterval(syncFromBackend, WISHLIST_SYNC_INTERVAL_MS);
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        syncFromBackend();
+      }
+    };
+    const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+
+    let removeWebListeners: (() => void) | undefined;
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof document !== 'undefined') {
+      const handleWindowFocus = () => syncFromBackend();
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          syncFromBackend();
+        }
+      };
+
+      window.addEventListener('focus', handleWindowFocus);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      removeWebListeners = () => {
+        window.removeEventListener('focus', handleWindowFocus);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
+
+    return () => {
+      clearInterval(intervalId);
+      appStateSubscription.remove();
+      removeWebListeners?.();
+    };
+  }, [isAuthLoaded, isSignedIn, isTokenProviderReady, loadWishlist]);
 
   const saveWishlistToStorage = async (items: WishlistItem[]) => {
+    if (!isSignedIn || !wishlistStorageKey) {
+      return;
+    }
+
     try {
-      await AsyncStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(items));
+      await AsyncStorage.setItem(wishlistStorageKey, JSON.stringify(items));
     } catch (error) {
       console.error('Error saving wishlist locally:', error);
     }
@@ -175,6 +287,7 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
         })
         .catch(e => {
           console.error('Backend sync failed', e);
+          setWishlist(currentWishlist => (currentWishlist || []).filter(item => String(item.id) !== idStr));
           // Add failed — backend never received the item, so no compensating remove needed.
           compensatingRemoves.current.delete(idStr);
         })
@@ -225,6 +338,7 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
           })
           .catch(e => {
             console.error('Backend sync failed', e);
+            setWishlist(currentWishlist => (currentWishlist || []).filter(entry => String(entry.id) !== id));
             compensatingRemoves.current.delete(id);
           })
           .finally(() => pendingOps.current.delete(id));
@@ -236,6 +350,7 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
   const removeFromWishlist = useCallback(
     (productId: string | number) => {
       const idStr = String(productId);
+      const removedItem = wishlistRef.current.find(item => String(item.id) === idStr);
       // Guard: skip if request already in-flight or item not in the list.
       // pendingOps prevents a rapid double-tap from toggling twice (remove→re-add).
       if (pendingOps.current.has(idStr)) return;
@@ -251,7 +366,17 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
 
       // API call outside the state updater — fires exactly once per gesture.
       toggleWishlistApi(Number(idStr))
-        .catch(e => console.error("Backend sync failed", e))
+        .catch(e => {
+          console.error("Backend sync failed", e);
+          if (!removedItem) return;
+          setWishlist(currentWishlist => {
+            const list = currentWishlist || [];
+            if (list.some(item => String(item.id) === idStr)) {
+              return list;
+            }
+            return [removedItem, ...list];
+          });
+        })
         .finally(() => pendingOps.current.delete(idStr));
     },
     []
@@ -279,7 +404,16 @@ export const WishlistProvider: React.FC<{ children: ReactNode }> = ({ children }
       // API calls outside the state updater — each fires exactly once.
       toRemove.forEach(item => {
         toggleWishlistApi(Number(item.id))
-          .catch(e => console.error("Backend sync failed", e))
+          .catch(e => {
+            console.error("Backend sync failed", e);
+            setWishlist(currentWishlist => {
+              const list = currentWishlist || [];
+              if (list.some(entry => String(entry.id) === String(item.id))) {
+                return list;
+              }
+              return [item, ...list];
+            });
+          })
           .finally(() => pendingOps.current.delete(String(item.id)));
       });
     },

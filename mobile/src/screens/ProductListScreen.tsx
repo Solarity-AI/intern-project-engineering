@@ -1,6 +1,6 @@
 // React Native ProductListScreen — v3 Radical Redesign
 // Full-bleed hero, floating stats, image-overlay cards, gradient dividers
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef, startTransition } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getProducts, getGlobalStats, ApiProduct, GlobalStats, getUserMessage, clearApiCache } from '../services/api';
 import { TouchableWithoutFeedback, DeviceEventEmitter } from 'react-native';
@@ -26,6 +26,7 @@ import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navig
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useClerk } from '@clerk/expo';
 
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { SelectableProductCard } from '../components/SelectableProductCard';
@@ -63,6 +64,7 @@ function imageForCategory(categories?: string[]) {
 export const ProductListScreen = () => {
   const navigation = useNavigation<ProductListNavigationProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'ProductList'>>();
+  const { signOut } = useClerk();
   const { colors, colorScheme, toggleTheme } = useTheme();
   const { unreadCount } = useNotifications();
   const { wishlistCount, addMultipleToWishlist, isInWishlist, toggleWishlist } = useWishlist();
@@ -134,6 +136,7 @@ export const ProductListScreen = () => {
   const [apiProducts, setApiProducts] = useState<ApiProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(0);
@@ -193,6 +196,29 @@ export const ProductListScreen = () => {
     setIsSelectionMode(false);
     setSelectedItems(new Set());
   }, []);
+
+  const handleSignOut = useCallback(async () => {
+    if (isSigningOut) {
+      return;
+    }
+
+    setIsSigningOut(true);
+    clearApiCache();
+
+    try {
+      await signOut();
+      startTransition(() => {
+        setApiProducts([]);
+        setSelectedItems(new Set());
+        setCurrentPage(0);
+        setHasMore(true);
+      });
+    } catch (signOutError) {
+      console.error('Unable to sign out cleanly.', signOutError);
+    } finally {
+      setIsSigningOut(false);
+    }
+  }, [isSigningOut, signOut]);
 
   const handleAddSelectedToWishlist = useCallback(() => {
     const selectedProducts = filteredProducts.filter(p => {
@@ -615,6 +641,30 @@ export const ProductListScreen = () => {
                     borderRadius: headerButtonSize / 2,
                   },
                   colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
+                  isSigningOut && { opacity: 0.6 },
+                ]}
+                onPress={handleSignOut}
+                activeOpacity={0.85}
+                disabled={isSigningOut}
+                accessibilityLabel="Sign out"
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={headerIconSize}
+                  color={colors.foreground}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.headerIconButton,
+                  {
+                    width: headerButtonSize,
+                    height: headerButtonSize,
+                    borderRadius: headerButtonSize / 2,
+                  },
+                  colorScheme === 'dark' ? Glass.subtle : { backgroundColor: colors.secondary },
                 ]}
                 onPress={() => navigation.navigate('Wishlist')}
                 activeOpacity={0.85}
@@ -816,7 +866,7 @@ export const ProductListScreen = () => {
     </>
   ), [
     isWeb, containerMaxWidth, webBp, width, heroBreakoutStyle, colors, colorScheme,
-    handleReset, toggleTheme, toggleGridMode, gridMode,
+    handleReset, toggleTheme, toggleGridMode, gridMode, handleSignOut, isSigningOut,
     headerIconSize, headerIconSizeBig, wishlistCount, unreadCount,
     stats, searchQuery, setSearchQuery, handleSearchSubmit,
     selectedCategory, handleCategoryChange, sortBy, handleSortChange,

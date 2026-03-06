@@ -1,11 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import 'react-native-get-random-values';
-import { v4 as uuidv4 } from 'uuid';
-
 export const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 if (!BASE_URL) throw new Error("EXPO_PUBLIC_API_URL is not set");
-
-const USER_ID_KEY = 'device_user_id';
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const AI_TIMEOUT_MS = 30_000;
@@ -13,6 +7,12 @@ const AI_TIMEOUT_MS = 30_000;
 const RETRIABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
 const MAX_RETRY_ATTEMPTS = 3;
 const BASE_RETRY_DELAY_MS = 1000;
+const AUTH_TOKEN_MAX_ATTEMPTS = 3;
+const AUTH_TOKEN_RETRY_DELAY_MS = 150;
+
+type AuthTokenProvider = () => Promise<string | null>;
+
+let authTokenProvider: AuthTokenProvider | null = null;
 
 // --- In-flight request deduplication ---
 const inflightRequests = new Map<string, Promise<any>>();
@@ -24,6 +24,15 @@ const memoryCache = new Map<string, { data: any; expiresAt: number }>();
 export function clearApiCache() {
   memoryCache.clear();
   inflightRequests.clear();
+}
+
+/** Invalidate all wishlist-related cache entries (IDs and paged products). */
+export function clearWishlistCache() {
+  invalidateCache('/api/v1/user/wishlist');
+}
+
+export function setAuthTokenProvider(provider: AuthTokenProvider | null) {
+  authTokenProvider = provider;
 }
 
 /** Remove cached entries and inflight requests whose keys contain any of the given substrings. */
@@ -48,6 +57,49 @@ function getCached<T>(key: string): T | undefined {
 
 function setCache(key: string, data: any, ttlMs: number = CACHE_TTL_MS) {
   memoryCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+}
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function getSessionToken(): Promise<string | null> {
+  if (!authTokenProvider) return null;
+
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= AUTH_TOKEN_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const sessionToken = await authTokenProvider();
+
+      if (sessionToken) {
+        return sessionToken;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < AUTH_TOKEN_MAX_ATTEMPTS) {
+      await sleep(AUTH_TOKEN_RETRY_DELAY_MS * attempt);
+    }
+  }
+
+  if (lastError) {
+    console.warn('[Auth] Unable to resolve Clerk session token for API request.', lastError);
+  }
+
+  return null;
+}
+
+export async function buildApiHeaders(headersInit?: HeadersInit): Promise<Headers> {
+  const sessionToken = await getSessionToken();
+  const headers = new Headers(headersInit);
+
+  if (sessionToken) {
+    headers.set('Authorization', `Bearer ${sessionToken}`);
+  }
+
+  return headers;
 }
 
 // --- ApiError ---
@@ -116,21 +168,6 @@ export function getUserMessage(error: unknown): string {
   return 'Something went wrong. Please try again.';
 }
 
-// Get or create a persistent User ID
-export async function getUserId(): Promise<string> {
-  try {
-    let userId = await AsyncStorage.getItem(USER_ID_KEY);
-    if (!userId) {
-      userId = uuidv4();
-      await AsyncStorage.setItem(USER_ID_KEY, userId);
-    }
-    return userId;
-  } catch (e) {
-    console.error('Error getting user ID', e);
-    return 'anonymous-user';
-  }
-}
-
 export type Page<T> = {
   content: T[];
   totalElements: number;
@@ -179,8 +216,6 @@ export type GlobalStats = {
 };
 
 async function request<T>(url: string, options?: RequestInit & { timeoutMs?: number }): Promise<T> {
-  const userId = await getUserId();
-
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -190,10 +225,7 @@ async function request<T>(url: string, options?: RequestInit & { timeoutMs?: num
     options.signal.addEventListener('abort', () => controller.abort());
   }
 
-  const headers = {
-    ...options?.headers,
-    'X-User-ID': userId,
-  };
+  const headers = await buildApiHeaders(options?.headers);
 
   try {
     const res = await fetch(url, { ...options, headers, signal: controller.signal });

@@ -1,5 +1,7 @@
 // Notification Context for local notification state management
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { useAuth } from '@clerk/expo';
+import { AuthTokenReadyContext } from './AuthTokenReadyContext';
 import { 
   getNotifications, 
   markNotificationAsRead, 
@@ -37,12 +39,26 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
+  const isTokenProviderReady = useContext(AuthTokenReadyContext);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Load notifications from Backend on mount
   useEffect(() => {
+    if (!isAuthLoaded) {
+      return;
+    }
+
+    if (!isSignedIn) {
+      setNotifications([]);
+      return;
+    }
+
+    if (!isTokenProviderReady) {
+      return;
+    }
+
     loadNotifications();
-  }, []);
+  }, [isAuthLoaded, isSignedIn, isTokenProviderReady]);
 
   const loadNotifications = async () => {
     try {

@@ -14,7 +14,7 @@ import {
   RefreshControl,
 } from 'react-native';
 
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -28,7 +28,7 @@ import { ProductCardSkeleton } from '../components/ProductCardSkeleton';
 import { useWishlist } from '../context/WishlistContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNetwork } from '../context/NetworkContext';
-import { getWishlistProducts, ApiProduct, getUserMessage } from '../services/api';
+import { getWishlistProducts, ApiProduct, getUserMessage, clearWishlistCache } from '../services/api';
 
 import { RootStackParamList } from '../types';
 import { BorderRadius, FontSize, FontWeight, Spacing, Glass, Shadow, Glow, getGridMaxWidth } from '../constants/theme';
@@ -101,6 +101,13 @@ export const WishlistScreen = () => {
     fetchWishlist(0, false);
   }, [fetchWishlist]);
 
+  useFocusEffect(
+    useCallback(() => {
+      clearWishlistCache();
+      fetchWishlist(0, false);
+    }, [fetchWishlist])
+  );
+
   const loadMore = () => {
     if (!loadingMore && hasMore) {
       fetchWishlist(currentPage + 1, true);
@@ -110,6 +117,9 @@ export const WishlistScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
+    // Invalidate the in-memory API cache before fetching so that changes made
+    // by another client (browser or Expo iOS) are not masked by a stale entry.
+    clearWishlistCache();
     await fetchWishlist(0, false);
     setRefreshing(false);
   }, [fetchWishlist]);
