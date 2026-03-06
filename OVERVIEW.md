@@ -290,7 +290,7 @@ Presentation          Domain              Data
 **UserController** (`/api/v1/user`)
 - Wishlist management (get, toggle, paginated products)
 - Notification CRUD operations
-- User identification via `X-User-ID` header
+- User identity resolved server-side from validated Clerk bearer tokens
 
 ### 4.2 Service Layer
 
@@ -365,8 +365,8 @@ Presentation          Domain              Data
 - `Constants`: API configuration with debug/release URL switching (debug defaults to remote server)
 
 **User Identification:**
-- UUID generated on first launch, stored in UserDefaults (`device_user_id`)
-- Sent as `X-User-ID` header on all API requests (matches React Native behavior)
+- Protected identity is derived from the Clerk bearer token, not a client-provided header
+- Server-side user mapping resolves the Clerk subject to a stable internal user id
 
 ### 4.6 Frontend Navigation (React Native)
 
@@ -516,8 +516,8 @@ export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:808
 ```
 
 **User Identification:**
-- UUID generated and stored in AsyncStorage
-- Passed via `X-User-ID` header on all requests
+- Protected requests attach the current Clerk bearer token in `Authorization`
+- The Expo client no longer sends `X-User-ID` as an identity header
 
 ### Frontend Configuration (iOS Native)
 
@@ -531,8 +531,8 @@ static let useLocalServer = false
 ```
 
 **User Identification:**
-- UUID generated and stored in UserDefaults (`device_user_id`)
-- Passed via `X-User-ID` header on all requests
+- The native iOS sample client no longer sends `X-User-ID`
+- Protected endpoints require identity derived from a validated Clerk bearer token
 
 ---
 
@@ -733,8 +733,8 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 ## 11. Security Considerations
 
 ### Authentication & Authorization
-- **Current**: Device-based UUID identification (no auth)
-- **Planned**: JWT-based authentication and RBAC
+- **Current**: Clerk JWT authentication for protected endpoints with server-side user mapping
+- **Next step**: Authorization and RBAC on top of the authenticated identity
 
 ### Input Validation & Error Handling
 - Jakarta Bean Validation on DTOs (@NotBlank, @Size, @Min, @Max)
@@ -744,7 +744,7 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 
 ### API Security
 - **CORS:** Centralized `CorsConfig.java` with environment-based allowed origins (no `@CrossOrigin` on controllers)
-- **Rate Limiting:** Bucket4j filter — 60 requests/minute per client (keyed by X-User-ID or IP)
+- **Rate Limiting:** Bucket4j filter — 60 requests/minute per client (keyed by forwarded IP or remote IP)
 - **API Versioning:** All endpoints prefixed with `/api/v1/` for forward compatibility
 - **API Documentation:** Swagger UI available in development, disabled in production
 - No sensitive data exposed in DTOs
@@ -785,7 +785,7 @@ xcodebuild test -scheme ProductReview -destination 'platform=iOS Simulator,name=
 Frontend (React Native)          Frontend (iOS Native)
     │                                │
     │ HTTP/REST (JSON)               │ HTTP/REST (JSON)
-    │ X-User-ID Header              │ X-User-ID Header
+    │ Authorization: Bearer JWT      │ Authorization: Bearer JWT
     ▼                                ▼
 Backend (Spring Boot) ◄──────────────┘
     │

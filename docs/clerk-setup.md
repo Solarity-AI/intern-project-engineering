@@ -43,14 +43,24 @@ Set the following environment variables on your backend server (Heroku config va
 |---|---|
 | `CLERK_SECRET_KEY` | Clerk secret key (required) |
 | `CLERK_PUBLISHABLE_KEY` | Clerk publishable key (required) |
+| `CLERK_JWT_VERIFICATION_KEY` | Clerk JWT public key used by the backend auth filter to verify session tokens |
+
+The backend auth middleware also accepts `CLERK_JWT_KEY` or `CLERK_PEM_PUBLIC_KEY` as fallbacks if your environment already uses one of those names.
 
 ### Development (local)
 
-For local development you can provide fallback values in `application.properties` or set the environment variables in your shell:
+Local development now defaults to `clerk.auth.enabled=false` in `backend/src/main/resources/application.properties`, so the backend can boot without Clerk credentials while you work on non-auth flows.
+
+If you want local backend requests to enforce Clerk authentication, enable it explicitly and provide the verification key:
 
 ```bash
+export CLERK_AUTH_ENABLED=true
 export CLERK_SECRET_KEY=sk_test_your-secret-key-here
+export CLERK_PUBLISHABLE_KEY=pk_test_your-publishable-key-here
+export CLERK_JWT_VERIFICATION_KEY="-----BEGIN PUBLIC KEY-----..."
 ```
+
+If `CLERK_AUTH_ENABLED=true` and `CLERK_JWT_VERIFICATION_KEY` is missing, the backend is expected to fail fast during startup.
 
 ### Production (Heroku)
 
@@ -75,9 +85,13 @@ The `application-prod.properties` file reads these values via `${CLERK_SECRET_KE
 | `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | `mobile/.env.local` | Yes |
 | `CLERK_SECRET_KEY` | Backend env / Heroku config | Yes (prod) |
 | `CLERK_PUBLISHABLE_KEY` | Backend env / Heroku config | Yes (prod) |
+| `CLERK_JWT_VERIFICATION_KEY` | Backend env / Heroku config | Yes (prod) |
 
 ## Notes
 
 - Authentication UI flows (sign-in, sign-up screens) are not included in this setup phase.
-- Backend JWT verification middleware is not implemented at this stage.
+- Backend JWT verification is enforced by the Java auth filter when `clerk.auth.enabled=true` and a Clerk public verification key is configured.
+- Protected backend identity is derived only from the validated Clerk bearer token; client-provided headers such as `X-User-ID` are ignored for identity resolution.
+- In the default local profile, Clerk auth is opt-in; in production it remains enabled by default.
 - Use development keys (`pk_test_` / `sk_test_`) for all non-production environments.
+- See `docs/authentication-flow.md` for the end-to-end identity resolution flow and spoofing validation notes.

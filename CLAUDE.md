@@ -226,11 +226,11 @@ cd backend && ./mvnw test
 - Dev profile uses in-memory H2 (`ddl-auto=create-drop`, Flyway disabled, data resets on restart)
 - Prod profile uses PostgreSQL (`ddl-auto=validate`, Flyway enabled, persistent data)
 - AI summaries are cached for 1 hour (Caffeine)
-- User persistence via device ID (X-User-ID header)
+- Protected user identity is derived from validated Clerk bearer tokens
 - Frontend defaults to dark mode with glassmorphism UI (Glass cards, Gradients, Glow effects)
 - GET cache is automatically invalidated after successful mutations (postReview, markReviewAsHelpful, toggleWishlist)
 - H2 console is disabled in production profile (`application-prod.properties`)
-- Rate limiting: 60 requests/minute per client (keyed by X-User-ID or IP)
+- Rate limiting: 60 requests/minute per client (keyed by forwarded IP or remote IP)
 - CORS: configured via properties, not controller annotations
 - Deployment: backend on Render (deploy hook), frontend on Cloudflare Pages (wrangler), automated via `.github/workflows/deploy.yml`
 - Render converts `DATABASE_URL` (postgres://) to JDBC format at startup via `backend/entrypoint.sh`
