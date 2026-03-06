@@ -22,14 +22,14 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getAllProducts_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/v1/products"))
+        mockMvc.perform(get("/api/v1/products").with(clerkAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
     }
 
     @Test
     void getProductById_WhenExists_ShouldReturnProduct() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1"))
+        mockMvc.perform(get("/api/v1/products/1").with(clerkAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1));
     }
@@ -42,6 +42,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
         reviewDTO.setRating(5);
 
         mockMvc.perform(post("/api/v1/products/1/reviews")
+                .with(clerkAuth("review-author"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(reviewDTO)))
                 .andExpect(status().isOk())
@@ -52,7 +53,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getGlobalStats_ShouldReturnOkWithValidStructure() throws Exception {
-        mockMvc.perform(get("/api/v1/products/stats"))
+        mockMvc.perform(get("/api/v1/products/stats").with(clerkAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalProducts", greaterThan(0)))
                 .andExpect(jsonPath("$.totalReviews", greaterThan(0)))
@@ -61,7 +62,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getGlobalStats_WithCategoryFilter_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/v1/products/stats").param("category", "Electronics"))
+        mockMvc.perform(get("/api/v1/products/stats").with(clerkAuth()).param("category", "Electronics"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalProducts", greaterThan(0)))
                 .andExpect(jsonPath("$.totalReviews", greaterThan(0)))
@@ -70,7 +71,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getGlobalStats_WithSearchFilter_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/v1/products/stats").param("search", "NonExistentProduct"))
+        mockMvc.perform(get("/api/v1/products/stats").with(clerkAuth()).param("search", "NonExistentProduct"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalProducts").value(0))
                 .andExpect(jsonPath("$.totalReviews").value(0))
@@ -80,6 +81,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     void getGlobalStats_WithNonExistentCategoryAndSearch_ShouldReturnZeroState() throws Exception {
         mockMvc.perform(get("/api/v1/products/stats")
+                .with(clerkAuth())
                 .param("category", "NonExistentCategory")
                 .param("search", "NonExistentProduct"))
                 .andExpect(status().isOk())
@@ -92,7 +94,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getAllProducts_WithExcessiveSize_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/api/v1/products").param("size", "200"))
+        mockMvc.perform(get("/api/v1/products").with(clerkAuth()).param("size", "200"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("Page size must not exceed 100"));
@@ -100,21 +102,21 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getAllProducts_WithMaxSize_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/v1/products").param("size", "100"))
+        mockMvc.perform(get("/api/v1/products").with(clerkAuth()).param("size", "100"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
     }
 
     @Test
     void getAllProducts_WithValidSize_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/v1/products").param("size", "50"))
+        mockMvc.perform(get("/api/v1/products").with(clerkAuth()).param("size", "50"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
     }
 
     @Test
     void getAllProducts_WithNegativePage_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/api/v1/products").param("page", "-1"))
+        mockMvc.perform(get("/api/v1/products").with(clerkAuth()).param("page", "-1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("Page index must not be negative"))
@@ -123,14 +125,14 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getAllProducts_WithoutSizeParam_ShouldDefaultTo10() throws Exception {
-        mockMvc.perform(get("/api/v1/products"))
+        mockMvc.perform(get("/api/v1/products").with(clerkAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size").value(10));
     }
 
     @Test
     void getReviews_WithExcessiveSize_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1/reviews").param("size", "101"))
+        mockMvc.perform(get("/api/v1/products/1/reviews").with(clerkAuth()).param("size", "101"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("Page size must not exceed 100"));
@@ -138,7 +140,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getReviews_WithNegativePage_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1/reviews").param("page", "-1"))
+        mockMvc.perform(get("/api/v1/products/1/reviews").with(clerkAuth()).param("page", "-1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("Page index must not be negative"));
@@ -146,7 +148,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getReviews_WithMaxSize_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1/reviews").param("size", "100"))
+        mockMvc.perform(get("/api/v1/products/1/reviews").with(clerkAuth()).param("size", "100"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
     }
@@ -155,28 +157,28 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getReviews_WithValidRating_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1/reviews").param("rating", "5"))
+        mockMvc.perform(get("/api/v1/products/1/reviews").with(clerkAuth()).param("rating", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
     }
 
     @Test
     void getReviews_WithRatingZero_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1/reviews").param("rating", "0"))
+        mockMvc.perform(get("/api/v1/products/1/reviews").with(clerkAuth()).param("rating", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Rating must be between 1 and 5"));
     }
 
     @Test
     void getReviews_WithRatingAboveFive_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1/reviews").param("rating", "10"))
+        mockMvc.perform(get("/api/v1/products/1/reviews").with(clerkAuth()).param("rating", "10"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Rating must be between 1 and 5"));
     }
 
     @Test
     void getReviews_WithNegativeRating_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1/reviews").param("rating", "-1"))
+        mockMvc.perform(get("/api/v1/products/1/reviews").with(clerkAuth()).param("rating", "-1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Rating must be between 1 and 5"));
     }
@@ -185,14 +187,14 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getReviews_WithValidSortField_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1/reviews").param("sort", "rating,asc"))
+        mockMvc.perform(get("/api/v1/products/1/reviews").with(clerkAuth()).param("sort", "rating,asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
     }
 
     @Test
     void getReviews_WithInvalidSortField_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1/reviews").param("sort", "invalidField,asc"))
+        mockMvc.perform(get("/api/v1/products/1/reviews").with(clerkAuth()).param("sort", "invalidField,asc"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").exists());
     }
@@ -201,14 +203,14 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getReviews_WithSizeZero_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1/reviews").param("size", "0"))
+        mockMvc.perform(get("/api/v1/products/1/reviews").with(clerkAuth()).param("size", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Page size must be at least 1"));
     }
 
     @Test
     void getReviews_WithSizeOne_ShouldReturnSingleReview() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1/reviews").param("size", "1"))
+        mockMvc.perform(get("/api/v1/products/1/reviews").with(clerkAuth()).param("size", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.size").value(1));
@@ -216,7 +218,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getReviews_WithOutOfBoundsPage_ShouldReturnEmptyContent() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1/reviews").param("page", "9999"))
+        mockMvc.perform(get("/api/v1/products/1/reviews").with(clerkAuth()).param("page", "9999"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content").isEmpty());
@@ -224,7 +226,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getReviews_WithDefaultParams_ShouldReturnPagedWithDefaults() throws Exception {
-        mockMvc.perform(get("/api/v1/products/1/reviews"))
+        mockMvc.perform(get("/api/v1/products/1/reviews").with(clerkAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size").value(10))
                 .andExpect(jsonPath("$.number").value(0));
@@ -240,6 +242,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
         reviewDTO.setRating(6); // Invalid rating
 
         mockMvc.perform(post("/api/v1/products/1/reviews")
+                .with(clerkAuth("review-validator"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(reviewDTO)))
                 .andExpect(status().isBadRequest());
@@ -250,16 +253,17 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     void getUserVotedReviews_ShouldReturnEmptyList() throws Exception {
         mockMvc.perform(get("/api/v1/products/reviews/voted")
-                        .header("X-User-ID", "user-with-no-votes"))
+                        .with(clerkAuth("user-with-no-votes")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
     }
 
     @Test
-    void getUserVotedReviews_WithoutHeader_ShouldReturnBadRequest() throws Exception {
+    void getUserVotedReviews_WithoutAuthorization_ShouldReturnUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/products/reviews/voted"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Missing or invalid Authorization header"));
     }
 
     // --- Chat Endpoint Tests ---
@@ -267,6 +271,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     void chatAboutProduct_WithValidQuestion_ShouldReturnAnswer() throws Exception {
         mockMvc.perform(post("/api/v1/products/1/chat")
+                        .with(clerkAuth("chat-user"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"question\":\"How many reviews does this product have?\"}"))
                 .andExpect(status().isOk())
@@ -277,6 +282,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     void chatAboutProduct_WithEmptyQuestion_ShouldReturnBadRequest() throws Exception {
         mockMvc.perform(post("/api/v1/products/1/chat")
+                        .with(clerkAuth("chat-validator"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"question\":\"\"}"))
                 .andExpect(status().isBadRequest())
@@ -287,6 +293,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     void chatAboutProduct_WithMissingQuestionKey_ShouldReturnBadRequest() throws Exception {
         mockMvc.perform(post("/api/v1/products/1/chat")
+                        .with(clerkAuth("chat-validator"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"message\":\"This has no question key\"}"))
                 .andExpect(status().isBadRequest())
@@ -298,7 +305,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getAllProducts_WithInvalidSortField_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/api/v1/products").param("sort", "invalidField,asc"))
+        mockMvc.perform(get("/api/v1/products").with(clerkAuth()).param("sort", "invalidField,asc"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").exists());
     }
@@ -308,6 +315,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     void chatAboutProduct_WithNonExistentProduct_ShouldReturn404() throws Exception {
         mockMvc.perform(post("/api/v1/products/99999/chat")
+                        .with(clerkAuth("chat-user"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"question\":\"How is the quality?\"}"))
                 .andExpect(status().isNotFound());
@@ -317,7 +325,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getAllProducts_WithDescSort_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/api/v1/products").param("sort", "name,desc"))
+        mockMvc.perform(get("/api/v1/products").with(clerkAuth()).param("sort", "name,desc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
     }
@@ -327,7 +335,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     void markReviewAsHelpful_ShouldToggleHelpfulCount() throws Exception {
         String firstResponse = mockMvc.perform(put("/api/v1/products/reviews/1/helpful")
-                        .header("X-User-ID", "toggle-test-user"))
+                        .with(clerkAuth("toggle-test-user")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andReturn().getResponse().getContentAsString();
@@ -335,7 +343,7 @@ public class ProductControllerIntegrationTest extends BaseIntegrationTest {
         int firstCount = objectMapper.readTree(firstResponse).get("helpfulCount").asInt();
 
         String secondResponse = mockMvc.perform(put("/api/v1/products/reviews/1/helpful")
-                        .header("X-User-ID", "toggle-test-user"))
+                        .with(clerkAuth("toggle-test-user")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 

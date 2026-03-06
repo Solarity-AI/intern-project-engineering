@@ -13,7 +13,7 @@ class GlobalExceptionHandlerTest extends BaseIntegrationTest {
 
     @Test
     void resourceNotFound_shouldReturn404() throws Exception {
-        mockMvc.perform(get("/api/v1/products/999999"))
+        mockMvc.perform(get("/api/v1/products/999999").with(clerkAuth()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(404))
                 .andExpect(jsonPath("$.message").value("Product not found with id: 999999"))
@@ -25,6 +25,7 @@ class GlobalExceptionHandlerTest extends BaseIntegrationTest {
         String invalidReview = "{\"reviewerName\":\"J\",\"comment\":\"Short\",\"rating\":6}";
 
         mockMvc.perform(post("/api/v1/products/1/reviews")
+                        .with(clerkAuth("validation-user"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidReview))
                 .andExpect(status().isBadRequest())
@@ -34,17 +35,17 @@ class GlobalExceptionHandlerTest extends BaseIntegrationTest {
     }
 
     @Test
-    void missingHeader_shouldReturn400WithHeaderName() throws Exception {
+    void missingAuthorization_shouldReturn401() throws Exception {
         mockMvc.perform(get("/api/v1/products/reviews/voted"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(400))
-                .andExpect(jsonPath("$.message").value("Required header 'X-User-ID' is missing"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401))
+                .andExpect(jsonPath("$.message").value("Missing or invalid Authorization header"))
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
     void resourceNotFound_shouldIncludeTimestampAndCode() throws Exception {
-        mockMvc.perform(get("/api/v1/products/888888"))
+        mockMvc.perform(get("/api/v1/products/888888").with(clerkAuth()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(404))
                 .andExpect(jsonPath("$.message").value("Product not found with id: 888888"))

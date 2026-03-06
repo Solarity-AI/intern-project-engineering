@@ -53,6 +53,7 @@ public class ReviewConcurrencyIntegrationTest extends BaseIntegrationTest {
                 startLatch.await();
 
                 return mockMvc.perform(post("/api/v1/products/" + productId + "/reviews")
+                                .with(clerkAuth("concurrent-reviewer-" + index))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(dto)))
                         .andExpect(status().isOk())
