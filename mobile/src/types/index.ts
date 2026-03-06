@@ -1,6 +1,8 @@
 // TypeScript type definitions for navigation and data models
 
 export type RootStackParamList = {
+  SignIn: undefined;
+  SignUp: undefined;
   ProductList: undefined;
   ProductDetails: { 
     productId: string;

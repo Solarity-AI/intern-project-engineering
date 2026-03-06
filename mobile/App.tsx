@@ -5,8 +5,8 @@ import { NavigationContainer, DefaultTheme, DarkTheme, LinkingOptions } from '@r
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
-import { ClerkProvider } from '@clerk/expo';
-import { tokenCache } from '@clerk/expo/secure-store';
+import { ClerkProvider, useAuth } from '@clerk/expo';
+import { tokenCache } from '@clerk/expo/token-cache';
 import { useFonts } from 'expo-font';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -16,6 +16,8 @@ import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { NotificationDetailScreen } from './src/screens/NotificationDetailScreen';
 import { WishlistScreen } from './src/screens/WishlistScreen';
 import { AIAssistantScreen } from './src/screens/AIAssistantScreen';
+import { SignInScreen } from './src/screens/SignInScreen';
+import { SignUpScreen } from './src/screens/SignUpScreen';
 import { NotificationProvider } from './src/context/NotificationContext';
 import { WishlistProvider } from './src/context/WishlistContext';
 import { SearchProvider } from './src/context/SearchContext';
@@ -31,6 +33,8 @@ const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [Linking.createURL('/')],
   config: {
     screens: {
+      SignIn: 'sign-in',
+      SignUp: 'sign-up',
       ProductList: '',
       ProductDetails: 'product/:productId',
       Notifications: 'notifications',
@@ -51,9 +55,49 @@ const LoadingScreen: React.FC<{ backgroundColor: string }> = ({ backgroundColor 
 // Navigation wrapper that consumes theme
 function AppNavigator() {
   const { colors, colorScheme, isThemeLoaded } = useTheme();
+  const { isLoaded: isAuthLoaded, isSignedIn, getToken } = useAuth();
+
+  React.useEffect(() => {
+    if (!isAuthLoaded || !isSignedIn) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const verifySessionToken = async () => {
+      try {
+        const token = await getToken();
+
+        if (!isCancelled) {
+          if (token) {
+            if (__DEV__) {
+              console.log('[Auth] Clerk session token is available.');
+            }
+          } else {
+            console.warn('[Auth] Signed-in user has no Clerk session token.');
+          }
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error('[Auth] Unable to read Clerk session token.', error);
+        }
+      }
+    };
+
+    verifySessionToken();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [getToken, isAuthLoaded, isSignedIn]);
 
   // ✨ Show loading screen until theme is loaded - prevents white flash
   if (!isThemeLoaded) {
+    const bgColor = colorScheme === 'dark' ? '#0B1120' : '#F8FAFC';
+    return <LoadingScreen backgroundColor={bgColor} />;
+  }
+
+  if (!isAuthLoaded) {
     const bgColor = colorScheme === 'dark' ? '#0B1120' : '#F8FAFC';
     return <LoadingScreen backgroundColor={bgColor} />;
   }
@@ -78,7 +122,7 @@ function AppNavigator() {
       linking={linking}
     >
       <Stack.Navigator
-        initialRouteName="ProductList"
+        initialRouteName={isSignedIn ? 'ProductList' : 'SignIn'}
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
@@ -89,28 +133,41 @@ function AppNavigator() {
           animationTypeForReplace: 'push',
         }}
       >
-        <Stack.Screen name="ProductList" component={ProductListScreen} />
-        <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
-        <Stack.Screen 
-          name="Notifications" 
-          component={NotificationsScreen}
-          options={{ animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen 
-          name="NotificationDetail" 
-          component={NotificationDetailScreen}
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen 
-          name="Wishlist" 
-          component={WishlistScreen}
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen 
-          name="AIAssistant" 
-          component={AIAssistantScreen}
-          options={{ animation: 'slide_from_bottom' }}
-        />
+        {!isSignedIn ? (
+          <>
+            <Stack.Screen name="SignIn" component={SignInScreen} />
+            <Stack.Screen
+              name="SignUp"
+              component={SignUpScreen}
+              options={{ animation: 'slide_from_right' }}
+            />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="ProductList" component={ProductListScreen} />
+            <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
+              options={{ animation: 'slide_from_bottom' }}
+            />
+            <Stack.Screen
+              name="NotificationDetail"
+              component={NotificationDetailScreen}
+              options={{ animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="Wishlist"
+              component={WishlistScreen}
+              options={{ animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="AIAssistant"
+              component={AIAssistantScreen}
+              options={{ animation: 'slide_from_bottom' }}
+            />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );
