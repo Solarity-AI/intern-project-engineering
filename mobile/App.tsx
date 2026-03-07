@@ -24,6 +24,8 @@ import { SearchProvider } from './src/context/SearchContext';
 import { ToastProvider } from './src/context/ToastContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { NetworkProvider } from './src/context/NetworkContext';
+import { clearApiCache, setAuthTokenProvider } from './src/services/api';
+import { AuthTokenReadyContext } from './src/context/AuthTokenReadyContext';
 import { RootStackParamList } from './src/types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -52,34 +54,59 @@ const LoadingScreen: React.FC<{ backgroundColor: string }> = ({ backgroundColor 
   </View>
 );
 
-// Navigation wrapper that consumes theme
-function AppNavigator() {
-  const { colors, colorScheme, isThemeLoaded } = useTheme();
-  const { isLoaded: isAuthLoaded, isSignedIn, getToken } = useAuth();
+function AuthBootstrap() {
+  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const [isAuthBridgeReady, setIsAuthBridgeReady] = React.useState(false);
+  // Separate from isAuthBridgeReady: signals that setAuthTokenProvider() has
+  // already been called and getToken() can be used by child contexts.
+  // AuthBootstrap.useEffect runs AFTER child effects (React fires bottom-up).
+  // WishlistContext waits for this flag before calling loadWishlist(), so it
+  // never sends an unauthenticated request during the sign-in transition.
+  const [isTokenProviderReady, setIsTokenProviderReady] = React.useState(false);
 
   React.useEffect(() => {
-    if (!isAuthLoaded || !isSignedIn) {
+    if (!isLoaded) {
+      setIsAuthBridgeReady(false);
+      setIsTokenProviderReady(false);
       return;
     }
 
     let isCancelled = false;
 
+    if (!isSignedIn) {
+      setAuthTokenProvider(null);
+      clearApiCache();
+      setIsTokenProviderReady(false);
+      setIsAuthBridgeReady(true);
+
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    // setAuthTokenProvider is a synchronous module-level assignment, so by the
+    // time React processes the setIsTokenProviderReady(true) state update and
+    // re-renders, authTokenProvider is already pointing at the new provider.
+    const tokenProvider = async () => getToken();
+    setAuthTokenProvider(tokenProvider);
+    setIsTokenProviderReady(true);
+
     const verifySessionToken = async () => {
       try {
-        const token = await getToken();
+        const token = await tokenProvider();
 
         if (!isCancelled) {
-          if (token) {
-            if (__DEV__) {
-              console.log('[Auth] Clerk session token is available.');
-            }
-          } else {
+          if (token && __DEV__) {
+            console.log('[Auth] Clerk session token is available.');
+          } else if (!token) {
             console.warn('[Auth] Signed-in user has no Clerk session token.');
           }
+          setIsAuthBridgeReady(true);
         }
       } catch (error) {
         if (!isCancelled) {
           console.error('[Auth] Unable to read Clerk session token.', error);
+          setIsAuthBridgeReady(true);
         }
       }
     };
@@ -88,8 +115,38 @@ function AppNavigator() {
 
     return () => {
       isCancelled = true;
+      setAuthTokenProvider(null);
+      setIsTokenProviderReady(false);
     };
-  }, [getToken, isAuthLoaded, isSignedIn]);
+  }, [getToken, isLoaded, isSignedIn]);
+
+  const shouldHoldSignedInTree = isLoaded && isSignedIn && !isTokenProviderReady;
+
+  if (!isLoaded || !isAuthBridgeReady || shouldHoldSignedInTree) {
+    return <LoadingScreen backgroundColor="#F8FAFC" />;
+  }
+
+  return (
+    <AuthTokenReadyContext.Provider value={isTokenProviderReady}>
+      <NetworkProvider>
+        <NotificationProvider>
+          <WishlistProvider>
+            <SearchProvider>
+              <ToastProvider>
+                <AppNavigator />
+              </ToastProvider>
+            </SearchProvider>
+          </WishlistProvider>
+        </NotificationProvider>
+      </NetworkProvider>
+    </AuthTokenReadyContext.Provider>
+  );
+}
+
+// Navigation wrapper that consumes theme
+function AppNavigator() {
+  const { colors, colorScheme, isThemeLoaded } = useTheme();
+  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
 
   // ✨ Show loading screen until theme is loaded - prevents white flash
   if (!isThemeLoaded) {
@@ -117,8 +174,8 @@ function AppNavigator() {
   };
 
   return (
-    <NavigationContainer 
-      theme={navigationTheme} 
+    <NavigationContainer
+      theme={navigationTheme}
       linking={linking}
     >
       <Stack.Navigator
@@ -199,18 +256,7 @@ export default function App() {
     <ClerkProvider publishableKey={publishableKey} tokenCache={Platform.OS !== 'web' ? tokenCache : undefined}>
       <SafeAreaProvider>
         <ThemeProvider>
-          {/* ✨ NetworkProvider added - must be inside ThemeProvider for colors */}
-          <NetworkProvider>
-            <NotificationProvider>
-              <WishlistProvider>
-                <SearchProvider>
-                  <ToastProvider>
-                    <AppNavigator />
-                  </ToastProvider>
-                </SearchProvider>
-              </WishlistProvider>
-            </NotificationProvider>
-          </NetworkProvider>
+          <AuthBootstrap />
         </ThemeProvider>
       </SafeAreaProvider>
     </ClerkProvider>

@@ -1,5 +1,6 @@
 package com.example.productreview.controller;
 
+import com.example.productreview.config.AuthenticatedUserId;
 import com.example.productreview.dto.ChatRequest;
 import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.dto.ReviewDTO;
@@ -9,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -207,12 +209,13 @@ public class ProductController {
             @ApiResponse(responseCode = "200", description = "Vote toggled successfully"),
             @ApiResponse(responseCode = "404", description = "Review not found")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/reviews/{reviewId}/helpful")
     public ResponseEntity<ReviewDTO> markReviewAsHelpful(
             @Parameter(description = "Review ID", example = "1")
             @PathVariable Long reviewId,
-            @Parameter(description = "User ID for vote tracking", required = true)
-            @RequestHeader(value = "X-User-ID", required = true) String userId) {
+            @Parameter(hidden = true)
+            @AuthenticatedUserId String userId) {
         return ResponseEntity.ok(productService.markReviewAsHelpful(reviewId, userId));
     }
 
@@ -223,10 +226,11 @@ public class ProductController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "List of voted review IDs returned")
     })
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/reviews/voted")
     public ResponseEntity<List<Long>> getUserVotedReviews(
-            @Parameter(description = "User ID", required = true)
-            @RequestHeader("X-User-ID") String userId) {
+            @Parameter(hidden = true)
+            @AuthenticatedUserId String userId) {
         return ResponseEntity.ok(productService.getUserVotedReviewIds(userId));
     }
 

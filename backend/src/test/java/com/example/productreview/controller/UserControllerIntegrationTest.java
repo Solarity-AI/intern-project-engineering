@@ -22,15 +22,16 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     void getWishlist_WithValidHeader_ShouldReturnOk() throws Exception {
         mockMvc.perform(get("/api/v1/user/wishlist")
-                .header("X-User-ID", "wishlist-get-user"))
+                .with(clerkAuth("wishlist-get-user")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
     }
 
     @Test
-    void getWishlist_WithoutHeader_ShouldReturnBadRequest() throws Exception {
+    void getWishlist_WithoutAuthorization_ShouldReturnUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/user/wishlist"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Missing or invalid Authorization header"));
     }
 
     @Test
@@ -39,23 +40,23 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
 
         // Add to wishlist
         mockMvc.perform(post("/api/v1/user/wishlist/1")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk());
 
         // Verify it's in the wishlist
         mockMvc.perform(get("/api/v1/user/wishlist")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0]").value(1));
 
         // Toggle again to remove
         mockMvc.perform(post("/api/v1/user/wishlist/1")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk());
 
         // Verify it's removed
         mockMvc.perform(get("/api/v1/user/wishlist")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());
     }
@@ -66,21 +67,21 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
 
         // Add product to wishlist
         mockMvc.perform(post("/api/v1/user/wishlist/1")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk());
 
         // Get wishlist products
         mockMvc.perform(get("/api/v1/user/wishlist/products")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content[0].id").value(1));
     }
 
     @Test
-    void toggleWishlist_WithoutHeader_ShouldReturnBadRequest() throws Exception {
+    void toggleWishlist_WithoutAuthorization_ShouldReturnUnauthorized() throws Exception {
         mockMvc.perform(post("/api/v1/user/wishlist/1"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
     }
 
     // --- Notification Endpoints ---
@@ -90,14 +91,14 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
         String userId = "notif-create-user";
 
         mockMvc.perform(post("/api/v1/user/notifications")
-                .header("X-User-ID", userId)
+                .with(clerkAuth(userId))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(
                         Map.of("title", "Test Notification", "message", "This is a test"))))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/user/notifications")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value("Test Notification"))
                 .andExpect(jsonPath("$[0].message").value("This is a test"))
@@ -111,14 +112,14 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
         // Create two notifications
         for (String title : List.of("Notif 1", "Notif 2")) {
             mockMvc.perform(post("/api/v1/user/notifications")
-                    .header("X-User-ID", userId)
+                    .with(clerkAuth(userId))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(Map.of("title", title, "message", "msg"))))
                     .andExpect(status().isOk());
         }
 
         mockMvc.perform(get("/api/v1/user/notifications/unread-count")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(2));
     }
@@ -129,14 +130,14 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
 
         // Create notification
         mockMvc.perform(post("/api/v1/user/notifications")
-                .header("X-User-ID", userId)
+                .with(clerkAuth(userId))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(Map.of("title", "Read Test", "message", "msg"))))
                 .andExpect(status().isOk());
 
         // Get notification ID
         String response = mockMvc.perform(get("/api/v1/user/notifications")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andReturn().getResponse().getContentAsString();
 
         List<?> notifications = objectMapper.readValue(response, List.class);
@@ -144,12 +145,12 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
 
         // Mark as read
         mockMvc.perform(put("/api/v1/user/notifications/" + notificationId + "/read")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk());
 
         // Verify unread count is 0
         mockMvc.perform(get("/api/v1/user/notifications/unread-count")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(0));
     }
@@ -161,7 +162,7 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
         // Create two notifications
         for (String title : List.of("First", "Second")) {
             mockMvc.perform(post("/api/v1/user/notifications")
-                    .header("X-User-ID", userId)
+                    .with(clerkAuth(userId))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(Map.of("title", title, "message", "msg"))))
                     .andExpect(status().isOk());
@@ -169,12 +170,12 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
 
         // Mark all as read
         mockMvc.perform(put("/api/v1/user/notifications/read-all")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk());
 
         // Verify unread count is 0
         mockMvc.perform(get("/api/v1/user/notifications/unread-count")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(0));
     }
@@ -185,14 +186,14 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
 
         // Create notification
         mockMvc.perform(post("/api/v1/user/notifications")
-                .header("X-User-ID", userId)
+                .with(clerkAuth(userId))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(Map.of("title", "Delete Me", "message", "msg"))))
                 .andExpect(status().isOk());
 
         // Get notification ID
         String response = mockMvc.perform(get("/api/v1/user/notifications")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andReturn().getResponse().getContentAsString();
 
         List<?> notifications = objectMapper.readValue(response, List.class);
@@ -200,12 +201,12 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
 
         // Delete
         mockMvc.perform(delete("/api/v1/user/notifications/" + notificationId)
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk());
 
         // Verify it's gone
         mockMvc.perform(get("/api/v1/user/notifications")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());
     }
@@ -217,7 +218,7 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
         // Create two notifications
         for (String title : List.of("First", "Second")) {
             mockMvc.perform(post("/api/v1/user/notifications")
-                    .header("X-User-ID", userId)
+                    .with(clerkAuth(userId))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(Map.of("title", title, "message", "msg"))))
                     .andExpect(status().isOk());
@@ -225,20 +226,20 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
 
         // Delete all
         mockMvc.perform(delete("/api/v1/user/notifications")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk());
 
         // Verify all gone
         mockMvc.perform(get("/api/v1/user/notifications")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());
     }
 
     @Test
-    void getNotifications_WithoutHeader_ShouldReturnBadRequest() throws Exception {
+    void getNotifications_WithoutAuthorization_ShouldReturnUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/user/notifications"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -246,14 +247,14 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
         String userId = "notif-product-user";
 
         mockMvc.perform(post("/api/v1/user/notifications")
-                .header("X-User-ID", userId)
+                .with(clerkAuth(userId))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(
                         Map.of("title", "Review Posted", "message", "Your review was posted", "productId", 1))))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/v1/user/notifications")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].productId").value(1));
     }
@@ -263,7 +264,7 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     void getWishlistProducts_WithExcessiveSize_ShouldReturnBadRequest() throws Exception {
         mockMvc.perform(get("/api/v1/user/wishlist/products")
-                .header("X-User-ID", "wishlist-validation-user")
+                .with(clerkAuth("wishlist-validation-user"))
                 .param("size", "101"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
@@ -273,7 +274,7 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     void getWishlistProducts_WithNegativePage_ShouldReturnBadRequest() throws Exception {
         mockMvc.perform(get("/api/v1/user/wishlist/products")
-                .header("X-User-ID", "wishlist-validation-user")
+                .with(clerkAuth("wishlist-validation-user"))
                 .param("page", "-1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
@@ -283,7 +284,7 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     void getWishlistProducts_WithMaxSize_ShouldReturnOk() throws Exception {
         mockMvc.perform(get("/api/v1/user/wishlist/products")
-                .header("X-User-ID", "wishlist-validation-user")
+                .with(clerkAuth("wishlist-validation-user"))
                 .param("size", "100"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
@@ -296,7 +297,7 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
         String userId = "wishlist-nonexist-user";
 
         mockMvc.perform(post("/api/v1/user/wishlist/99999")
-                .header("X-User-ID", userId))
+                .with(clerkAuth(userId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -305,7 +306,7 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
         String userId = "wishlist-page-user";
 
         mockMvc.perform(get("/api/v1/user/wishlist/products")
-                .header("X-User-ID", userId)
+                .with(clerkAuth(userId))
                 .param("page", "0")
                 .param("size", "5"))
                 .andExpect(status().isOk())
@@ -315,27 +316,27 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     void markAsRead_WithNonExistentId_ShouldReturn404() throws Exception {
         mockMvc.perform(put("/api/v1/user/notifications/99999/read")
-                .header("X-User-ID", "some-user"))
+                .with(clerkAuth("some-user")))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void markAsRead_WithoutHeader_ShouldReturnBadRequest() throws Exception {
+    void markAsRead_WithoutAuthorization_ShouldReturnUnauthorized() throws Exception {
         mockMvc.perform(put("/api/v1/user/notifications/1/read"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     void deleteNotification_WithNonExistentId_ShouldReturn404() throws Exception {
         mockMvc.perform(delete("/api/v1/user/notifications/99999")
-                .header("X-User-ID", "some-user"))
+                .with(clerkAuth("some-user")))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void deleteNotification_WithoutHeader_ShouldReturnBadRequest() throws Exception {
+    void deleteNotification_WithoutAuthorization_ShouldReturnUnauthorized() throws Exception {
         mockMvc.perform(delete("/api/v1/user/notifications/1"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -344,14 +345,14 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
 
         // Create notification as owner
         mockMvc.perform(post("/api/v1/user/notifications")
-                .header("X-User-ID", ownerId)
+                .with(clerkAuth(ownerId))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(Map.of("title", "Owner Only", "message", "msg"))))
                 .andExpect(status().isOk());
 
         // Get notification ID
         String response = mockMvc.perform(get("/api/v1/user/notifications")
-                .header("X-User-ID", ownerId))
+                .with(clerkAuth(ownerId)))
                 .andReturn().getResponse().getContentAsString();
 
         List<?> notifications = objectMapper.readValue(response, List.class);
@@ -359,7 +360,7 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
 
         // Try to mark as read with a different user
         mockMvc.perform(put("/api/v1/user/notifications/" + notificationId + "/read")
-                .header("X-User-ID", "different-user"))
+                .with(clerkAuth("different-user")))
                 .andExpect(status().isForbidden());
     }
 
@@ -369,14 +370,14 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
 
         // Create notification as owner
         mockMvc.perform(post("/api/v1/user/notifications")
-                .header("X-User-ID", ownerId)
+                .with(clerkAuth(ownerId))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(Map.of("title", "Owner Only", "message", "msg"))))
                 .andExpect(status().isOk());
 
         // Get notification ID
         String response = mockMvc.perform(get("/api/v1/user/notifications")
-                .header("X-User-ID", ownerId))
+                .with(clerkAuth(ownerId)))
                 .andReturn().getResponse().getContentAsString();
 
         List<?> notifications = objectMapper.readValue(response, List.class);
@@ -384,14 +385,14 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
 
         // Try to delete with a different user
         mockMvc.perform(delete("/api/v1/user/notifications/" + notificationId)
-                .header("X-User-ID", "different-user"))
+                .with(clerkAuth("different-user")))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void getNotifications_ShouldReturnEmptyArrayForNewUser() throws Exception {
         mockMvc.perform(get("/api/v1/user/notifications")
-                .header("X-User-ID", "brand-new-user-with-no-data"))
+                .with(clerkAuth("brand-new-user-with-no-data")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
@@ -400,20 +401,20 @@ public class UserControllerIntegrationTest extends BaseIntegrationTest {
     @Test
     void getUnreadCount_ForNewUser_ShouldReturnZero() throws Exception {
         mockMvc.perform(get("/api/v1/user/notifications/unread-count")
-                .header("X-User-ID", "fresh-user-zero-notifs"))
+                .with(clerkAuth("fresh-user-zero-notifs")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(0));
     }
 
     @Test
-    void markAllAsRead_WithoutHeader_ShouldReturnBadRequest() throws Exception {
+    void markAllAsRead_WithoutAuthorization_ShouldReturnUnauthorized() throws Exception {
         mockMvc.perform(put("/api/v1/user/notifications/read-all"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void deleteAllNotifications_WithoutHeader_ShouldReturnBadRequest() throws Exception {
+    void deleteAllNotifications_WithoutAuthorization_ShouldReturnUnauthorized() throws Exception {
         mockMvc.perform(delete("/api/v1/user/notifications"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnauthorized());
     }
 }

@@ -16,7 +16,7 @@ public class ReviewVote {
     private Long id;
 
     @Column(nullable = false)
-    private String userId;
+    private String userId; // Internal user ID resolved from Clerk mapping
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "review_id", nullable = false)

@@ -10,6 +10,7 @@
 jest.mock('../../services/api', () => ({
   getWishlistProducts: jest.fn(),
   toggleWishlistApi: jest.fn().mockResolvedValue(undefined),
+  clearWishlistCache: jest.fn(),
   getUserMessage: jest.fn((error: unknown) =>
     error instanceof Error ? error.message : 'Unexpected error'
   ),
@@ -29,6 +30,7 @@ jest.mock('expo-navigation-bar', () => ({
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => ({ navigate: jest.fn() }),
+  useFocusEffect: jest.fn(),
 }));
 
 jest.mock('../../context/ThemeContext', () => ({

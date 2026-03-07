@@ -30,6 +30,7 @@ class CorsConfigTest extends BaseIntegrationTest {
     @Test
     void allowedOrigin_actualRequest_shouldIncludeCorsHeaders() throws Exception {
         mockMvc.perform(get("/api/v1/products")
+                        .with(clerkAuth("cors-user"))
                         .header("Origin", "http://localhost:8081"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:8081"));

@@ -1,5 +1,6 @@
 package com.example.productreview.controller;
 
+import com.example.productreview.config.AuthenticatedUserId;
 import com.example.productreview.dto.CreateNotificationRequest;
 import com.example.productreview.dto.NotificationDTO;
 import com.example.productreview.dto.ProductDTO;
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +26,7 @@ import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/user")
+@SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
     private static final int MAX_PAGE_SIZE = 100;
@@ -65,8 +68,8 @@ public class UserController {
     })
     @GetMapping("/wishlist")
     public ResponseEntity<List<Long>> getWishlist(
-            @Parameter(description = "User ID", required = true)
-            @RequestHeader("X-User-ID") String userId) {
+            @Parameter(hidden = true)
+            @AuthenticatedUserId String userId) {
         return ResponseEntity.ok(userService.getWishlist(userId));
     }
 
@@ -80,8 +83,8 @@ public class UserController {
     })
     @GetMapping("/wishlist/products")
     public ResponseEntity<Page<ProductDTO>> getWishlistProducts(
-            @Parameter(description = "User ID", required = true)
-            @RequestHeader("X-User-ID") String userId,
+            @Parameter(hidden = true)
+            @AuthenticatedUserId String userId,
             @Parameter(description = "Page index (0-based)", example = "0")
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size (1-100)", example = "10")
@@ -112,8 +115,8 @@ public class UserController {
     })
     @PostMapping("/wishlist/{productId}")
     public ResponseEntity<Void> toggleWishlist(
-            @Parameter(description = "User ID", required = true)
-            @RequestHeader("X-User-ID") String userId,
+            @Parameter(hidden = true)
+            @AuthenticatedUserId String userId,
             @Parameter(description = "Product ID to add or remove", example = "1")
             @PathVariable Long productId) {
         userService.toggleWishlist(userId, productId);
@@ -131,8 +134,8 @@ public class UserController {
     })
     @GetMapping("/notifications")
     public ResponseEntity<List<NotificationDTO>> getNotifications(
-            @Parameter(description = "User ID", required = true)
-            @RequestHeader("X-User-ID") String userId) {
+            @Parameter(hidden = true)
+            @AuthenticatedUserId String userId) {
         return ResponseEntity.ok(userService.getNotifications(userId));
     }
 
@@ -145,8 +148,8 @@ public class UserController {
     })
     @GetMapping("/notifications/unread-count")
     public ResponseEntity<Map<String, Long>> getUnreadCount(
-            @Parameter(description = "User ID", required = true)
-            @RequestHeader("X-User-ID") String userId) {
+            @Parameter(hidden = true)
+            @AuthenticatedUserId String userId) {
         return ResponseEntity.ok(Map.of("count", userService.getUnreadCount(userId)));
     }
 
@@ -161,8 +164,8 @@ public class UserController {
     })
     @PutMapping("/notifications/{id}/read")
     public ResponseEntity<Void> markAsRead(
-            @Parameter(description = "User ID", required = true)
-            @RequestHeader("X-User-ID") String userId,
+            @Parameter(hidden = true)
+            @AuthenticatedUserId String userId,
             @Parameter(description = "Notification ID", example = "1")
             @PathVariable Long id) {
         userService.markAsRead(id, userId);
@@ -178,8 +181,8 @@ public class UserController {
     })
     @PutMapping("/notifications/read-all")
     public ResponseEntity<Void> markAllAsRead(
-            @Parameter(description = "User ID", required = true)
-            @RequestHeader("X-User-ID") String userId) {
+            @Parameter(hidden = true)
+            @AuthenticatedUserId String userId) {
         userService.markAllAsRead(userId);
         return ResponseEntity.ok().build();
     }
@@ -194,8 +197,8 @@ public class UserController {
     })
     @PostMapping("/notifications")
     public ResponseEntity<Void> createNotification(
-            @Parameter(description = "User ID", required = true)
-            @RequestHeader("X-User-ID") String userId,
+            @Parameter(hidden = true)
+            @AuthenticatedUserId String userId,
             @Valid @RequestBody CreateNotificationRequest request) {
 
         userService.createNotification(userId, request.getTitle(), request.getMessage(), request.getProductId());
@@ -213,8 +216,8 @@ public class UserController {
     })
     @DeleteMapping("/notifications/{id}")
     public ResponseEntity<Void> deleteNotification(
-            @Parameter(description = "User ID", required = true)
-            @RequestHeader("X-User-ID") String userId,
+            @Parameter(hidden = true)
+            @AuthenticatedUserId String userId,
             @Parameter(description = "Notification ID", example = "1")
             @PathVariable Long id) {
         userService.deleteNotification(id, userId);
@@ -230,8 +233,8 @@ public class UserController {
     })
     @DeleteMapping("/notifications")
     public ResponseEntity<Void> deleteAllNotifications(
-            @Parameter(description = "User ID", required = true)
-            @RequestHeader("X-User-ID") String userId) {
+            @Parameter(hidden = true)
+            @AuthenticatedUserId String userId) {
         userService.deleteAllNotifications(userId);
         return ResponseEntity.ok().build();
     }

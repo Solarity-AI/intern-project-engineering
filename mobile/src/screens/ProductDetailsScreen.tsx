@@ -429,10 +429,12 @@ const ProductDetailsContent: React.FC = () => {
             {/* Overlaid product info at bottom — inset to content width on desktop */}
             <View style={[
               styles.heroOverlayInfo,
-              isWideScreen && contentMaxWidth && {
-                left: Math.max(0, (windowWidth - contentMaxWidth) / 2),
-                right: Math.max(0, (windowWidth - contentMaxWidth) / 2),
-              },
+              isWideScreen && contentMaxWidth
+                ? {
+                    left: Math.max(0, (windowWidth - contentMaxWidth) / 2),
+                    right: Math.max(0, (windowWidth - contentMaxWidth) / 2),
+                  }
+                : undefined,
             ]}>
               {product.categories && product.categories.length > 0 && (
                 <View style={styles.heroCategoryRow}>

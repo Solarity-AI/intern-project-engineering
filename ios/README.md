@@ -172,12 +172,13 @@ enum AppConstants {
 - **User-Friendly Errors**: Clear messages for timeout, no connection, server errors
 - **Connectivity Monitoring**: Real-time network status with offline banner
 
-## User Identification
+## Authentication Note
 
-The app generates a unique device UUID on first launch, stored in UserDefaults:
-- Key: `device_user_id`
-- Sent as `X-User-ID` header on all API requests
-- Enables per-device wishlist and notifications
+Protected backend identity is no longer accepted from client-provided headers.
+The native iOS sample client does not send `X-User-ID`; protected endpoints now
+require identity derived from a validated Clerk bearer token.
+
+See `docs/authentication-flow.md` for the backend identity resolution flow.
 
 ## Reusable Components
 
