@@ -1,5 +1,6 @@
 package com.example.productreview.config;
 
+import com.nimbusds.jose.jwk.RSAKey;
 import com.example.productreview.support.TestClerkJwtSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,5 +70,34 @@ class ClerkJwtVerifierTest {
                         "user-with-bad-azp", "https://unexpected.example")));
 
         assertEquals("Authentication token has an invalid authorized party", exception.getMessage());
+    }
+
+    @Test
+    void verify_WithMatchingKidInMultiKeyJwkSet_ShouldReturnSubject() {
+        RSAKey activeKey = TestClerkJwtSupport.generateRsaKey("active-key");
+        RSAKey staleKey = TestClerkJwtSupport.generateRsaKey("stale-key");
+        authProperties.setVerificationKey(TestClerkJwtSupport.publicJwkSet(staleKey, activeKey));
+        verifier = new ClerkJwtVerifier(authProperties);
+        verifier.validateConfiguration();
+
+        ClerkJwtVerifier.VerifiedClerkToken verifiedToken = verifier.verify(
+                TestClerkJwtSupport.validToken("rotated-user", activeKey));
+
+        assertEquals("rotated-user", verifiedToken.subject());
+    }
+
+    @Test
+    void verify_WithUnknownKidInMultiKeyJwkSet_ShouldThrowAuthenticationException() {
+        RSAKey activeKey = TestClerkJwtSupport.generateRsaKey("active-key");
+        RSAKey staleKey = TestClerkJwtSupport.generateRsaKey("stale-key");
+        RSAKey unknownKey = TestClerkJwtSupport.generateRsaKey("unknown-key");
+        authProperties.setVerificationKey(TestClerkJwtSupport.publicJwkSet(staleKey, activeKey));
+        verifier = new ClerkJwtVerifier(authProperties);
+        verifier.validateConfiguration();
+
+        ClerkAuthenticationException exception = assertThrows(ClerkAuthenticationException.class,
+                () -> verifier.verify(TestClerkJwtSupport.validToken("rotated-user", unknownKey)));
+
+        assertEquals("Authentication token references an unknown verification key", exception.getMessage());
     }
 }

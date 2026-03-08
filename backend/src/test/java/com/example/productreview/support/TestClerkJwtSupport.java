@@ -6,6 +6,7 @@ import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -14,8 +15,10 @@ import com.nimbusds.jwt.SignedJWT;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
+import java.util.stream.Collectors;
 
 public final class TestClerkJwtSupport {
 
@@ -39,6 +42,11 @@ public final class TestClerkJwtSupport {
         return token(subject, now.plus(1, ChronoUnit.HOURS), now.minus(1, ChronoUnit.MINUTES));
     }
 
+    public static String validToken(String subject, RSAKey signingKey) {
+        Instant now = Instant.now();
+        return token(subject, now.plus(1, ChronoUnit.HOURS), now.minus(1, ChronoUnit.MINUTES), "http://localhost:19006", signingKey);
+    }
+
     public static String expiredToken(String subject) {
         Instant now = Instant.now();
         return token(subject, now.minus(5, ChronoUnit.MINUTES), now.minus(10, ChronoUnit.MINUTES));
@@ -54,11 +62,32 @@ public final class TestClerkJwtSupport {
         return token(subject, now.plus(1, ChronoUnit.HOURS), now.minus(1, ChronoUnit.MINUTES), authorizedParty);
     }
 
+    public static String publicJwkSet(RSAKey... keys) {
+        return new JWKSet(Arrays.stream(keys)
+                .map(RSAKey::toPublicJWK)
+                .collect(Collectors.toList()))
+                .toString();
+    }
+
+    public static RSAKey generateRsaKey(String keyId) {
+        try {
+            return new RSAKeyGenerator(2048)
+                    .keyID(keyId)
+                    .generate();
+        } catch (JOSEException ex) {
+            throw new IllegalStateException("Unable to generate RSA key pair for tests", ex);
+        }
+    }
+
     private static String token(String subject, Instant expiration, Instant notBefore) {
         return token(subject, expiration, notBefore, "http://localhost:19006");
     }
 
     private static String token(String subject, Instant expiration, Instant notBefore, String authorizedParty) {
+        return token(subject, expiration, notBefore, authorizedParty, TEST_RSA_KEY);
+    }
+
+    private static String token(String subject, Instant expiration, Instant notBefore, String authorizedParty, RSAKey signingKey) {
         try {
             JWTClaimsSet claims = new JWTClaimsSet.Builder()
                     .subject(subject)
@@ -71,11 +100,11 @@ public final class TestClerkJwtSupport {
             SignedJWT signedJwt = new SignedJWT(
                     new JWSHeader.Builder(JWSAlgorithm.RS256)
                             .type(JOSEObjectType.JWT)
-                            .keyID(TEST_RSA_KEY.getKeyID())
+                            .keyID(signingKey.getKeyID())
                             .build(),
                     claims);
 
-            JWSSigner signer = new RSASSASigner(TEST_RSA_KEY.toPrivateKey());
+            JWSSigner signer = new RSASSASigner(signingKey.toPrivateKey());
             signedJwt.sign(signer);
             return signedJwt.serialize();
         } catch (JOSEException ex) {
@@ -84,12 +113,6 @@ public final class TestClerkJwtSupport {
     }
 
     private static RSAKey generateTestKey() {
-        try {
-            return new RSAKeyGenerator(2048)
-                    .keyID("test-clerk-key")
-                    .generate();
-        } catch (JOSEException ex) {
-            throw new IllegalStateException("Unable to generate RSA key pair for tests", ex);
-        }
+        return generateRsaKey("test-clerk-key");
     }
 }

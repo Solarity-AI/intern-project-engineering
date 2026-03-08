@@ -18,6 +18,16 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: CLERK_AUTH_ENABLED
+        sync: false
+      - key: CLERK_JWT_VERIFICATION_KEY
+        sync: false
+      - key: CLERK_AUTHORIZED_PARTIES
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
 
 databases:
   - name: solarity-review-db

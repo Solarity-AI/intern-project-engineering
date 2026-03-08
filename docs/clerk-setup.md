@@ -62,6 +62,22 @@ export CLERK_JWT_VERIFICATION_KEY="-----BEGIN PUBLIC KEY-----..."
 
 If `CLERK_AUTH_ENABLED=true` and `CLERK_JWT_VERIFICATION_KEY` is missing, the backend is expected to fail fast during startup.
 
+### Production (Render)
+
+Set these environment variables on the Render web service before the first production deploy:
+
+```bash
+CLERK_AUTH_ENABLED=true
+CLERK_JWT_VERIFICATION_KEY='-----BEGIN PUBLIC KEY-----...'
+CLERK_AUTHORIZED_PARTIES='https://your-frontend-origin.example'
+CLERK_SECRET_KEY=sk_live_your-secret-key
+CLERK_PUBLISHABLE_KEY=pk_live_your-publishable-key
+```
+
+`CLERK_JWT_VERIFICATION_KEY` is the one required for backend startup. The verifier also accepts the same value via `CLERK_JWT_KEY` or `CLERK_PEM_PUBLIC_KEY` if your environment already uses one of those names.
+
+If you are intentionally deploying without Clerk protection for a temporary environment, set `CLERK_AUTH_ENABLED=false`. Do not use that setting for a public production deployment.
+
 ### Production (Heroku)
 
 ```bash
