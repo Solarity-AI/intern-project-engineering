@@ -78,15 +78,6 @@ CLERK_PUBLISHABLE_KEY=pk_live_your-publishable-key
 
 If you are intentionally deploying without Clerk protection for a temporary environment, set `CLERK_AUTH_ENABLED=false`. Do not use that setting for a public production deployment.
 
-### Production (Heroku)
-
-```bash
-heroku config:set CLERK_SECRET_KEY=sk_live_your-secret-key
-heroku config:set CLERK_PUBLISHABLE_KEY=pk_live_your-publishable-key
-```
-
-The `application-prod.properties` file reads these values via `${CLERK_SECRET_KEY}` and `${CLERK_PUBLISHABLE_KEY}`.
-
 ## 5. Verify the Connection
 
 1. Start the app with `npx expo start` and open it on an Android emulator, iOS simulator, or physical device.
