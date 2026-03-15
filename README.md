@@ -67,6 +67,56 @@ open ProductReview.xcodeproj   # Open in Xcode
 
 ---
 
+## 🗄️ Database Configuration
+
+### Flyway Migrations and Spring Profiles
+
+The backend uses **Flyway** for schema management in production and **H2 in-memory** auto-DDL in development. The active Spring profile controls which strategy applies:
+
+- **Development (default profile):** `spring.flyway.enabled=false` and `spring.jpa.hibernate.ddl-auto=create-drop` in `backend/src/main/resources/application.properties`. Hibernate recreates the schema from JPA entity definitions on every startup — no migration files are executed. The H2 console is available at `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:mem:testdb`, username: `sa`, password empty).
+
+- **Production profile (`prod`):** `spring.flyway.enabled=true` and `spring.jpa.hibernate.ddl-auto=none` in `backend/src/main/resources/application-prod.properties`. Hibernate does **not** touch the schema; Flyway exclusively manages it by applying versioned SQL files in order from `backend/src/main/resources/db/migration/` (`V1__initial_schema.sql` → `V2__seed_data.sql` → `V3__add_user_mappings.sql`). Any future schema change must be expressed as a new `V4__...sql` file — editing existing migration files causes a Flyway checksum error and prevents startup.
+
+The `application.properties` keys controlling the datasource and Flyway behaviour:
+
+| Property | Development default | Production (`prod` profile) |
+|---|---|---|
+| `spring.datasource.url` | `jdbc:h2:mem:testdb` | `${JDBC_DATABASE_URL}` (env var) |
+| `spring.datasource.driverClassName` | *(H2, auto-detected)* | `org.postgresql.Driver` |
+| `spring.jpa.hibernate.ddl-auto` | `create-drop` | `none` |
+| `spring.flyway.enabled` | `false` | `true` |
+| `spring.flyway.baseline-on-migrate` | *(not set)* | `true` |
+
+### Switching to a Different Database Engine
+
+To run the application against a **local PostgreSQL instance** (or another JDBC-compatible database), follow these steps:
+
+1. **Ensure the JDBC driver is on the classpath.** PostgreSQL (`org.postgresql:postgresql`) is already included in `backend/pom.xml`. For MySQL, add `com.mysql:mysql-connector-j`; for other vendors, add the corresponding driver dependency.
+
+2. **Create a new Spring profile properties file** in `backend/src/main/resources/`, for example `application-local-pg.properties`, and set the datasource and Flyway keys:
+   ```properties
+   spring.datasource.url=jdbc:postgresql://localhost:5432/productreview
+   spring.datasource.username=youruser
+   spring.datasource.password=yourpassword
+   spring.datasource.driverClassName=org.postgresql.Driver
+   spring.jpa.hibernate.ddl-auto=none
+   spring.flyway.enabled=true
+   spring.flyway.baseline-on-migrate=true
+   ```
+
+3. **Start the application** with the new profile active:
+   ```bash
+   cd backend
+   ./mvnw spring-boot:run -Dspring-boot.run.profiles=local-pg
+   ```
+   Flyway will apply all migrations from `V1` through the latest version against the target database on first startup. Verify by inspecting the `flyway_schema_history` table afterwards.
+
+4. **For MySQL or other non-PostgreSQL vendors:** The migration SQL files use PostgreSQL-specific syntax (`BIGSERIAL`, `NUMERIC`, `NOW()`). Replace these with vendor equivalents — for example, `BIGINT AUTO_INCREMENT` instead of `BIGSERIAL` and `CURRENT_TIMESTAMP` instead of `NOW()` — or configure `spring.flyway.locations` to point at a vendor-specific migration subdirectory.
+
+> **Note:** The H2 development profile intentionally bypasses Flyway. Schema correctness is only validated against PostgreSQL-compatible SQL. Always test new migrations against a real PostgreSQL instance (local Docker or a staging database) before merging to `main`.
+
+---
+
 ## 🏗️ Technical Architecture
 
 The project follows a **Layered Clean Architecture** to ensure maintainability and testability.
@@ -120,7 +170,7 @@ The project follows a **Layered Clean Architecture** to ensure maintainability a
 ├── backend/                # Java Spring Boot Source Code
 │   ├── src/main/java/      # Business logic & API Controllers
 │   ├── src/main/resources/
-│   │   ├── db/migration/   # Flyway SQL migrations (V1 schema, V2 seed data)
+│   │   ├── db/migration/   # Flyway SQL migrations (V1 schema, V2 seed data, V3 user mappings)
 │   │   └── *.properties    # Dev & prod configuration
 │   └── README.md           # Detailed Backend Documentation
 ├── mobile/                 # React Native (Expo) Source Code
