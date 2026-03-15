@@ -147,7 +147,7 @@ public class ProductServiceImpl implements ProductService {
         review.setProduct(product);
 
         Review savedReview = reviewRepository.save(review);
-        updateProductStats(product);
+        updateProductStats(productId);
 
         return convertToReviewDTO(savedReview);
     }
@@ -237,21 +237,8 @@ public class ProductServiceImpl implements ProductService {
         return stats;
     }
 
-    private void updateProductStats(Product product) {
-        List<Object[]> results = reviewRepository.getReviewStats(product.getId());
-
-        int count = 0;
-        double average = 0.0;
-
-        if (results != null && !results.isEmpty() && results.get(0) != null) {
-            Object[] stats = results.get(0);
-            count = stats.length > 0 && stats[0] != null ? ((Number) stats[0]).intValue() : 0;
-            average = stats.length > 1 && stats[1] != null ? ((Number) stats[1]).doubleValue() : 0.0;
-        }
-
-        product.setReviewCount(count);
-        product.setAverageRating(Math.round(average * 10.0) / 10.0);
-        productRepository.save(product);
+    private void updateProductStats(Long productId) {
+        productRepository.updateProductStatsAtomic(productId);
     }
 
     private ReviewDTO convertToReviewDTO(Review review) {

@@ -111,14 +111,11 @@ public class ProductServiceTest {
 
         when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
-        when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.singletonList(new Object[]{1L, 5.0}));
 
         ReviewDTO result = productService.addReview(1L, reviewDTO);
 
         assertNotNull(result);
-        assertEquals(1, product.getReviewCount());
-        assertEquals(5.0, product.getAverageRating());
-        verify(productRepository, times(1)).save(product);
+        verify(productRepository, times(1)).updateProductStatsAtomic(1L);
     }
 
     // --- Error Case Tests (U24) ---
@@ -318,13 +315,11 @@ public class ProductServiceTest {
 
         when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
-        when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.singletonList(new Object[]{1L, 1.0}));
 
         ReviewDTO result = productService.addReview(1L, reviewDTO);
 
         assertNotNull(result);
-        assertEquals(1, product.getReviewCount());
-        assertEquals(1.0, product.getAverageRating());
+        verify(productRepository, times(1)).updateProductStatsAtomic(1L);
     }
 
     @Test
@@ -342,12 +337,11 @@ public class ProductServiceTest {
 
         when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
-        when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.singletonList(new Object[]{1L, 5.0}));
 
         ReviewDTO result = productService.addReview(1L, reviewDTO);
 
         assertNotNull(result);
-        assertEquals(5.0, product.getAverageRating());
+        verify(productRepository, times(1)).updateProductStatsAtomic(1L);
     }
 
     @Test
@@ -564,7 +558,7 @@ public class ProductServiceTest {
     // --- updateProductStats edge cases (#105) ---
 
     @Test
-    void addReview_WhenReviewStatsEmpty_ShouldDefaultToZero() {
+    void addReview_WhenCalled_ShouldDelegateStatsToAtomicUpdate() {
         ReviewDTO reviewDTO = new ReviewDTO();
         reviewDTO.setReviewerName("TestUser");
         reviewDTO.setComment("Good product indeed");
@@ -578,40 +572,12 @@ public class ProductServiceTest {
 
         when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
         when(reviewRepository.save(any(Review.class))).thenReturn(review);
-        when(reviewRepository.getReviewStats(1L)).thenReturn(Collections.emptyList());
 
         ReviewDTO result = productService.addReview(1L, reviewDTO);
 
         assertNotNull(result);
-        assertEquals(0, product.getReviewCount());
-        assertEquals(0.0, product.getAverageRating());
-    }
-
-    @Test
-    void addReview_WhenReviewStatsRowIsNull_ShouldDefaultToZero() {
-        ReviewDTO reviewDTO = new ReviewDTO();
-        reviewDTO.setReviewerName("TestUser");
-        reviewDTO.setComment("Good product indeed");
-        reviewDTO.setRating(5);
-
-        Review review = new Review();
-        review.setId(1L);
-        review.setReviewerName("TestUser");
-        review.setRating(5);
-        review.setProduct(product);
-
-        List<Object[]> nullRowList = new ArrayList<>();
-        nullRowList.add(null);
-
-        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
-        when(reviewRepository.save(any(Review.class))).thenReturn(review);
-        when(reviewRepository.getReviewStats(1L)).thenReturn(nullRowList);
-
-        ReviewDTO result = productService.addReview(1L, reviewDTO);
-
-        assertNotNull(result);
-        assertEquals(0, product.getReviewCount());
-        assertEquals(0.0, product.getAverageRating());
+        verify(productRepository, times(1)).updateProductStatsAtomic(1L);
+        verify(reviewRepository, never()).getReviewStats(anyLong());
     }
 
     @Test

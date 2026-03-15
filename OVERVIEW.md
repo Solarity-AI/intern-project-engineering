@@ -504,6 +504,11 @@ springdoc.api-docs.enabled=false
 | `OPENAI_API_KEY` | No | AI features (falls back to mock) |
 | `DATABASE_URL` | Prod | PostgreSQL URL (auto-provided by Render; converted to JDBC by entrypoint.sh) |
 | `CORS_ALLOWED_ORIGINS` | Prod | Comma-separated CORS origins (Cloudflare Pages URL) |
+| `CLERK_AUTH_ENABLED` | Prod | Enables backend Clerk JWT enforcement (`true` by default in prod) |
+| `CLERK_JWT_VERIFICATION_KEY` | Prod | Clerk JWT public verification key required when auth is enabled |
+| `CLERK_AUTHORIZED_PARTIES` | No | Optional comma-separated allowed `azp` values for Clerk tokens |
+| `CLERK_SECRET_KEY` | No | Clerk backend secret key (reserved for Clerk-integrated backend features) |
+| `CLERK_PUBLISHABLE_KEY` | No | Clerk publishable key mirrored into backend config when needed |
 | `cors.allowed-origins` | No | Comma-separated CORS origins (default: localhost dev ports) |
 | `rate-limit.requests-per-minute` | No | Rate limit per client (default: 60) |
 | `spring.profiles.active` | No | Set to `prod` for production profile |
@@ -545,7 +550,7 @@ static let useLocalServer = false
 - **Container:** Multi-stage Docker build (`backend/Dockerfile`)
 - **Startup:** `backend/entrypoint.sh` parses `DATABASE_URL` → JDBC URL + credentials
 - **Health check:** `/actuator/health`
-- **Environment:** `SPRING_PROFILES_ACTIVE=prod`, `DATABASE_URL` (auto), `CORS_ALLOWED_ORIGINS`, `OPENAI_API_KEY`
+- **Environment:** `SPRING_PROFILES_ACTIVE=prod`, `DATABASE_URL` (auto), `CORS_ALLOWED_ORIGINS`, `OPENAI_API_KEY`, `CLERK_AUTH_ENABLED`, `CLERK_JWT_VERIFICATION_KEY`
 - **CI/CD:** Deploy hook triggered by GitHub Actions on push to `main`
 
 ### 7.2 Frontend Web Deployment (Cloudflare Pages)

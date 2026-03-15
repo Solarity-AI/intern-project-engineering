@@ -18,13 +18,15 @@ import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 public class ClerkJwtVerifier {
 
     private final ClerkAuthProperties authProperties;
-    private volatile RSAPublicKey verificationKey;
+    private volatile VerificationKeyResolver verificationKeyResolver;
 
     public ClerkJwtVerifier(ClerkAuthProperties authProperties) {
         this.authProperties = authProperties;
@@ -38,10 +40,12 @@ public class ClerkJwtVerifier {
 
         if (authProperties.getVerificationKey() == null || authProperties.getVerificationKey().isBlank()) {
             throw new IllegalStateException(
-                    "clerk.auth.verification-key must be configured when Clerk authentication is enabled");
+                    "clerk.auth.verification-key must be configured when Clerk authentication is enabled; " +
+                            "set CLERK_JWT_VERIFICATION_KEY (or CLERK_JWT_KEY / CLERK_PEM_PUBLIC_KEY) " +
+                            "or disable auth with CLERK_AUTH_ENABLED=false");
         }
 
-        verificationKey = parseVerificationKey(authProperties.getVerificationKey());
+        verificationKeyResolver = parseVerificationKey(authProperties.getVerificationKey());
     }
 
     public VerifiedClerkToken verify(String token) {
@@ -52,7 +56,7 @@ public class ClerkJwtVerifier {
                 throw new ClerkAuthenticationException("Unsupported authentication token algorithm");
             }
 
-            boolean signatureValid = signedJwt.verify(new RSASSAVerifier(getVerificationKey()));
+            boolean signatureValid = signedJwt.verify(new RSASSAVerifier(getVerificationKeyResolver().resolve(signedJwt)));
             if (!signatureValid) {
                 throw new ClerkAuthenticationException("Invalid authentication token");
             }
@@ -97,43 +101,79 @@ public class ClerkJwtVerifier {
         }
     }
 
-    private RSAPublicKey getVerificationKey() {
-        RSAPublicKey key = verificationKey;
-        if (key != null) {
-            return key;
+    private VerificationKeyResolver getVerificationKeyResolver() {
+        VerificationKeyResolver resolver = verificationKeyResolver;
+        if (resolver != null) {
+            return resolver;
         }
 
         synchronized (this) {
-            if (verificationKey == null) {
-                verificationKey = parseVerificationKey(authProperties.getVerificationKey());
+            if (verificationKeyResolver == null) {
+                verificationKeyResolver = parseVerificationKey(authProperties.getVerificationKey());
             }
-            return verificationKey;
+            return verificationKeyResolver;
         }
     }
 
-    private RSAPublicKey parseVerificationKey(String rawVerificationKey) {
+    private VerificationKeyResolver parseVerificationKey(String rawVerificationKey) {
         String normalizedKey = rawVerificationKey.trim().replace("\\n", "\n");
 
         try {
             if (normalizedKey.startsWith("{")) {
                 return parseJwkKey(normalizedKey);
             }
-            return parsePemKey(normalizedKey);
+            RSAPublicKey verificationKey = parsePemKey(normalizedKey);
+            return signedJwt -> verificationKey;
         } catch (Exception ex) {
             throw new IllegalStateException("Unable to parse Clerk verification key", ex);
         }
     }
 
-    private RSAPublicKey parseJwkKey(String jsonKey) throws Exception {
+    private VerificationKeyResolver parseJwkKey(String jsonKey) throws Exception {
         if (jsonKey.contains("\"keys\"")) {
             JWKSet jwkSet = JWKSet.parse(jsonKey);
-            if (jwkSet.getKeys().isEmpty()) {
-                throw new IllegalStateException("Clerk JWKS does not contain any keys");
+            List<RSAKey> rsaKeys = jwkSet.getKeys().stream()
+                    .filter(RSAKey.class::isInstance)
+                    .map(RSAKey.class::cast)
+                    .toList();
+            if (rsaKeys.isEmpty()) {
+                throw new IllegalStateException("Clerk JWKS does not contain any RSA public keys");
             }
-            return toRsaPublicKey(jwkSet.getKeys().get(0));
+            if (rsaKeys.size() == 1) {
+                RSAPublicKey verificationKey = rsaKeys.get(0).toRSAPublicKey();
+                return signedJwt -> verificationKey;
+            }
+
+            Map<String, RSAPublicKey> verificationKeysById = new HashMap<>();
+            for (RSAKey rsaKey : rsaKeys) {
+                String keyId = rsaKey.getKeyID();
+                if (keyId == null || keyId.isBlank()) {
+                    throw new IllegalStateException("Clerk JWKS contains an RSA key without a key ID");
+                }
+
+                RSAPublicKey previous = verificationKeysById.putIfAbsent(keyId, rsaKey.toRSAPublicKey());
+                if (previous != null) {
+                    throw new IllegalStateException("Clerk JWKS contains duplicate RSA key IDs");
+                }
+            }
+
+            return signedJwt -> {
+                String keyId = signedJwt.getHeader().getKeyID();
+                if (keyId == null || keyId.isBlank()) {
+                    throw new ClerkAuthenticationException("Authentication token is missing a key ID");
+                }
+
+                RSAPublicKey verificationKey = verificationKeysById.get(keyId);
+                if (verificationKey == null) {
+                    throw new ClerkAuthenticationException("Authentication token references an unknown verification key");
+                }
+
+                return verificationKey;
+            };
         }
 
-        return toRsaPublicKey(JWK.parse(jsonKey));
+        RSAPublicKey verificationKey = toRsaPublicKey(JWK.parse(jsonKey));
+        return signedJwt -> verificationKey;
     }
 
     private RSAPublicKey toRsaPublicKey(JWK jwk) throws JOSEException {
@@ -161,5 +201,10 @@ public class ClerkJwtVerifier {
     }
 
     public record VerifiedClerkToken(String subject) {
+    }
+
+    @FunctionalInterface
+    private interface VerificationKeyResolver {
+        RSAPublicKey resolve(SignedJWT signedJwt);
     }
 }

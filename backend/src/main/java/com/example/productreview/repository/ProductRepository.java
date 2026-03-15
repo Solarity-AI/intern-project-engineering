@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -41,6 +42,22 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE p.id = :id")
     Optional<Product> findByIdForUpdate(@Param("id") Long id);
 
-    // ✨ New method for paged find by IDs
+    /**
+     * Atomically recomputes review_count and average_rating from the reviews table in a
+     * single UPDATE statement, eliminating the read-modify-write race that the separate
+     * getReviewStats → setReviewCount → save pattern was susceptible to.
+     *
+     * ROUND(COALESCE(AVG(rating) * 10, 0)) / 10.0 produces a value rounded to 1 decimal
+     * place without relying on the two-argument ROUND overload, keeping the query
+     * compatible with both H2 (dev) and PostgreSQL (prod).
+     */
+    @Modifying(clearAutomatically = true)
+    @Query(value = "UPDATE products SET " +
+            "review_count = (SELECT COUNT(*) FROM reviews WHERE product_id = :productId), " +
+            "average_rating = (SELECT ROUND(COALESCE(AVG(rating) * 10, 0)) / 10.0 FROM reviews WHERE product_id = :productId) " +
+            "WHERE id = :productId",
+            nativeQuery = true)
+    void updateProductStatsAtomic(@Param("productId") Long productId);
+
     Page<Product> findByIdIn(List<Long> ids, Pageable pageable);
 }

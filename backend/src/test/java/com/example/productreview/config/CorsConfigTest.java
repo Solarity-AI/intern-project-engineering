@@ -35,4 +35,12 @@ class CorsConfigTest extends BaseIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:8081"));
     }
+
+    @Test
+    void allowedOrigin_unauthorizedActualRequest_shouldStillIncludeCorsHeaders() throws Exception {
+        mockMvc.perform(get("/api/v1/products")
+                        .header("Origin", "http://localhost:8081"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:8081"));
+    }
 }
